@@ -11,10 +11,10 @@
 | 项目 | 内容 |
 |---|---|
 | 工程目标 | 将单体"十周年UI"扩展升级为 Core + Style Pack + Feature Pack + Shared Resource 模块化UI平台（按需下载/安装/启停/更新/卸载） |
-| Stars 仓库 | https://github.com/zziyoo/decadeUi-Stars （本目录，2026-09-27 新建） |
-| 原版参考仓库 | `zziyoo/decadeUi`，本地路径 `C:\Users\32360\Desktop\无名杀-win32-x64\resources\app\extension\十周年UI` |
+| Stars 仓库 | https://github.com/zziyoo/decadeUi-Stars （本仓库，**独立开发仓库，已迁入源码**） |
+| 原版扩展（玩家在用，不动） | `zziyoo/decadeUi`，本地路径 `C:\Users\32360\Desktop\无名杀-win32-x64\resources\app\extension\十周年UI` |
 | 总路线 | P0审计 → P1模块基础设施 → P2公共依赖解耦 → P3十周年Pack → P4移动版Pack → P5下载器 → P6模块管理界面 → P7全部Style → P8 Feature Pack → P9模块化构建 → P10 Release → P11自动更新 → P12回滚 → P13旧版本迁移 → P14全量测试 |
-| 当前阶段 | **P0：模块化架构审计（已完成，待用户验收）** |
+| 当前阶段 | **P0 已验收通过（附三处表述修正）；下一阶段 P1：模块基础设施** |
 
 ## 二、环境备忘（本机关键信息）
 
@@ -32,6 +32,7 @@
 | 2026-09-27 | 确认原版十周年UI位置与规模：约 113MB / 3400+ 文件（assets 12.5MB/290、audio 9.9MB/241、image 34.5MB/1596、src 2.3MB/174、ui 53.9MB/1094） | 本次审计输入 |
 | 2026-09-27 | 创建本文档 | — |
 | 2026-09-27 | **完成 P0 模块化架构审计**，产出 `docs/modularization-audit.md`（15节+3附录） | 见下节"进行中" |
+| 2026-09-27 | **迁入原版 v1.4.2 全部源码**（src/ui/image/audio/assets/docs + 构建文件 + LICENSE；原版README→docs/extension-readme.md；合并.gitignore；未迁 .github CI 与 .git） | 文件数校验一致：src=174/ui=1094/image=1596/audio=241/assets=290 |
 
 ## 四、进行中（当前任务指针）
 
@@ -56,7 +57,7 @@
 
 **P0 关键结论速览**（详见审计报告）：
 1. 样式系统 = 6 个官方样式（on/off/othersOff/onlineUI/babysha/codename，`off`=移动版而非关闭），样式=playerN.css+ui/styles多层叠加+皮肤JS动态import。
-2. **STYLE_TO_SKIN 映射在 3 处重复定义**（decadeModule.js、ui/constants.js），另有 STYLE_TO_INDEX、styleFileMap 两套平行映射 → P2 必须收口。
+2. **STYLE_TO_SKIN 映射存在 2 份独立定义**（decadeModule.js、ui/constants.js），由 3 个 skins/index.js 消费，另有 STYLE_TO_INDEX、styleFileMap 两套平行映射 → P2 必须收口。
 3. **跨样式共享资源命中任务书预言**：ui/assets/skill/yijiang、lbtn/OL_line、lbtn/CD 被多个样式CSS引用，禁止按目录名打包装。
 4. decadeUI.js 的 base/ride 覆写体系与 overrides/ 是一体，不可拆散；ride式覆写无还原路径（现状即"第一阶段不做运行时卸载"的依据）。
 5. app.loadPlugins 按样式加载 main1/2/3.js 是第三方插件兼容约定，列入不可破坏 API。
@@ -67,19 +68,21 @@
 
 ## 五、已知问题与风险
 
-1. **Stars 目录当前只有空模板**（extension.js/info.json 为空白骨架）。任务书 §3 描述的 `src/`、`ui/` 等源码基线在**原版目录** `extension\十周年UI` 中，P1 阶段需决定：迁移源码进本仓库 vs 在原仓库继续。
-2. P0 完成前禁止任何目录搬移、文件删除、样式重写（任务书 §61）。
-3. 原版仓库有自己的 git 仓库（含 .github、LICENSE），Stars 与其关系（fork / 重开始 / 并行）待用户确认，当前按独立仓库处理。
+1. ~~Stars 目录只有空模板~~ **已解决（2026-09-27）**：原版源码已整体迁入本仓库，后续 P1 起直接在本仓库开发。
+2. **开发版与原版运行时同名**：本仓库 info.json 的 name 仍为"十周年UI"，与原版扩展同名。同一游戏环境**不可同时启用两者**；后续（建议 P1 内）需确定开发版命名/目录策略（如临时改名或专用测试环境），避免污染玩家配置。
+3. P0 完成前禁止任何目录搬移、文件删除、样式重写（任务书 §61）——P0 已验收通过，该约束解除，但 P1 仍执行"零迁移"原则（任务书 §35）。
+4. ~~Stars 与原版仓库关系待确认~~ **已决策（2026-09-27，用户确认）**：Stars 作为独立仓库开发，原版十周年UI不动，玩家暂时继续使用原版扩展。
+5. 原版仓库的 .github CI（build.yml 会推代码/发布）未迁入，避免对 Stars 触发自动发布；P9/P10 构建系统改造时再引入。
 
 ## 六、下一步
 
-1. **用户验收 P0**：审阅 `docs/modularization-audit.md`，确认 Core/Style/Feature/Shared 边界判定与迁移顺序。
-2. 验收通过后进入 **P1**：ModuleManager + StyleRuntime + ResourceLoader + Manifest 基础设施（任务书 §35-§36，零迁移，只并联现有机制）。
-3. 决定源码迁移策略（见"已知问题"第 1 条）：建议 P1 动工前确定。
-4. P2 重点：三处 STYLE_TO_SKIN 收口为 StyleRuntime 单一数据源；82 处 lib.assetURL 收口 resourceLoader。
+1. ~~用户验收 P0~~ ✅ 已通过（2026-09-27，用户提出三处文档表述修正，均已订正：STYLE_TO_SKIN 为 2 份定义+3 个消费点；CSS 总数 52；循环依赖结论限定为静态扫描范围）。
+2. **进入 P1**：在本仓库实施 ModuleManager + StyleRuntime + ResourceLoader + Manifest 基础设施（任务书 §35-§36，零迁移，只并联现有机制）。动工前先确定开发版扩展命名策略（见"已知问题"第 2 条）。
+3. P2 重点预告：2 处 STYLE_TO_SKIN 定义收口为 StyleRuntime 单一数据源；82 处 lib.assetURL 收口 resourceLoader。
 
 ## 七、会话记录
 
 | 日期 | 会话内容摘要 |
 |---|---|
 | 2026-09-27 | 建仓推送至 zziyoo/decadeUi-Stars；创建本文档；完成 P0 审计并产出 `docs/modularization-audit.md` |
+| 2026-09-27 | P0 验收通过（附三处表述修正）；决策 Stars 为独立开发仓库并迁入原版 v1.4.2 源码；原版不动，玩家继续用原版 |

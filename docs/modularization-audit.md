@@ -4,6 +4,8 @@
 > 审计对象：原版 `十周年UI` 扩展（`extension/十周年UI/`，v1.4.2，信息源 info.json；docs/update.md 出现 1.5.0 字样，版本记录疑似未同步）。
 > 审计方式：静态扫描（全量文件统计 + import/url/路径 grep）+ 关键文件精读（extension.js、precontent.js、content.js、app.js、decadeUI.js、decadeModule.js、loader.js、constants.js、appearance.js、skins/index.js、safeOverride.js 等）。
 > 本阶段未修改任何源码、未移动任何文件。运行时行为未实测，个别结论标注了置信度。
+>
+> 后记：2026-09-27 P0 验收后，原版源码已整体迁入本仓库（Stars）作为开发基线，运行时路径（`extension/十周年UI/`，由 info.json 的 name 决定）不变，本报告中的路径结论继续有效。原版目录保持不动，玩家继续使用原版扩展。
 
 ---
 
@@ -58,7 +60,7 @@ extension.js（入口，读info.json，设 window.decadeUIName / window.decadeUI
   `on=十周年, off=移动版, othersOff=一将成名, onlineUI=Online, babysha=欢乐三国杀, codename=名将杀`
   ⚠️ 注意 `off` 不是"关闭"，而是"移动版"样式。
 - 样式→皮肤ID映射 `STYLE_TO_SKIN`：`on→shizhounian, off→shousha, othersOff→xinsha, onlineUI→online, babysha→baby, codename→codename`
-  ⚠️ **该映射在 3 处重复定义**：`src/core/decadeModule.js`、`ui/constants.js`（后者的 3 个 skins/index.js 使用）。另有 `STYLE_TO_INDEX`（decadeModule，决定 playerN.css）与 `styleFileMap`（app.js，决定第三方插件 main1/2/3.js）两套平行映射。
+  ⚠️ **该映射存在 2 份独立定义**（`src/core/decadeModule.js`、`ui/constants.js`），并由 3 个消费方 `ui/{character,skill,lbtn}/skins/index.js` 通过 ui/constants.js 使用。另有 `STYLE_TO_INDEX`（decadeModule，决定 playerN.css）与 `styleFileMap`（app.js，决定第三方插件 main1/2/3.js）两套平行映射。
 - 样式生效 = **多层叠加**：player{N}.css（src/styles）+ ui/styles/character|lbtn|skill/{skin}.css + body data-style 属性 + 皮肤JS动态import + 代码内 38 处运行时分支。
 
 ## 2. Core 候选文件
@@ -141,7 +143,7 @@ src/core/decadeModule.js → core/loader.js, ui/prefixMark.js
 - `src/config/handlers/card-handlers.js → ../../overrides/card.js + ../../animation/configs/skillAnimations.js`：配置层反向依赖覆写层与动画层。
 - 动态 import 共 10 处：皮肤 ×3（`./${skinName}.js`）、welcomeDialog、component-handlers→gtbb、decadeModule.import（第三方模块注册）。
 - src/libs/eruda.js（790KB）仅 debug 使用 → 建议按需/独立；spine.js 为共享运行时。
-- 全部依赖为**静态可解析**，无循环依赖（审计范围内未发现环；decadeUI.js 聚合所有 overrides 属单向扇入）。
+- 全部静态依赖可解析；**静态依赖扫描范围内未发现循环依赖**（decadeUI.js 聚合所有 overrides 属单向扇入）。注意：该结论仅覆盖静态 import 边——动态 import、window.*、lib/game/ui/decadeUI/app 等运行时全局引用不在静态环检测覆盖内，运行时行为未实测。
 
 ### 6.3 全局单例与 window 污染（约 60 处赋值点）
 
@@ -158,16 +160,16 @@ src/core/decadeModule.js → core/loader.js, ui/prefixMark.js
 
 ## 7. CSS 资源引用关系
 
-### 7.1 CSS 文件布局（54 个）
+### 7.1 CSS 文件布局（52 个）
 
 ```text
-src/styles/（20）: 核心CSS 12个 + player1~6.css（按样式各1个，@import animation.css）
+src/styles/（18）: 核心CSS 12个 + player1~6.css（6个，按样式各1个，@import animation.css）
 ui/styles/（32）: base.css、fonts.css
                 + character/{6样式}.css
                 + lbtn/{6样式}.css + lbtn/window/{6样式}.css
                 + skill/{6样式}.css + skill/window/{6样式}.css
                 + lbtn/xinsha.css、skill/xinsha.css（一将成名额外顶层文件，特例）
-src/config/config-window.css、src/features/welcomeDialog.css（功能自带）
+src/config/config-window.css、src/features/welcomeDialog.css（功能自带，2个）
 ```
 
 ### 7.2 @import 链
@@ -226,9 +228,9 @@ audio/ 241 个 mp3 全部由 src/audio/easterEggs 配置表按文件名引用（
 | 切换处理器 | src/config/handlers/appearance-handlers.js | saveConfig + ui.arena.dataset + game.reload |
 | 加载分发 | src/core/decadeModule.js（STYLE_TO_SKIN/STYLE_TO_INDEX/playerN.css）、src/core/app.js（styleFileMap→main1/2/3.js） | **两套独立映射** |
 | 运行时分支 | src/overrides/player/{animations,card-movement,hooks,marks,skill-state,state,ui}.js、src/ui/{player-element,player-group,player-init,skillDisplay,progress-bar,prefixMark}.js、src/skills/{animate,base,recast}.js、src/features/{luckyCard,styleHotkeys}.js、src/animation/initAnimations.js、src/core/{layout,hooks}.js | 直接读 lib.config 判断样式 |
-| 皮肤选择 | ui/constants.js + ui/*/skins/index.js（getCurrentSkin） | **第三套映射定义** |
+| 皮肤选择 | ui/{character,skill,lbtn}/skins/index.js（getCurrentSkin） | 消费 ui/constants.js 中的映射定义 |
 
-收口建议（P2 执行）：以 `decadeUI.style.id` / `decadeUI.style.hasCapability()` 替代；三处映射统一为 StyleRuntime 单一数据源；能力判据建议（从现有分支归纳）：`player-frame`（playerN.css 系）、`outcrop`、`online-gift/chat`、`guozhan-colors`、`progress-bar-style` 等。
+收口建议（P2 执行）：以 `decadeUI.style.id` / `decadeUI.style.hasCapability()` 替代；2 处映射定义统一为 StyleRuntime 单一数据源（3 个 skins/index.js 消费点同步切换）；能力判据建议（从现有分支归纳）：`player-frame`（playerN.css 系）、`outcrop`、`online-gift/chat`、`guozhan-colors`、`progress-bar-style` 等。
 
 ## 10. 全局 override 风险点
 
@@ -247,7 +249,7 @@ audio/ 241 个 mp3 全部由 src/audio/easterEggs 配置表按文件名引用（
 |---|---|---|---|
 | R1 | CSS 相对路径跨目录（§7.3），移动文件即断图 | 高 | 构建期资源引用校验（任务书 §26）+ 每样式打 ZIP 前跑检查 |
 | R2 | 跨样式共享资源（§8.2）被误打包 | 高 | 先建"资源→使用者"清单（P0已给出初版），共享资源进 Shared |
-| R3 | 三处 STYLE_TO_SKIN 漂移（新增样式改一处漏两处） | 高 | P2 收口 StyleRuntime 单一数据源 |
+| R3 | 两处 STYLE_TO_SKIN 定义漂移（新增样式改一处漏一处，3 个消费点随之失准） | 高 | P2 收口 StyleRuntime 单一数据源 |
 | R4 | playerN.css 与 ui/styles/*.css 级联依赖（同页叠加，顺序敏感） | 高 | 第一阶段样式包**保持内部目录结构不变**，只整包迁移不重排 |
 | R5 | 第三方插件约定（main1/2/3.js、app.import、registerDecadeCardSkin、reWriteFunction）被破坏 | 高 | 全部列入稳定兼容 API（任务书 §57），Legacy Mode 保留 loadPlugins 行为 |
 | R6 | spine.js 串行 await 单点故障 | 中 | P1 起加载失败降级为"无骨骼动画"而非整体失败 |
@@ -259,7 +261,7 @@ audio/ 241 个 mp3 全部由 src/audio/easterEggs 配置表按文件名引用（
 
 ## 12. 推荐迁移顺序
 
-1. **P1 基础设施**：ModuleManager / StyleRuntime / ResourceLoader / Manifest 解析。**零迁移**，只并联：StyleRuntime 接管 3 处 STYLE_TO_SKIN 与 getCurrentSkin；ResourceLoader 包一层 decadeUIPath（loader.js 已具雏形）。验收=旧行为不变 + moduleManager.list() 可列出 6 样式。
+1. **P1 基础设施**：ModuleManager / StyleRuntime / ResourceLoader / Manifest 解析。**零迁移**，只并联：StyleRuntime 接管 2 处 STYLE_TO_SKIN 定义（含 3 个消费点 getCurrentSkin）；ResourceLoader 包一层 decadeUIPath（loader.js 已具雏形）。验收=旧行为不变 + moduleManager.list() 可列出 6 样式。
 2. **P2 公共依赖解耦**：newDecadeStyle 38 处引用分批替换为 style API（先读后写，保留 config 兼容）；82 处 lib.assetURL 硬编码收口 resourceLoader.getAsset；Yijiang/OL_line/CD 等共享资源落位 Shared 目录（内容不动，只登记+路径代理）。
 3. **P3 decade Pack**（on/shizhounian）：player2.css + ui/styles/*shizhounian* + skins/shizhounian.js ×3 + image/styles/decade + ui/assets/skill/shizhounian → 单 ZIP；删除后 Core 正常、十周年不可用、重装恢复。
 4. **P4 mobile Pack**（off/shousha）：同上迁移 shousha 系（注意 §8.2-4 默认路径问题需先解）。
