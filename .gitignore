@@ -3,6 +3,26 @@ node_modules/
 dist/
 *.zip
 
+# 打包输出（承自原版仓库）
+dist/
+
+# 忽略武将图片目录内容（玩家本地资源，不入库）
+image/character/dcloutou/*
+image/character/ssloutou/*
+image/character/lihui/*
+
+# 忽略动皮资源目录内容（玩家本地资源，不入库）
+assets/dynamic/*
+
+# 保留目录结构
+!image/character/dcloutou/.gitkeep
+!image/character/ssloutou/.gitkeep
+!image/character/lihui/.gitkeep
+!assets/dynamic/.gitkeep
+
+# 打包命令脚本（原版本地文件）
+build.bat
+
 # 日志与临时文件
 *.log
 *.tmp
