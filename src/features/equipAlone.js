@@ -173,7 +173,7 @@ function bindEquipSkills(player, usableSkills) {
 export function setupEquipAlone() {
 	wrapAround(ui.click, "card", function (original, ...args) {
 		const card = this;
-		const enabled = lib.config["extension_十周年UI_aloneEquip"];
+		const enabled = lib.config["extension_十周年UI-Stars_aloneEquip"];
 		const hasSkills = card._equipSkills?.length;
 		const isSelectable = card.classList.contains("selectable");
 		const isEquip = get.position(card) === "e" || card.extraEquip;
@@ -195,7 +195,7 @@ export function setupEquipAlone() {
 	});
 
 	lib.hooks.checkEnd.add(event => {
-		if (!lib.config["extension_十周年UI_aloneEquip"]) return;
+		if (!lib.config["extension_十周年UI-Stars_aloneEquip"]) return;
 
 		const player = event.player;
 		if (player !== game.me || !event.isMine?.() || _status.auto) return;
@@ -210,7 +210,7 @@ export function setupEquipAlone() {
 	});
 
 	lib.hooks.uncheckBegin.add(() => {
-		if (!lib.config["extension_十周年UI_aloneEquip"]) return;
+		if (!lib.config["extension_十周年UI-Stars_aloneEquip"]) return;
 
 		if (game.me) {
 			const dialog = equipSkillDialogs.get(game.me);

@@ -11,7 +11,7 @@ import { isDoubleCharacterMode } from "./characterBackground.js";
  * @param {string} name - 音效名称
  */
 const playExtAudio = name => {
-	game.playAudio("..", "extension", "十周年UI", `audio/${name}`);
+	game.playAudio("..", "extension", "十周年UI-Stars", `audio/${name}`);
 };
 
 /**
@@ -160,7 +160,7 @@ export function initSkillDisplay() {
 			const icon = getSkillIcon(skill, player);
 			if (icon) {
 				const iconImg = document.createElement("img");
-				iconImg.src = `extension/十周年UI/ui/assets/skill/baby/${icon}`;
+				iconImg.src = `extension/十周年UI-Stars/ui/assets/skill/baby/${icon}`;
 				Object.assign(iconImg.style, { position: "absolute", top: "3px", right: "-15px", width: "16px", height: "16px", zIndex: "103" });
 				skillEl.appendChild(iconImg);
 			}
@@ -276,7 +276,7 @@ export function clearAllSkillDisplay() {
  * 仅在babysha样式且玩家数不超过5人时启用
  */
 export function setupSkillDisplay() {
-	if (lib.config.extension_十周年UI_newDecadeStyle === "babysha" && game.players.length <= 5) {
+	if (lib.config["extension_十周年UI-Stars_newDecadeStyle"] === "babysha" && game.players.length <= 5) {
 		initSkillDisplay();
 	}
 	lib.clearAllSkillDisplay = clearAllSkillDisplay;

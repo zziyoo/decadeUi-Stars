@@ -7,7 +7,7 @@ import { createBaseSkillPlugin } from "./base.js";
 import { getAvailableSkills, isGSkillCacheSame, shouldSkipEquipSkill } from "./gskillMixin.js";
 import { skillButtonTooltip } from "../../../src/ui/skillButtonTooltip.js";
 
-const ASSETS_PATH = "extension/十周年UI/ui/assets/skill/shousha";
+const ASSETS_PATH = "extension/十周年UI-Stars/ui/assets/skill/shousha";
 
 /**
  * 创建手杀风格技能插件
@@ -85,7 +85,7 @@ export function createShoushaSkillPlugin(lib, game, ui, get, ai, _status, app) {
 				},
 				skillControl: clear => {
 					if (!ui.skillControl) {
-						const isRight = lib.config["extension_十周年UI_rightLayout"] === "on";
+						const isRight = lib.config["extension_十周年UI-Stars_rightLayout"] === "on";
 						const cls = isRight ? ".skill-control" : ".skill-controlzuoshou";
 						const node = ui.create.div(cls, ui.arena);
 						node.node = {
@@ -233,8 +233,8 @@ export function createShoushaSkillPlugin(lib, game, ui, get, ai, _status, app) {
 					ui.create.div(".skillitem-child", node, skillName);
 
 					node.addEventListener(lib.config.touchscreen ? "touchend" : "click", () => {
-						if (lib.config["extension_十周年UI_bettersound"]) {
-							game.playAudio("..", "extension", "十周年UI", "audio/SkillBtn");
+						if (lib.config["extension_十周年UI-Stars_bettersound"]) {
+							game.playAudio("..", "extension", "十周年UI-Stars", "audio/SkillBtn");
 						}
 					});
 					app.listen(node, plugin.clickSkill);
@@ -368,7 +368,7 @@ export function createShoushaSkillPlugin(lib, game, ui, get, ai, _status, app) {
 					return this;
 				}
 
-				if (lib.config["extension_十周年UI_aloneEquip"] && eSkills?.length) {
+				if (lib.config["extension_十周年UI-Stars_aloneEquip"] && eSkills?.length) {
 					const expandedE = game.expandSkills(eSkills.slice());
 					const expandedS = game.expandSkills([skill]);
 					if (expandedS.some(s => expandedE.includes(s))) return this;
@@ -404,7 +404,7 @@ export function createShoushaSkillPlugin(lib, game, ui, get, ai, _status, app) {
 					let node = this.querySelector(`[data-id="${item.id}"]`);
 					if (node) return;
 
-					if (lib.config["extension_十周年UI_aloneEquip"] && eSkills?.length) {
+					if (lib.config["extension_十周年UI-Stars_aloneEquip"] && eSkills?.length) {
 						if (game.expandSkills(eSkills.slice()).includes(item.id)) return;
 					}
 
@@ -427,8 +427,8 @@ export function createShoushaSkillPlugin(lib, game, ui, get, ai, _status, app) {
 						node.dataset.id = item.id;
 
 						node.addEventListener("click", () => {
-							if (lib.config["extension_十周年UI_bettersound"]) {
-								game.playAudio("..", "extension", "十周年UI", "audio/SkillBtn");
+							if (lib.config["extension_十周年UI-Stars_bettersound"]) {
+								game.playAudio("..", "extension", "十周年UI-Stars", "audio/SkillBtn");
 							}
 						});
 						app.listen(node, plugin.clickSkill);

@@ -32,7 +32,7 @@ export function setupEquipHand() {
 			game.check();
 
 			const selectables = get.selectableCards();
-			if (lib.config["extension_十周年UI_aloneEquip"]) {
+			if (lib.config["extension_十周年UI-Stars_aloneEquip"]) {
 				for (const card of player.getCards("e")) {
 					const isSelectable = card.classList.contains("selectable") && card.classList.contains("equip-card-selectable");
 					if (!selectables.includes(card) && isSelectable) {

@@ -31,7 +31,7 @@ class LuckyCardUI {
 	static showTimer() {
 		this.clearTimers();
 		this.removeProgressBar();
-		if (lib.config.extension_十周年UI_jindutiaoYangshi !== "0") {
+		if (lib.config["extension_十周年UI-Stars_jindutiaoYangshi"] !== "0") {
 			game.Jindutiaoplayer?.();
 		}
 	}
@@ -63,7 +63,7 @@ class LuckyCardUI {
 	/** 设置确认按钮文案为"换牌" */
 	static setupConfirmButton() {
 		if (!ui.confirm?.childNodes?.length) return;
-		if (lib.config.extension_十周年UI_newDecadeStyle === "off") return;
+		if (lib.config["extension_十周年UI-Stars_newDecadeStyle"] === "off") return;
 
 		const btn = ui.confirm.childNodes[0];
 		if (btn?.link === "ok") {

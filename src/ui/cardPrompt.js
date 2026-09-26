@@ -841,7 +841,7 @@ const restorePrompt = event => {
  * @param {{game: Game, ui: UI}} param
  */
 export function initCardPrompt({ game, ui }) {
-	if (!lib.config["extension_十周年UI_cardPrompt"]) return;
+	if (!lib.config["extension_十周年UI-Stars_cardPrompt"]) return;
 
 	window.getDecPrompt = sanitizePrompt;
 

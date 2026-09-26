@@ -13,7 +13,7 @@ import { parseInputValue } from "../utils.js";
  * @param {boolean} bool - 是否开启
  */
 export function onCardGhostEffectClick(bool) {
-	game.saveConfig("extension_十周年UI_cardGhostEffect", bool);
+	game.saveConfig("extension_十周年UI-Stars_cardGhostEffect", bool);
 	window.decadeUI?.effect?.ghost?.setEnabled?.(bool);
 }
 
@@ -22,7 +22,7 @@ export function onCardGhostEffectClick(bool) {
  * @param {boolean} bool - 是否开启
  */
 export function onAutoSelectClick(bool) {
-	game.saveConfig("extension_十周年UI_autoSelect", bool);
+	game.saveConfig("extension_十周年UI-Stars_autoSelect", bool);
 	game.saveConfig("auto_confirm", !bool);
 	lib.config.auto_confirm = !bool;
 }
@@ -31,7 +31,7 @@ export function onAutoSelectClick(bool) {
  * 自动选择更新处理
  */
 export function onAutoSelectUpdate() {
-	if (lib.config.extension_十周年UI_autoSelect !== false) {
+	if (lib.config["extension_十周年UI-Stars_autoSelect"] !== false) {
 		game.saveConfig("auto_confirm", false);
 		lib.config.auto_confirm = false;
 	}
@@ -57,7 +57,7 @@ export function onHandTipHeightBlur() {
 		this.innerHTML = String(value);
 	}
 
-	game.saveConfig("extension_十周年UI_handTipHeight", value);
+	game.saveConfig("extension_十周年UI-Stars_handTipHeight", value);
 	if (window.decadeUI) {
 		document.documentElement.style.setProperty("--hand-tip-bottom", `calc(${value}% + 10px)`);
 	}
@@ -68,18 +68,18 @@ export function onHandTipHeightBlur() {
  */
 export function onHandTipHeightUpdate() {
 	if (window.decadeUI) {
-		const height = lib.config.extension_十周年UI_handTipHeight ?? "20";
+		const height = lib.config["extension_十周年UI-Stars_handTipHeight"] ?? "20";
 		document.documentElement.style.setProperty("--hand-tip-bottom", `calc(${height}% + 10px)`);
 	}
 
 	// 更新菜单显示值
-	const menu = lib.extensionMenu?.extension_十周年UI?.handTipHeight;
+	const menu = lib.extensionMenu?.["extension_十周年UI-Stars"]?.handTipHeight;
 	if (menu) {
 		const isInput = menu.tagName === "INPUT";
 		if (isInput) {
-			menu.value = String(lib.config.extension_十周年UI_handTipHeight ?? "20");
+			menu.value = String(lib.config["extension_十周年UI-Stars_handTipHeight"] ?? "20");
 		} else {
-			menu.innerHTML = String(lib.config.extension_十周年UI_handTipHeight ?? "20");
+			menu.innerHTML = String(lib.config["extension_十周年UI-Stars_handTipHeight"] ?? "20");
 		}
 	}
 }
@@ -105,7 +105,7 @@ export function onCardScaleBlur() {
 		this.innerHTML = formattedValue;
 	}
 
-	game.saveConfig("extension_十周年UI_cardScale", value);
+	game.saveConfig("extension_十周年UI-Stars_cardScale", value);
 	if (window.decadeUI) {
 		decadeUI.zooms.card = decadeUI.getCardBestScale();
 		decadeUI.layout.resize();
@@ -117,8 +117,8 @@ export function onCardScaleBlur() {
  * @description 从配置中读取值并更新显示
  */
 export function onCardScaleUpdate() {
-	const value = lib.config.extension_十周年UI_cardScale ?? "0.18";
-	const menu = lib.extensionMenu?.extension_十周年UI?.cardScale;
+	const value = lib.config["extension_十周年UI-Stars_cardScale"] ?? "0.18";
+	const menu = lib.extensionMenu?.["extension_十周年UI-Stars"]?.cardScale;
 	if (menu) {
 		const isInput = menu.tagName === "INPUT";
 		if (isInput) {
@@ -150,7 +150,7 @@ export function onDiscardScaleBlur() {
 		this.innerHTML = formattedValue;
 	}
 
-	game.saveConfig("extension_十周年UI_discardScale", value);
+	game.saveConfig("extension_十周年UI-Stars_discardScale", value);
 	if (window.decadeUI) {
 		decadeUI.layout.updateDiscard();
 	}
@@ -161,8 +161,8 @@ export function onDiscardScaleBlur() {
  * @description 从配置中读取值并更新显示
  */
 export function onDiscardScaleUpdate() {
-	const value = lib.config.extension_十周年UI_discardScale ?? "0.14";
-	const menu = lib.extensionMenu?.extension_十周年UI?.discardScale;
+	const value = lib.config["extension_十周年UI-Stars_discardScale"] ?? "0.14";
+	const menu = lib.extensionMenu?.["extension_十周年UI-Stars"]?.discardScale;
 	if (menu) {
 		const isInput = menu.tagName === "INPUT";
 		if (isInput) {
@@ -193,7 +193,7 @@ export function onHandFoldMinBlur() {
 		this.innerHTML = String(value);
 	}
 
-	game.saveConfig("extension_十周年UI_handFoldMin", String(value));
+	game.saveConfig("extension_十周年UI-Stars_handFoldMin", String(value));
 	if (window.decadeUI) {
 		decadeUI.layout.updateHand();
 	}
@@ -204,8 +204,8 @@ export function onHandFoldMinBlur() {
  * @description 从配置中读取值并更新显示
  */
 export function onHandFoldMinUpdate() {
-	const value = lib.config.extension_十周年UI_handFoldMin ?? "9";
-	const menu = lib.extensionMenu?.extension_十周年UI?.handFoldMin;
+	const value = lib.config["extension_十周年UI-Stars_handFoldMin"] ?? "9";
+	const menu = lib.extensionMenu?.["extension_十周年UI-Stars"]?.handFoldMin;
 	if (menu) {
 		const isInput = menu.tagName === "INPUT";
 		if (isInput) {
@@ -221,7 +221,7 @@ export function onHandFoldMinUpdate() {
  * @param {string} item - 卡牌皮肤选项
  */
 export function onCardPrettifyClick(item) {
-	game.saveConfig("extension_十周年UI_cardPrettify", item);
+	game.saveConfig("extension_十周年UI-Stars_cardPrettify", item);
 	// 刷新牌堆中的卡牌皮肤
 	[ui.cardPile, ui.discardPile].forEach(pile => {
 		pile?.childNodes?.forEach(refreshCardSkin);
@@ -240,9 +240,9 @@ export function onCardPrettifyClick(item) {
  * @param {string} item - 边框选项
  */
 export function onCardkmhClick(item) {
-	game.saveConfig("extension_十周年UI_cardkmh", item);
+	game.saveConfig("extension_十周年UI-Stars_cardkmh", item);
 	const bgMap = { kuang1: "kb4", kuang2: "kb3", kuang3: "kb2" };
-	game.saveConfig("extension_十周年UI_cardbj", bgMap[item] || null);
+	game.saveConfig("extension_十周年UI-Stars_cardbj", bgMap[item] || null);
 	window.decadeUI?.updateCardStyles?.();
 }
 
@@ -251,9 +251,9 @@ export function onCardkmhClick(item) {
  */
 export function onCardkmhUpdate() {
 	if (!game?.saveConfig) return;
-	const border = lib.config.extension_十周年UI_cardkmh || "off";
+	const border = lib.config["extension_十周年UI-Stars_cardkmh"] || "off";
 	const bgMap = { kuang1: "kb4", kuang2: "kb3", kuang3: "kb2" };
-	game.saveConfig("extension_十周年UI_cardbj", bgMap[border] || null);
+	game.saveConfig("extension_十周年UI-Stars_cardbj", bgMap[border] || null);
 }
 
 /**
@@ -261,7 +261,7 @@ export function onCardkmhUpdate() {
  */
 export function onChupaizhishiUpdate() {
 	if (!window.decadeUI) return;
-	const config = lib.config.extension_十周年UI_chupaizhishi;
+	const config = lib.config["extension_十周年UI-Stars_chupaizhishi"];
 	const options = ["shousha", "shoushaX", "jiangjun", "weijiangjun", "cheqijiangjun", "biaoqijiangjun", "dajiangjun", "dasima"];
 	decadeUI.config.chupaizhishi = config === "random" ? options.randomGet() : config;
 	ui.arena.dataset.chupaizhishi = config;
@@ -288,7 +288,7 @@ export function onChupaizhishiUpdate() {
  * @param {boolean} bool - 是否开启
  */
 export function onCardAlternateNameClick(bool) {
-	game.saveConfig("extension_十周年UI_cardAlternateName", bool);
+	game.saveConfig("extension_十周年UI-Stars_cardAlternateName", bool);
 
 	if (window.decadeUI?.cardAlternateName) {
 		if (bool) {

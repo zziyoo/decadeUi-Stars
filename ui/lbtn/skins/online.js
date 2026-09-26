@@ -7,7 +7,7 @@ import { createBaseLbtnPlugin } from "./base.js";
 
 export function createOnlineLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 	const base = createBaseLbtnPlugin(lib, game, ui, get, ai, _status, app);
-	const assetPath = "extension/十周年UI/ui/assets/lbtn/";
+	const assetPath = "extension/十周年UI-Stars/ui/assets/lbtn/";
 
 	// 礼物配置
 	const GIFT_CONFIG = {
@@ -477,7 +477,7 @@ export function createOnlineLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 		// 创建底部按钮
 		createBottomButtons() {
 			const self = this;
-			const isRight = lib.config["extension_十周年UI_rightLayout"] === "on";
+			const isRight = lib.config["extension_十周年UI-Stars_rightLayout"] === "on";
 			ui.anniubuttons = ui.create.div(isRight ? ".leftbuttons" : ".rightbuttons", ui.window);
 
 			// 礼物按钮
@@ -874,7 +874,7 @@ export function createOnlineLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 			},
 
 			handcardNumber() {
-				const isRight = lib.config["extension_十周年UI_rightLayout"] === "on";
+				const isRight = lib.config["extension_十周年UI-Stars_rightLayout"] === "on";
 				ui.create.div(".settingButton", ui.arena);
 				ui.create.div(".tuoguanButton", ui.arena, ui.click.auto);
 

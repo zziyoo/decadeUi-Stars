@@ -20,7 +20,7 @@ export function initSkillAnimations(animation) {
 	};
 
 	animation.playRecoverNumber = (player, num) => {
-		if (!player || !num || num < 1 || num > 9 || lib.config.extension_十周年UI_newDecadeStyle === "off") return;
+		if (!player || !num || num < 1 || num > 9 || lib.config["extension_十周年UI-Stars_newDecadeStyle"] === "off") return;
 		animation.playSpine({ name: "globaltexiao/huifushuzi/shuzi2", action: String(num) }, { speed: 0.6, scale: 0.5, parent: player, y: 20 });
 	};
 
@@ -33,8 +33,8 @@ export function initSkillAnimations(animation) {
 	};
 
 	animation.playDamageNumber = (player, num) => {
-		if (!player || !num || num <= 1 || num > 9 || !lib.config.extension_十周年UI_newDecadeStyle) return;
-		const isNewStyle = lib.config.extension_十周年UI_newDecadeStyle !== "off";
+		if (!player || !num || num <= 1 || num > 9 || !lib.config["extension_十周年UI-Stars_newDecadeStyle"]) return;
+		const isNewStyle = lib.config["extension_十周年UI-Stars_newDecadeStyle"] !== "off";
 		const animName = isNewStyle ? "globaltexiao/shanghaishuzi/SZN_shuzi" : "globaltexiao/shanghaishuzi/shuzi";
 		const options = { speed: 0.6, scale: 0.4, parent: player };
 		if (isNewStyle) options.y = 20;

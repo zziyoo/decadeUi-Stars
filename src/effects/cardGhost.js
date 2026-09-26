@@ -200,7 +200,7 @@ export function setupCardGhost() {
 	if (initialized) return;
 	initialized = true;
 
-	enabled = lib.config["extension_十周年UI_cardGhostEffect"] !== false;
+	enabled = lib.config["extension_十周年UI-Stars_cardGhostEffect"] !== false;
 	injectStyles();
 
 	if (lib.element?.player?.$throwordered2) {

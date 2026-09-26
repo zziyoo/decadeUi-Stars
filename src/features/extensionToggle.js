@@ -8,13 +8,13 @@
 import { lib, game, ui, get, ai, _status } from "noname";
 
 /** @type {string} 存储键名 */
-const STORAGE_KEY = "extension_十周年UI_closedExtensions";
+const STORAGE_KEY = "extension_十周年UI-Stars_closedExtensions";
 
 /**
  * 获取当前扩展名称
  * @returns {string}
  */
-const getCurrentExtName = () => window.decadeUIName || "十周年UI";
+const getCurrentExtName = () => window.decadeUIName || "十周年UI-Stars";
 
 /**
  * 获取受保护的扩展白名单（动态读取，确保其他扩展有机会设置）

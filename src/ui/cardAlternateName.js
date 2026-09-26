@@ -25,7 +25,7 @@ const getHandcardZones = () => HANDCARD_ZONES.map(name => game.me?.node?.[name])
  */
 const updateVisibility = () => {
 	// 根据配置开关决定显示状态
-	const visible = lib.config.extension_十周年UI_cardAlternateName !== false ? "on" : "off";
+	const visible = lib.config["extension_十周年UI-Stars_cardAlternateName"] !== false ? "on" : "off";
 	getHandcardZones().forEach(zone => {
 		zone.dataset.cardAlternateNameVisible = visible;
 	});

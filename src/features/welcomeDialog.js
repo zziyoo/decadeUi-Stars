@@ -37,7 +37,7 @@ function loadStyles() {
 	const link = document.createElement("link");
 	link.id = "decade-welcome-styles";
 	link.rel = "stylesheet";
-	link.href = `${lib.assetURL}extension/十周年UI/src/features/welcomeDialog.css`;
+	link.href = `${lib.assetURL}extension/十周年UI-Stars/src/features/welcomeDialog.css`;
 	document.head.appendChild(link);
 }
 
@@ -48,7 +48,7 @@ function loadStyles() {
  * @returns {boolean} 是否需要显示欢迎窗口
  */
 function shouldShowWelcome(extensionInfo) {
-	const storageKey = "extension_十周年UI_welcomeVersion";
+	const storageKey = "extension_十周年UI-Stars_welcomeVersion";
 	const lastVersion = lib.config[storageKey];
 	const currentVersion = extensionInfo.version;
 
@@ -78,7 +78,7 @@ export function createWelcomeDialog() {
 	ui.create.div(".decade-welcome-pattern", dialog);
 
 	const avatar = document.createElement("img");
-	avatar.src = `${lib.assetURL}extension/十周年UI/image/ui/avatar/avatar_ziyoo.jpg`;
+	avatar.src = `${lib.assetURL}extension/十周年UI-Stars/image/ui/avatar/avatar_ziyoo.jpg`;
 	avatar.className = "author-avatar";
 
 	let isShowingUpdate = false;
@@ -146,7 +146,7 @@ export function createWelcomeDialog() {
 	defaultContent = text.innerHTML;
 
 	const diandianAvatar = document.createElement("img");
-	diandianAvatar.src = `${lib.assetURL}extension/十周年UI/image/ui/avatar/avatar_diandian.jpg`;
+	diandianAvatar.src = `${lib.assetURL}extension/十周年UI-Stars/image/ui/avatar/avatar_diandian.jpg`;
 	diandianAvatar.className = "author-avatar";
 	diandianAvatar.style.left = "30px";
 	diandianAvatar.style.right = "auto";

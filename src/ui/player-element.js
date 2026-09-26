@@ -52,7 +52,7 @@ function setupIdentityDisplay(realIdentity, player) {
 					return;
 				}
 
-				const currentStyle = lib.config.extension_十周年UI_newDecadeStyle;
+				const currentStyle = lib.config["extension_十周年UI-Stars_newDecadeStyle"];
 				if (currentStyle === "codename" && value === "猜") {
 					this.innerText = "";
 					this.style.visibility = "";
@@ -121,7 +121,7 @@ function setupIdentityDisplay(realIdentity, player) {
 				this.innerText = value;
 				this.style.visibility = "hidden";
 
-				const style = lib.config.extension_十周年UI_newDecadeStyle;
+				const style = lib.config["extension_十周年UI-Stars_newDecadeStyle"];
 				/** @type {Record<string, string>} */
 				const srcMap = {
 					onlineUI: "image/styles/online/identity2_",
@@ -333,11 +333,11 @@ export function createPlayerElement(position, noclick) {
 	 */
 	node.gainSkill.gain = function (skill) {
 		if (!this.skills.includes(skill) && lib.translate[skill]) {
-			if (lib.config.extension_十周年UI_newDecadeStyle === "off" && lib.config.extension_十周年UI_gainSkillsVisible !== "off") {
+			if (lib.config["extension_十周年UI-Stars_newDecadeStyle"] === "off" && lib.config["extension_十周年UI-Stars_gainSkillsVisible"] !== "off") {
 				const info = lib.skill[skill];
 				if (!info || info.charlotte || info.sub || (info.mark && !info.limited) || info.nopop || info.popup === false || info.equipSkill) return;
 				if (info.onremove && game.me !== this.player.storage[skill]) return;
-				if (lib.config.extension_十周年UI_gainSkillsVisible === "othersOn" && this.player === game.me) return;
+				if (lib.config["extension_十周年UI-Stars_gainSkillsVisible"] === "othersOn" && this.player === game.me) return;
 				if (!info.intro) info.intro = { content: () => get.skillInfoTranslation(skill, this.player, false) };
 				this.player.markSkill(skill);
 			}

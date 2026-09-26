@@ -162,7 +162,7 @@ function applyStyles(div, div2, isStyleOn) {
 	} else {
 		div.style.cssText =
 			"pointer-events:none;width:56%;height:35px;font-size:18px;z-index:20;background-size:100% 100%;background-repeat:no-repeat;left:50%;top:15%;transform:translateX(-50%);";
-		div.style.backgroundImage = `url(${lib.assetURL}extension/十周年UI/ui/assets/lbtn/uibutton/goutuo.png)`;
+		div.style.backgroundImage = `url(${lib.assetURL}extension/十周年UI-Stars/ui/assets/lbtn/uibutton/goutuo.png)`;
 		div2.style.cssText = "pointer-events:none;width:85.5%;height:35px;left:8%;line-height:35px;";
 	}
 }
@@ -172,14 +172,14 @@ function applyStyles(div, div2, isStyleOn) {
  * @returns {void}
  */
 export function initGTBB() {
-	const styleType = lib.config.extension_十周年UI_GTBBYangshi;
+	const styleType = lib.config["extension_十周年UI-Stars_GTBBYangshi"];
 	if (styleType === "0") return;
 
 	const div = ui.create.div("");
 	const div2 = ui.create.div("", div);
 	div.id = "gtbb-container";
-	const extConfig = lib.config["extension_十周年UI_GTBBFont"];
-	const interval = parseFloat(lib.config["extension_十周年UI_GTBBTime"]);
+	const extConfig = lib.config["extension_十周年UI-Stars_GTBBFont"];
+	const interval = parseFloat(lib.config["extension_十周年UI-Stars_GTBBTime"]);
 
 	applyStyles(div, div2, styleType === "1");
 

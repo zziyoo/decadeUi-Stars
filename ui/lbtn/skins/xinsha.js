@@ -7,7 +7,7 @@ import { createBaseLbtnPlugin } from "./base.js";
 
 export function createXinshaLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 	const base = createBaseLbtnPlugin(lib, game, ui, get, ai, _status, app);
-	const assetPath = "extension/十周年UI/ui/assets/lbtn/";
+	const assetPath = "extension/十周年UI-Stars/ui/assets/lbtn/";
 
 	return {
 		...base,
@@ -143,7 +143,7 @@ export function createXinshaLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 		createSideButtons() {
 			if (!lib.config.phonelayout) return;
 
-			const isRight = lib.config["extension_十周年UI_rightLayout"] === "on";
+			const isRight = lib.config["extension_十周年UI-Stars_rightLayout"] === "on";
 
 			// 记录按钮
 			const jiluBtn = ui.create.div(isRight ? ".jiluButton_new" : ".jiluButton_new1", document.body);
@@ -244,7 +244,7 @@ export function createXinshaLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 		// 创建整理手牌按钮
 		createSortButton() {
 			const self = this;
-			const isRight = lib.config["extension_十周年UI_rightLayout"] === "on";
+			const isRight = lib.config["extension_十周年UI-Stars_rightLayout"] === "on";
 
 			const btn = ui.create.node("img");
 			btn.src = `${lib.assetURL}${assetPath}uibutton/new_zhengli.png`;
@@ -255,7 +255,7 @@ export function createXinshaLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 
 			btn.style.cssText = style;
 			btn.onclick = () => {
-				game.playAudio("../extension/十周年UI/audio/card_click.mp3");
+				game.playAudio("../extension/十周年UI-Stars/audio/card_click.mp3");
 				self.sortHandCards();
 			};
 
@@ -270,7 +270,7 @@ export function createXinshaLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 		// 创建全选按钮
 		createSelectAllButton() {
 			const self = this;
-			const isRight = lib.config["extension_十周年UI_rightLayout"] === "on";
+			const isRight = lib.config["extension_十周年UI-Stars_rightLayout"] === "on";
 
 			const btn = ui.create.node("img");
 
@@ -289,7 +289,7 @@ export function createXinshaLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 			btn.style.cssText = style;
 
 			btn.onclick = () => {
-				game.playAudio("../extension/十周年UI/audio/card_click.mp3");
+				game.playAudio("../extension/十周年UI-Stars/audio/card_click.mp3");
 				self.toggleSelectAllCards(updateImage);
 			};
 
@@ -329,7 +329,7 @@ export function createXinshaLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 			},
 
 			handcardNumber() {
-				const isRight = lib.config["extension_十周年UI_rightLayout"] === "on";
+				const isRight = lib.config["extension_十周年UI-Stars_rightLayout"] === "on";
 
 				// 设置按钮
 				ui.create.div(".settingButton", ui.arena);

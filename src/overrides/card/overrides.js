@@ -42,7 +42,7 @@ export function cardCopy() {
 	const clone = baseCardCopy.apply(this, arguments);
 	clone.nature = this.nature;
 
-	const skinKey = lib.config.extension_十周年UI_cardPrettify;
+	const skinKey = lib.config["extension_十周年UI-Stars_cardPrettify"];
 	if (!skinKey || skinKey === "off") return clone;
 
 	if (!isSkinPreloaded(skinKey)) return clone;

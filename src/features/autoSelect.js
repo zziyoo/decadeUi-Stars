@@ -7,7 +7,7 @@ import { wrapAround } from "../utils/safeOverride.js";
 
 const autoStates = new WeakMap();
 
-const isEnabled = () => lib.config.extension_十周年UI_autoSelect !== false;
+const isEnabled = () => lib.config["extension_十周年UI-Stars_autoSelect"] !== false;
 
 /**
  * 获取选择数量范围

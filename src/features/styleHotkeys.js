@@ -22,9 +22,9 @@ function handleStyleHotkey(event) {
 	event.preventDefault();
 
 	const newStyle = STYLES[keyNum - 1];
-	if (lib.config.extension_十周年UI_newDecadeStyle === newStyle) return;
+	if (lib.config["extension_十周年UI-Stars_newDecadeStyle"] === newStyle) return;
 
-	game.saveConfig("extension_十周年UI_newDecadeStyle", newStyle);
+	game.saveConfig("extension_十周年UI-Stars_newDecadeStyle", newStyle);
 	setTimeout(() => game.reload(), 100);
 }
 

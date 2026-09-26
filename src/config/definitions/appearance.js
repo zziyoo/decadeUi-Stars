@@ -94,7 +94,7 @@ export const borderStyle = {
 		dragon4: "龙旗",
 	},
 	onclick(item) {
-		game.saveConfig("extension_十周年UI_borderStyle", item);
+		game.saveConfig("extension_十周年UI-Stars_borderStyle", item);
 		if (window.decadeUI) {
 			ui.arena.dataset.borderStyle = item;
 			onBorderLevelUpdate();

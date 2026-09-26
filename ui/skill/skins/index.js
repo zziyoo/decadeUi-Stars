@@ -9,7 +9,7 @@ import { STYLE_TO_SKIN, DEFAULT_SKIN } from "../../constants.js";
  * @returns {string}
  */
 export function getCurrentSkin() {
-	return STYLE_TO_SKIN[lib.config.extension_十周年UI_newDecadeStyle] || DEFAULT_SKIN;
+	return STYLE_TO_SKIN[lib.config["extension_十周年UI-Stars_newDecadeStyle"]] || DEFAULT_SKIN;
 }
 
 /**

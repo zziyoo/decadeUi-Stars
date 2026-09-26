@@ -86,7 +86,7 @@ function handleRemoveSkill(skill, player) {
 function handleSkillAnimate(player, name) {
 	const cfg = lib.config;
 
-	if (!cfg["extension_十周年UI_enable"] || cfg.extension_十周年UI_jindutiaoYangshi === "0") {
+	if (!cfg["extension_十周年UI-Stars_enable"] || cfg["extension_十周年UI-Stars_jindutiaoYangshi"] === "0") {
 		return;
 	}
 
@@ -94,7 +94,7 @@ function handleSkillAnimate(player, name) {
 
 	player.querySelector(".tipskill")?.remove();
 
-	const style = cfg.extension_十周年UI_newDecadeStyle;
+	const style = cfg["extension_十周年UI-Stars_newDecadeStyle"];
 	if (SKIP_SKILL_NAMES.includes(name) || style === "othersOff" || style === "on") {
 		return;
 	}
@@ -153,7 +153,7 @@ function createSkillTip(player, skillName) {
 	`.replace(/\s+/g, " ");
 
 	// 思考中底图
-	img.src = lib.assetURL + "extension/十周年UI/ui/assets/lbtn/shoushatip/skilltip.png";
+	img.src = lib.assetURL + "extension/十周年UI-Stars/ui/assets/lbtn/shoushatip/skilltip.png";
 	img.style.cssText = `
 		display: block;
 		position: absolute;

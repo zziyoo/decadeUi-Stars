@@ -23,7 +23,7 @@ export const animateSkill = {
 		async content(event, trigger, player) {
 			game.removeGlobalSkill("mx_start");
 
-			const style = lib.config.extension_十周年UI_newDecadeStyle;
+			const style = lib.config["extension_十周年UI-Stars_newDecadeStyle"];
 			const isShousha = style === "off";
 			const effectName = isShousha ? "effect_youxikaishi_shousha" : "effect_youxikaishi";
 			const audio = isShousha ? "audio/game_start_shousha.mp3" : "audio/game_start.mp3";
@@ -50,7 +50,7 @@ export const animateSkill = {
 		silent: true,
 		forced: true,
 		filter(event, player) {
-			return lib.config.extension_十周年UI_newDecadeStyle === "off" && lib.config.extension_十周年UI_borderLevel === "random";
+			return lib.config["extension_十周年UI-Stars_newDecadeStyle"] === "off" && lib.config["extension_十周年UI-Stars_borderLevel"] === "random";
 		},
 		async content(event, trigger, player) {
 			game.removeGlobalSkill("mx_borderLevel");
@@ -92,7 +92,7 @@ export const animateSkill = {
 		lastDo: true,
 		silent: true,
 		filter() {
-			return lib.config.extension_十周年UI_killEffect;
+			return lib.config["extension_十周年UI-Stars_killEffect"];
 		},
 		async content(event, trigger) {
 			if (!trigger.source || !trigger.player) return;

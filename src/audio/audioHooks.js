@@ -62,7 +62,7 @@ const findPlayer = name => game.players?.find(p => hasName(p, name));
  */
 const playAudio = file => {
 	const audioPath = file.includes("/") ? `audio/${file}` : `audio/caidan/${file}`;
-	game.playAudio("..", "extension", "十周年UI", audioPath);
+	game.playAudio("..", "extension", "十周年UI-Stars", audioPath);
 };
 
 /**
@@ -210,7 +210,7 @@ export function setupAudioHooks() {
 	lib.element.Player.prototype.useCard = function (...args) {
 		const event = originalUseCard.apply(this, args);
 		if (!event?.card || !event?.player) return event;
-		if (!lib.config.extension_十周年UI_audioEasterEggs) return event;
+		if (!lib.config["extension_十周年UI-Stars_audioEasterEggs"]) return event;
 
 		const cardName = get.name(event.card, event.player);
 		const ctx = createContext(event, cardName);
@@ -233,7 +233,7 @@ export function setupAudioHooks() {
 	const originalDamage = lib.element.Player.prototype.damage;
 	lib.element.Player.prototype.damage = function (...args) {
 		const event = originalDamage.apply(this, args);
-		if (!lib.config.extension_十周年UI_audioEasterEggs) return event;
+		if (!lib.config["extension_十周年UI-Stars_audioEasterEggs"]) return event;
 
 		event?.then(() => {
 			const damaged = event?.player || this;
@@ -255,7 +255,7 @@ export function setupAudioHooks() {
 	const originalDie = lib.element.Player.prototype.$die;
 	lib.element.Player.prototype.$die = function (...args) {
 		const result = originalDie.apply(this, args);
-		if (!lib.config.extension_十周年UI_audioEasterEggs) return result;
+		if (!lib.config["extension_十周年UI-Stars_audioEasterEggs"]) return result;
 
 		for (const rule of deathEasterEggs) {
 			if (!hasName(this, rule.deceased)) continue;
@@ -272,7 +272,7 @@ export function setupAudioHooks() {
 	lib.element.GameEvent.prototype.trigger = function (name) {
 		const result = originalTrigger.apply(this, arguments);
 
-		if (lib.config.extension_十周年UI_audioEasterEggs) {
+		if (lib.config["extension_十周年UI-Stars_audioEasterEggs"]) {
 			if (name === "phaseBeginStart" && _status.currentPhase) {
 				triggerEasterEgg(
 					phaseStartEasterEggs,
@@ -295,7 +295,7 @@ export function setupAudioHooks() {
 
 	lib.announce.subscribe("gameStart", () => {
 		if (!game.players?.length) return;
-		if (!lib.config.extension_十周年UI_audioEasterEggs) return;
+		if (!lib.config["extension_十周年UI-Stars_audioEasterEggs"]) return;
 
 		const isGuozhanMode = game.players.some(p => p.isUnseen?.());
 		if (isGuozhanMode) return;

@@ -36,8 +36,8 @@ const STARCANXI_MAIN_FACTIONS = new Set(["starcanxi_qun", "starcanxi_shu", "star
 function shouldSkipMark(item) {
 	if (!item) return false;
 
-	const style = window.decadeUI?.config?.newDecadeStyle ?? lib.config.extension_十周年UI_newDecadeStyle;
-	const markStyle = window.decadeUI?.config?.playerMarkStyle ?? lib.config.extension_十周年UI_playerMarkStyle;
+	const style = window.decadeUI?.config?.newDecadeStyle ?? lib.config["extension_十周年UI-Stars_newDecadeStyle"];
+	const markStyle = window.decadeUI?.config?.playerMarkStyle ?? lib.config["extension_十周年UI-Stars_playerMarkStyle"];
 
 	if (style === "Off") return false;
 
@@ -104,8 +104,8 @@ export function playerUnmarkSkill(name, info, card, nobroadcast) {
  * @this {Object} 玩家对象
  */
 export function playerMark(item, info, skill) {
-	const style = lib.config.extension_十周年UI_newDecadeStyle;
-	const markStyle = window.decadeUI?.config?.playerMarkStyle ?? lib.config.extension_十周年UI_playerMarkStyle;
+	const style = lib.config["extension_十周年UI-Stars_newDecadeStyle"];
+	const markStyle = window.decadeUI?.config?.playerMarkStyle ?? lib.config["extension_十周年UI-Stars_playerMarkStyle"];
 
 	if (item && style !== "Off" && markStyle === "decade") {
 		const itemInfo = get.info(item);
@@ -170,7 +170,7 @@ function createMarkElement(item, skill, player) {
 		itemName = item.name;
 	} else {
 		mark = ui.create.div(".card.mark");
-		const markStyle = window.decadeUI?.config?.playerMarkStyle ?? lib.config.extension_十周年UI_playerMarkStyle;
+		const markStyle = window.decadeUI?.config?.playerMarkStyle ?? lib.config["extension_十周年UI-Stars_playerMarkStyle"];
 
 		let markText = lib.translate[item + "_bg"];
 		if (!markText || markText[0] === "+" || markText[0] === "-") {
@@ -307,7 +307,7 @@ export function playerMarkCharacter(name, info, learn, learn2) {
 
 	if (name.startsWith("unknown")) {
 		const unknownText = get.translation(name)[0];
-		const markStyle = window.decadeUI?.config?.playerMarkStyle ?? lib.config.extension_十周年UI_playerMarkStyle;
+		const markStyle = window.decadeUI?.config?.playerMarkStyle ?? lib.config["extension_十周年UI-Stars_playerMarkStyle"];
 		if (markStyle === "decade" && unknownText?.includes("☯")) {
 			nodeMark.style.setProperty("display", "none", "important");
 		}
@@ -320,7 +320,7 @@ export function playerMarkCharacter(name, info, learn, learn2) {
 		if (text.length === 2) {
 			nodeMarkText.classList.add("small-text");
 		}
-		const markStyle = window.decadeUI?.config?.playerMarkStyle ?? lib.config.extension_十周年UI_playerMarkStyle;
+		const markStyle = window.decadeUI?.config?.playerMarkStyle ?? lib.config["extension_十周年UI-Stars_playerMarkStyle"];
 		if (markStyle === "decade" && text?.includes("☯")) {
 			nodeMark.style.setProperty("display", "none", "important");
 		}

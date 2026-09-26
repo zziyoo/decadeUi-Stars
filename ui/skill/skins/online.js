@@ -7,7 +7,7 @@ import { createBaseSkillPlugin } from "./base.js";
 import { getAvailableSkills, updateSkillUsability, isGSkillCacheSame, shouldSkipEquipSkill } from "./gskillMixin.js";
 import { skillButtonTooltip } from "../../../src/ui/skillButtonTooltip.js";
 
-const ASSETS_PATH = "extension/十周年UI/ui/assets/skill/online";
+const ASSETS_PATH = "extension/十周年UI-Stars/ui/assets/skill/online";
 
 export function createOnlineSkillPlugin(lib, game, ui, get, ai, _status, app) {
 	const base = createBaseSkillPlugin(lib, game, ui, get, ai, _status, app);
@@ -271,8 +271,8 @@ export function createOnlineSkillPlugin(lib, game, ui, get, ai, _status, app) {
 					}
 
 					node.addEventListener("click", () => {
-						if (lib.config["extension_十周年UI_bettersound"]) {
-							game.playAudio("..", "extension", "十周年UI", "audio/SkillBtn");
+						if (lib.config["extension_十周年UI-Stars_bettersound"]) {
+							game.playAudio("..", "extension", "十周年UI-Stars", "audio/SkillBtn");
 						}
 					});
 					app.listen(node, plugin.clickSkill);
@@ -288,7 +288,7 @@ export function createOnlineSkillPlugin(lib, game, ui, get, ai, _status, app) {
 					skill.forEach(s => this.add(s, eSkills));
 					return this;
 				}
-				if (lib.config["extension_十周年UI_aloneEquip"] && eSkills?.length) {
+				if (lib.config["extension_十周年UI-Stars_aloneEquip"] && eSkills?.length) {
 					const expandedE = game.expandSkills(eSkills.slice());
 					const expandedS = game.expandSkills([skill]);
 					if (expandedS.some(s => expandedE.includes(s))) return this;
@@ -331,7 +331,7 @@ export function createOnlineSkillPlugin(lib, game, ui, get, ai, _status, app) {
 				showSkills.forEach(item => {
 					let node = this.querySelector(`[data-id="${item.id}"]`);
 					if (node) return;
-					if (lib.config["extension_十周年UI_aloneEquip"] && eSkills?.length) {
+					if (lib.config["extension_十周年UI-Stars_aloneEquip"] && eSkills?.length) {
 						if (game.expandSkills(eSkills.slice()).includes(item.id)) return;
 					}
 
@@ -372,8 +372,8 @@ export function createOnlineSkillPlugin(lib, game, ui, get, ai, _status, app) {
 						}
 
 						node.addEventListener("click", () => {
-							if (lib.config["extension_十周年UI_bettersound"]) {
-								game.playAudio("..", "extension", "十周年UI", "audio/SkillBtn");
+							if (lib.config["extension_十周年UI-Stars_bettersound"]) {
+								game.playAudio("..", "extension", "十周年UI-Stars", "audio/SkillBtn");
 							}
 						});
 						app.listen(node, plugin.clickSkill);

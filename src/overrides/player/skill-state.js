@@ -25,7 +25,7 @@ async function checkZhuanhuanjiImage(skill) {
 		return zhuanhuanjiImageCache.get(skill);
 	}
 
-	const url = `${lib.assetURL}extension/十周年UI/ui/assets/skill/shousha/zhuanhuanji/${skill}_yang.png`;
+	const url = `${lib.assetURL}extension/十周年UI-Stars/ui/assets/skill/shousha/zhuanhuanji/${skill}_yang.png`;
 
 	return new Promise(resolve => {
 		const img = new Image();
@@ -100,7 +100,7 @@ export function playerChangeZhuanhuanji(skill) {
  * @private
  */
 function applyYinYangStyle(player, mark, skill) {
-	const style = lib.config.extension_十周年UI_newDecadeStyle;
+	const style = lib.config["extension_十周年UI-Stars_newDecadeStyle"];
 
 	if (style !== "off") {
 		toggleYinYangClass(mark);
@@ -134,7 +134,7 @@ function toggleYinYangClass(mark) {
  * @private
  */
 function toggleYinYangImage(player, mark, skill) {
-	const basePath = "extension/十周年UI/ui/assets/skill/shousha/zhuanhuanji/";
+	const basePath = "extension/十周年UI-Stars/ui/assets/skill/shousha/zhuanhuanji/";
 	const yangUrl = `${basePath}${skill}_yang.png`;
 	const yingUrl = `${basePath}${skill}_ying.png`;
 	const defaultYangUrl = `${basePath}ditu_yang.png`;

@@ -11,10 +11,10 @@ import { lib, game, ui, get, ai, _status } from "noname";
  * @returns {string} 完整图片路径
  */
 const getImagePath = imageName => {
-	const style = lib.config.extension_十周年UI_JDTSYangshi;
+	const style = lib.config["extension_十周年UI-Stars_JDTSYangshi"];
 	/** @type {Record<string, string>} */
 	const extMap = { 2: "png", 3: "webp", 4: "jpeg" };
-	return `extension/十周年UI/ui/assets/lbtn/tips/${imageName}.${extMap[style] || "jpg"}`;
+	return `extension/十周年UI-Stars/ui/assets/lbtn/tips/${imageName}.${extMap[style] || "jpg"}`;
 };
 
 /**
@@ -22,7 +22,7 @@ const getImagePath = imageName => {
  * @returns {number[]} 位置数组 [x, y, width, height]
  */
 const getPosition = () => {
-	const style = lib.config.extension_十周年UI_JDTSYangshi;
+	const style = lib.config["extension_十周年UI-Stars_JDTSYangshi"];
 	if (style === "1") {
 		const isSpecialMode = get.mode() === "taixuhuanjing" || lib.config.extension_EngEX_SSServant;
 		return isSpecialMode ? [10, 58, 7, 6] : [3, 58, 7, 6];
@@ -108,7 +108,7 @@ const phaseEndEvents = [
  */
 export function initPhaseTipsSkills() {
 	// 始终注册技能，但在 filter 中检查配置
-	const isEnabled = () => lib.config.extension_十周年UI_JDTSYangshi !== "0";
+	const isEnabled = () => lib.config["extension_十周年UI-Stars_JDTSYangshi"] !== "0";
 
 	/**
 	 * 显示阶段图片方法

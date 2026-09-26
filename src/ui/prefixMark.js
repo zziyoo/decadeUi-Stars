@@ -182,7 +182,7 @@ const PREFIX_CONFIGS = {
 	"26|界": "jie",
 };
 
-const CONFIG_KEY = "extension_十周年UI_newDecadeStyle";
+const CONFIG_KEY = "extension_十周年UI-Stars_newDecadeStyle";
 
 /**
  * 获取标记元素的CSS类名

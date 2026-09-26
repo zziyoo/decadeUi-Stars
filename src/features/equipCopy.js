@@ -197,7 +197,7 @@ export function setupEquipCopy() {
 	equipCopyInitialized = true;
 
 	lib.hooks.checkBegin.add(async event => {
-		if (!lib.config["extension_十周年UI_enableEquipCopy"] || lib.config["extension_十周年UI_aloneEquip"]) return;
+		if (!lib.config["extension_十周年UI-Stars_enableEquipCopy"] || lib.config["extension_十周年UI-Stars_aloneEquip"]) return;
 
 		// 通用收尾：正在呈现的事件已不是建副本事件（被取消/被顶掉/主阶段推进）。
 		// 这类切换多数不走 card 类 uncheck，只能在这里统一收；被挂起的旧事件若恢复交互，
@@ -259,7 +259,7 @@ export function setupEquipCopy() {
 	});
 
 	lib.hooks.checkCard.add((card, event) => {
-		if (!lib.config["extension_十周年UI_enableEquipCopy"] || lib.config["extension_十周年UI_aloneEquip"] || !event.copyCards) return;
+		if (!lib.config["extension_十周年UI-Stars_enableEquipCopy"] || lib.config["extension_十周年UI-Stars_aloneEquip"] || !event.copyCards) return;
 
 		if (get.position(card) === "e" && card.classList.contains("selected")) {
 			const copy = event.player.getCards("s", c => c.hasGaintag(GAINTAG) && c.relatedCard === card)[0];
@@ -271,7 +271,7 @@ export function setupEquipCopy() {
 	});
 
 	lib.hooks.checkEnd.add(event => {
-		if (!lib.config["extension_十周年UI_enableEquipCopy"] || lib.config["extension_十周年UI_aloneEquip"] || !event.copyCards) return;
+		if (!lib.config["extension_十周年UI-Stars_enableEquipCopy"] || lib.config["extension_十周年UI-Stars_aloneEquip"] || !event.copyCards) return;
 
 		for (const equip of event.player.getCards("e")) {
 			if (equip.classList.contains("selected")) {
@@ -285,7 +285,7 @@ export function setupEquipCopy() {
 	});
 
 	lib.hooks.uncheckBegin.add(async (event, args) => {
-		if (!lib.config["extension_十周年UI_enableEquipCopy"] || lib.config["extension_十周年UI_aloneEquip"]) return;
+		if (!lib.config["extension_十周年UI-Stars_enableEquipCopy"] || lib.config["extension_十周年UI-Stars_aloneEquip"]) return;
 		if (args.includes("card") && event.copyCards) cleanup(event, event.player);
 	});
 
@@ -295,7 +295,7 @@ export function setupEquipCopy() {
 	// 兜底），副本仍需要时由玩家下一次选牌的 game.check() 经 checkBegin 自愈重建。
 	if (!ui.click.skillbutton?._equipCopy) {
 		wrapBefore(ui.click, "skillbutton", function () {
-			if (!lib.config["extension_十周年UI_enableEquipCopy"] || lib.config["extension_十周年UI_aloneEquip"]) {
+			if (!lib.config["extension_十周年UI-Stars_enableEquipCopy"] || lib.config["extension_十周年UI-Stars_aloneEquip"]) {
 				return;
 			}
 

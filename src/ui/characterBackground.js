@@ -17,7 +17,7 @@ export const isDoubleCharacterMode = () => {
  * @returns {void}
  */
 export function setupCharacterBackground() {
-	if (!lib.config["extension_十周年UI_wujiangbeijing"]) return;
+	if (!lib.config["extension_十周年UI-Stars_wujiangbeijing"]) return;
 
 	const setPlayerBackground = player => {
 		if (!player) return;

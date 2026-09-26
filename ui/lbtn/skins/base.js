@@ -165,7 +165,7 @@ export function createBaseLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 			const container = ui.create.div(".popup-container", { background: "rgba(0, 0, 0, 0.8)" }, ui.window);
 
 			ui.create.div(".bgback", container, () => {
-				game.playAudio(audioPath || "../extension/十周年UI/ui/assets/lbtn/shousha/caidan.mp3");
+				game.playAudio(audioPath || "../extension/十周年UI-Stars/ui/assets/lbtn/shousha/caidan.mp3");
 				container.hide();
 				game.resume2();
 			});
@@ -547,7 +547,7 @@ export function createBaseLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 				});
 
 				// 技能按钮 - 仅shousha样式在确认按钮旁显示gskills
-				const isShousha = lib.config.extension_十周年UI_newDecadeStyle === "off";
+				const isShousha = lib.config["extension_十周年UI-Stars_newDecadeStyle"] === "off";
 				if (lib.config.phonelayout && ui.skills2?.skills?.length && isShousha) {
 					confirm.skills2 = ui.skills2.skills.map(skill => {
 						const item = document.createElement("div");
@@ -582,7 +582,7 @@ export function createBaseLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 			},
 
 			handcardNumber() {
-				const isRight = lib.config["extension_十周年UI_rightLayout"] === "on";
+				const isRight = lib.config["extension_十周年UI-Stars_rightLayout"] === "on";
 				const className = isRight ? ".handcardNumber" : ".handcardNumber1";
 				const node = ui.create.div(className, ui.arena).hide();
 
@@ -673,7 +673,7 @@ export function createBaseLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 			},
 
 			huanfu() {
-				game.playAudio("../extension/十周年UI/ui/assets/lbtn/CD/huanfu.mp3");
+				game.playAudio("../extension/十周年UI-Stars/ui/assets/lbtn/CD/huanfu.mp3");
 				if (window.zyile_charactercard) {
 					window.zyile_charactercard(game.me, false);
 				} else {

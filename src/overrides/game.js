@@ -30,7 +30,7 @@ export function applyGameOverrides() {
 		wrapAfter(game, "swapPlayer", function (result, player) {
 			const list = [game.me, player].filter(Boolean);
 
-			if (lib.config.extension_十周年UI_aloneEquip && game.me && ui.equipSolts && game.me !== ui.equipSolts.me) {
+			if (lib.config["extension_十周年UI-Stars_aloneEquip"] && game.me && ui.equipSolts && game.me !== ui.equipSolts.me) {
 				ui.equipSolts.me.appendChild(ui.equipSolts.equips);
 				ui.equipSolts.me = game.me;
 				ui.equipSolts.equips = game.me.node.equips;
@@ -62,7 +62,7 @@ export function applyGameOverrides() {
 	// 交换控制后同步装备栏和手牌显示
 	restoreFns.push(
 		wrapAfter(game, "swapControl", function (result, player) {
-			if (lib.config.extension_十周年UI_aloneEquip && game.me && ui.equipSolts && game.me !== ui.equipSolts.me) {
+			if (lib.config["extension_十周年UI-Stars_aloneEquip"] && game.me && ui.equipSolts && game.me !== ui.equipSolts.me) {
 				ui.equipSolts.me.appendChild(ui.equipSolts.equips);
 				ui.equipSolts.me = game.me;
 				ui.equipSolts.equips = game.me.node.equips;

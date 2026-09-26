@@ -37,13 +37,13 @@ export function createPlayerInit(base) {
 		}
 
 		// othersOff样式下检查武将原画
-		if (lib.config.extension_十周年UI_newDecadeStyle === "othersOff") {
+		if (lib.config["extension_十周年UI-Stars_newDecadeStyle"] === "othersOff") {
 			this.checkAndAddExperienceSuffix(character);
 			if (character2) this.checkAndAddExperienceSuffix(character2, true);
 		}
 
 		// 边框等级
-		const borderLevel = lib.config.extension_十周年UI_borderLevel;
+		const borderLevel = lib.config["extension_十周年UI-Stars_borderLevel"];
 		if (borderLevel === "random") {
 			// 主玩家永远five，其他玩家随机
 			if (this === game.me) {
@@ -119,7 +119,7 @@ export function createPlayerInit(base) {
 			const showCards = player.node.showCards;
 			/** @type {number} */
 			const offset = 10;
-			const isBabysha = lib.config.extension_十周年UI_newDecadeStyle === "babysha";
+			const isBabysha = lib.config["extension_十周年UI-Stars_newDecadeStyle"] === "babysha";
 			if ((isBabysha && rect.left < winWidth / 2) || (!isBabysha && rect.left >= winWidth / 2)) {
 				showCards.style.left = "";
 				showCards.style.right = player.offsetWidth + offset + "px";
@@ -172,7 +172,7 @@ export function createPlayerInit(base) {
 		this.decadeUI_updateShowCards();
 
 		// 应用露头头像
-		const outcropStyle = lib.config.extension_十周年UI_outcropSkin;
+		const outcropStyle = lib.config["extension_十周年UI-Stars_outcropSkin"];
 		if (outcropStyle && outcropStyle !== "off") {
 			updatePlayerOutcropAvatar(this, outcropStyle);
 		}

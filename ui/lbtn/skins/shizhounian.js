@@ -7,7 +7,7 @@ import { createBaseLbtnPlugin } from "./base.js";
 
 export function createShizhounianLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 	const base = createBaseLbtnPlugin(lib, game, ui, get, ai, _status, app);
-	const assetPath = "extension/十周年UI/ui/assets/lbtn/";
+	const assetPath = "extension/十周年UI-Stars/ui/assets/lbtn/";
 
 	return {
 		...base,
@@ -94,7 +94,7 @@ export function createShizhounianLbtnPlugin(lib, game, ui, get, ai, _status, app
 		// 创建整理手牌按钮
 		createSortButton() {
 			const self = this;
-			const isRight = lib.config["extension_十周年UI_rightLayout"] === "on";
+			const isRight = lib.config["extension_十周年UI-Stars_rightLayout"] === "on";
 			const isTouch = lib.config.phonelayout;
 			const sortImg = isTouch ? "zhengli.png" : "zhenglix.png";
 
@@ -218,7 +218,7 @@ export function createShizhounianLbtnPlugin(lib, game, ui, get, ai, _status, app
 			},
 
 			handcardNumber() {
-				const isRight = lib.config["extension_十周年UI_rightLayout"] === "on";
+				const isRight = lib.config["extension_十周年UI-Stars_rightLayout"] === "on";
 				const isTouch = lib.config.phonelayout;
 
 				// 设置按钮

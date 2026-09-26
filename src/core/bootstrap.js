@@ -14,7 +14,7 @@ export const bootstrapExtension = () => {
 
 	if (game.hasExtension?.("皮肤切换")) game.menuZoom = 1;
 
-	const aloneEquip = lib.config.extension_十周年UI_aloneEquip;
+	const aloneEquip = lib.config["extension_十周年UI-Stars_aloneEquip"];
 	_status.nopopequip = aloneEquip !== undefined ? aloneEquip : true;
 
 	if (lib.config.layout !== RECOMMENDED_LAYOUT) {

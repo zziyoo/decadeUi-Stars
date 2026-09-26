@@ -193,7 +193,7 @@ export function uiCreateIdentityCard(identity, position, info, noclick) {
 		uiintro.add(`${get.translation(identity + 2)}的身份牌`);
 	};
 
-	const fileName = "extension/十周年UI/image/ui/identity-card/mougong_" + identity + ".jpg";
+	const fileName = "extension/十周年UI-Stars/image/ui/identity-card/mougong_" + identity + ".jpg";
 
 	new Promise((resolve, reject) => {
 		const image = new Image();
@@ -297,7 +297,7 @@ export function uiCreatePause() {
  */
 export function uiCreateCharacterDialog() {
 	const dialog = getBaseUiCreateCharacterDialog()?.apply(this, arguments);
-	const control = lib.config.extension_十周年UI_mx_decade_characterDialog || "default";
+	const control = lib.config["extension_十周年UI-Stars_mx_decade_characterDialog"] || "default";
 
 	if (control != "default") {
 		const Searcher = dialog.querySelector(".searcher.caption");
@@ -456,7 +456,7 @@ export function uiCreateMe(hasme) {
 
 	ui.arena.insertBefore(equipSolts, ui.me);
 
-	if (!lib.config.extension_十周年UI_aloneEquip) {
+	if (!lib.config["extension_十周年UI-Stars_aloneEquip"]) {
 		equipSolts.style.display = "none";
 	}
 
@@ -483,7 +483,7 @@ export function uiCreateMe(hasme) {
 		ui.handcards2Container.appendChild(ui.handcards2);
 	}
 
-	if (lib.config.extension_十周年UI_aloneEquip) {
+	if (lib.config["extension_十周年UI-Stars_aloneEquip"]) {
 		if (game.me) {
 			equipSolts.me = game.me;
 			equipSolts.equips = game.me.node.equips;

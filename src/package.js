@@ -52,7 +52,7 @@ export const mainpackage = otherInfo => {
 			const isDiandian = this.mode === "diandian";
 			const avatar = document.querySelector(".decade-author-avatar");
 			if (avatar) {
-				avatar.src = `${lib.assetURL}extension/十周年UI/image/ui/avatar/avatar_${isDiandian ? "diandian" : "ziyoo"}.jpg`;
+				avatar.src = `${lib.assetURL}extension/十周年UI-Stars/image/ui/avatar/avatar_${isDiandian ? "diandian" : "ziyoo"}.jpg`;
 			}
 			const name = document.querySelector(".decade-author-name");
 			if (name) {
@@ -67,7 +67,7 @@ export const mainpackage = otherInfo => {
 			const audioName = this.mode === "diandian" ? "Ciallo.mp3" : "manbo.mp3";
 			if (audioName !== this._audioName || !this._audio || this._audio.paused) {
 				this._audioName = audioName;
-				this._audio = new Audio(`extension/十周年UI/audio/${audioName}`);
+				this._audio = new Audio(`extension/十周年UI-Stars/audio/${audioName}`);
 				this._audio.play();
 			}
 			// 打开欢迎窗口
@@ -101,7 +101,7 @@ export const mainpackage = otherInfo => {
 	Object.defineProperty(pack, "author", {
 		get() {
 			const isDiandian = window.decadeUIWelcome?.mode === "diandian";
-			return `<img src="${lib.assetURL}extension/十周年UI/image/ui/avatar/avatar_${isDiandian ? "diandian" : "ziyoo"}.jpg" class="author-avatar decade-author-avatar" onclick="window.decadeUIWelcome.show()" onmousedown="window.decadeUIWelcome.longPressStart()" onmouseup="window.decadeUIWelcome.longPressEnd()" onmouseleave="window.decadeUIWelcome.longPressEnd()" ontouchstart="window.decadeUIWelcome.longPressStart()" ontouchend="window.decadeUIWelcome.longPressEnd()" ontouchcancel="window.decadeUIWelcome.longPressEnd()" oncontextmenu="return false" style="cursor:pointer;border-radius:50%;width:50px;height:50px;vertical-align:bottom;touch-action:manipulation;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none"><span class="decade-author-name">${isDiandian ? "点点" : "子右"}</span><br><span class="decade-miss-timer" id="decade-miss-timer">${window.decadeUIWelcome.calculateTimeDiff()}</span><br>${window.decadeUIDidYouKnow.getHTML()}`;
+			return `<img src="${lib.assetURL}extension/十周年UI-Stars/image/ui/avatar/avatar_${isDiandian ? "diandian" : "ziyoo"}.jpg" class="author-avatar decade-author-avatar" onclick="window.decadeUIWelcome.show()" onmousedown="window.decadeUIWelcome.longPressStart()" onmouseup="window.decadeUIWelcome.longPressEnd()" onmouseleave="window.decadeUIWelcome.longPressEnd()" ontouchstart="window.decadeUIWelcome.longPressStart()" ontouchend="window.decadeUIWelcome.longPressEnd()" ontouchcancel="window.decadeUIWelcome.longPressEnd()" oncontextmenu="return false" style="cursor:pointer;border-radius:50%;width:50px;height:50px;vertical-align:bottom;touch-action:manipulation;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none"><span class="decade-author-name">${isDiandian ? "点点" : "子右"}</span><br><span class="decade-miss-timer" id="decade-miss-timer">${window.decadeUIWelcome.calculateTimeDiff()}</span><br>${window.decadeUIDidYouKnow.getHTML()}`;
 		},
 	});
 
@@ -113,7 +113,7 @@ export const mainpackage = otherInfo => {
 // 		window.decadeUIWelcome = {
 // 			show: () => {
 // 				// 播放音效
-// 				new Audio("extension/十周年UI/audio/manbo.mp3").play();
+// 				new Audio("extension/十周年UI-Stars/audio/manbo.mp3").play();
 // 				// 打开欢迎窗口
 // 				import("./features/welcomeDialog.js").then(module => {
 // 					module.createWelcomeDialog();
@@ -124,7 +124,7 @@ export const mainpackage = otherInfo => {
 
 // 	Object.defineProperty(pack, "author", {
 // 		get() {
-// 			return `<img src="${lib.assetURL}extension/十周年UI/image/ui/avatar/avatar_ziyoo.jpg" class="author-avatar" onclick="window.decadeUIWelcome.show()" style="cursor:pointer;border-radius:50%;width:50px;height:50px;vertical-align:bottom">子右<br>${window.decadeUIDidYouKnow.getHTML()}`;
+// 			return `<img src="${lib.assetURL}extension/十周年UI-Stars/image/ui/avatar/avatar_ziyoo.jpg" class="author-avatar" onclick="window.decadeUIWelcome.show()" style="cursor:pointer;border-radius:50%;width:50px;height:50px;vertical-align:bottom">子右<br>${window.decadeUIDidYouKnow.getHTML()}`;
 // 		},
 // 	});
 

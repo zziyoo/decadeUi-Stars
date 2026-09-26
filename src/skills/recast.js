@@ -4,7 +4,7 @@
 import { lib, game, ui, get, _status } from "noname";
 export function canRecastCard(card, player) {
 	if (!card || !player) return false;
-	if (lib.config.extension_十周年UI_enableRecastInteraction === false) return false;
+	if (lib.config["extension_十周年UI-Stars_enableRecastInteraction"] === false) return false;
 
 	if (!lib.filter.cardRecastable(card, player, null, true)) return false;
 
@@ -91,8 +91,8 @@ export const recastAnimateSkill = {
 		silent: true,
 		priority: Infinity + 1,
 		filter(event, player) {
-			if (lib.config.extension_十周年UI_newDecadeStyle === "off") return false;
-			if (lib.config.extension_十周年UI_enableRecastInteraction === false) return false;
+			if (lib.config["extension_十周年UI-Stars_newDecadeStyle"] === "off") return false;
+			if (lib.config["extension_十周年UI-Stars_enableRecastInteraction"] === false) return false;
 
 			if (event.name === "useCard") {
 				if (event.targets?.length > 0) return false;
@@ -232,8 +232,8 @@ export function setupRecastableCards() {
 
 // 初始化重铸模块
 export function initRecast() {
-	if (lib.config.extension_十周年UI_enableRecastInteraction === false) return;
-	if (lib.config.extension_十周年UI_newDecadeStyle === "off") return;
+	if (lib.config["extension_十周年UI-Stars_enableRecastInteraction"] === false) return;
+	if (lib.config["extension_十周年UI-Stars_newDecadeStyle"] === "off") return;
 
 	Object.assign(lib.skill, recastAnimateSkill, recastBaseSkill);
 	game.addGlobalSkill("_decadeUI_recastable_recast");

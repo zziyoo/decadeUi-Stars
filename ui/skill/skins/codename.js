@@ -59,7 +59,7 @@ export function createCodenameSkillPlugin(lib, game, ui, get, ai, _status, app) 
 		},
 
 		createSkillControl() {
-			const isRight = lib.config["extension_十周年UI_rightLayout"] === "on";
+			const isRight = lib.config["extension_十周年UI-Stars_rightLayout"] === "on";
 			const cls = isRight ? ".skill-control" : ".skill-controlzuoshou";
 			const node = ui.create.div(cls, ui.arena);
 			node.node = {
@@ -180,8 +180,8 @@ export function createCodenameSkillPlugin(lib, game, ui, get, ai, _status, app) 
 					node.dataset.gskill = "true";
 
 					node.addEventListener("click", () => {
-						if (lib.config["extension_十周年UI_bettersound"]) {
-							game.playAudio("..", "extension", "十周年UI", "audio/SkillBtn");
+						if (lib.config["extension_十周年UI-Stars_bettersound"]) {
+							game.playAudio("..", "extension", "十周年UI-Stars", "audio/SkillBtn");
 						}
 					});
 					app.listen(node, plugin.clickSkill);
@@ -198,7 +198,7 @@ export function createCodenameSkillPlugin(lib, game, ui, get, ai, _status, app) 
 					return this;
 				}
 
-				if (lib.config["extension_十周年UI_aloneEquip"] && eSkills?.length) {
+				if (lib.config["extension_十周年UI-Stars_aloneEquip"] && eSkills?.length) {
 					const expandedE = game.expandSkills(eSkills.slice());
 					const expandedS = game.expandSkills([skill]);
 					if (expandedS.some(s => expandedE.includes(s))) return this;
@@ -240,7 +240,7 @@ export function createCodenameSkillPlugin(lib, game, ui, get, ai, _status, app) 
 				showSkills.forEach(item => {
 					if (this.hasExistingNode(item.id)) return;
 
-					if (lib.config["extension_十周年UI_aloneEquip"] && eSkills?.length) {
+					if (lib.config["extension_十周年UI-Stars_aloneEquip"] && eSkills?.length) {
 						if (game.expandSkills(eSkills.slice()).includes(item.id)) return;
 					}
 
@@ -266,8 +266,8 @@ export function createCodenameSkillPlugin(lib, game, ui, get, ai, _status, app) 
 				node.dataset.id = item.id;
 
 				node.addEventListener("click", () => {
-					if (lib.config["extension_十周年UI_bettersound"]) {
-						game.playAudio("..", "extension", "十周年UI", "audio/SkillBtn");
+					if (lib.config["extension_十周年UI-Stars_bettersound"]) {
+						game.playAudio("..", "extension", "十周年UI-Stars", "audio/SkillBtn");
 					}
 				});
 				app.listen(node, plugin.clickSkill);

@@ -5,8 +5,8 @@
 import { _status } from "noname";
 import { createBaseCharacterPlugin } from "./base.js";
 
-const IMAGE_PATH = "extension/十周年UI/ui/assets/character/baby/";
-const AUDIO_PATH = "../extension/十周年UI/ui/assets/lbtn/shousha/caidan.mp3";
+const IMAGE_PATH = "extension/十周年UI-Stars/ui/assets/character/baby/";
+const AUDIO_PATH = "../extension/十周年UI-Stars/ui/assets/lbtn/shousha/caidan.mp3";
 
 const GUANJIE_TRANSLATION = {
 	1: ["骁卒", ["步卒", "伍长", "什长", "队率", "屯长", "部曲"]],
@@ -202,7 +202,7 @@ export function createBabyCharacterPlugin(lib, game, ui, get, ai, _status, app) 
 		 * @returns {HTMLElement} 边框元素
 		 */
 		_createCharacterFrame(parent, player) {
-			const useZLLT = lib.config.extension_十周年UI_ZLLT === true;
+			const useZLLT = lib.config["extension_十周年UI-Stars_ZLLT"] === true;
 			const biankuang = ui.create.div(useZLLT ? ".biankuang" : ".biankuang2", parent);
 			const leftPane = ui.create.div(useZLLT ? ".left" : ".left2", biankuang);
 

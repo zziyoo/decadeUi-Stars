@@ -57,7 +57,7 @@ export function isGSkillCacheSame(cachedSkills, newSkills) {
  */
 export function shouldSkipEquipSkill(skillId, eSkills, context) {
 	const { lib, game, ui, get, ai, _status } = context;
-	if (lib.config["extension_十周年UI_aloneEquip"] && eSkills?.length) {
+	if (lib.config["extension_十周年UI-Stars_aloneEquip"] && eSkills?.length) {
 		return game.expandSkills(eSkills.slice()).includes(skillId);
 	}
 	return false;

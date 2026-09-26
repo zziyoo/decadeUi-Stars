@@ -20,7 +20,7 @@ import { skillButtonTooltip } from "../../../src/ui/skillButtonTooltip.js";
 export function createShizhounianCharacterPlugin(lib, game, ui, get, ai, _status, app) {
 	const base = createBaseCharacterPlugin(lib, game, ui, get, ai, _status, app);
 
-	const IMAGE_PATH = "extension/十周年UI/ui/assets/character/shizhounian/";
+	const IMAGE_PATH = "extension/十周年UI-Stars/ui/assets/character/shizhounian/";
 
 	return {
 		...base,

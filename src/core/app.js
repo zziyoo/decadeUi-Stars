@@ -279,7 +279,7 @@ export function initApp() {
 				};
 
 				const styleFileMap = { on: "main1.js", othersOff: "main3.js" };
-				const fileName = styleFileMap[lib.config.extension_十周年UI_newDecadeStyle] ?? "main2.js";
+				const fileName = styleFileMap[lib.config["extension_十周年UI-Stars_newDecadeStyle"]] ?? "main2.js";
 				folders.forEach(dir => readAndEval(dir, fileName));
 			});
 		},

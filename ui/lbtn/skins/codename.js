@@ -7,7 +7,7 @@ import { createBaseLbtnPlugin } from "./base.js";
 
 export function createCodenameLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 	const base = createBaseLbtnPlugin(lib, game, ui, get, ai, _status, app);
-	const assetPath = "extension/十周年UI/ui/assets/lbtn/";
+	const assetPath = "extension/十周年UI-Stars/ui/assets/lbtn/";
 
 	return {
 		...base,
@@ -49,7 +49,7 @@ export function createCodenameLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 		// 初始化距离显示按钮
 		initDistanceButtons() {
 			const self = this;
-			const isRight = lib.config["extension_十周年UI_rightLayout"] === "on";
+			const isRight = lib.config["extension_十周年UI-Stars_rightLayout"] === "on";
 			const btnClass = isRight ? ".meiguiButton_new" : ".meiguiButton_new1";
 			const btn = ui.arena.querySelector(btnClass);
 			if (btn) {
@@ -60,7 +60,7 @@ export function createCodenameLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 		// 创建整理手牌按钮
 		createSortButton() {
 			const self = this;
-			const isRight = lib.config["extension_十周年UI_rightLayout"] === "on";
+			const isRight = lib.config["extension_十周年UI-Stars_rightLayout"] === "on";
 
 			const btn = ui.create.node("img");
 			btn.src = `${lib.assetURL}${assetPath}uibutton/code_zhengli.png`;
@@ -200,7 +200,7 @@ export function createCodenameLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 			},
 
 			handcardNumber() {
-				const isRight = lib.config["extension_十周年UI_rightLayout"] === "on";
+				const isRight = lib.config["extension_十周年UI-Stars_rightLayout"] === "on";
 
 				// 设置按钮
 				ui.create.div(".settingButton", ui.arena);

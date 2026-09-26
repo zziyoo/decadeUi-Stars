@@ -64,7 +64,7 @@ export function buildSkinUrl(skinKey, filename) {
 	const skin = cardSkinMeta[skinKey];
 	if (!skin) return "";
 
-	const decadeUIName = window.decadeUI?.extensionName || "十周年UI";
+	const decadeUIName = window.decadeUI?.extensionName || "十周年UI-Stars";
 	const folder = skin.dir || skinKey;
 	const extension = skin.extension || "png";
 	return `${lib.assetURL}extension/${decadeUIName}/image/card-skins/${folder}/${filename}.${extension}`;

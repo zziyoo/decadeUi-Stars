@@ -19,9 +19,9 @@ export function onExtensionToggleClick() {
  * @description 更新菜单显示文本
  */
 export function onExtensionToggleUpdate() {
-	const key = "extension_十周年UI_closedExtensions";
+	const key = "extension_十周年UI-Stars_closedExtensions";
 	const closed = Array.isArray(lib.config[key]) ? lib.config[key] : [];
-	const menu = lib.extensionMenu?.extension_十周年UI?.extensionToggle;
+	const menu = lib.extensionMenu?.["extension_十周年UI-Stars"]?.extensionToggle;
 	if (menu) {
 		menu.name = closed.length > 0 ? `<ins>一键恢复 ${closed.length} 个扩展</ins>` : "<ins>一键关闭其他扩展</ins>";
 	}
@@ -32,8 +32,8 @@ export function onExtensionToggleUpdate() {
  * @param {string} control - 选择的样式值
  */
 export function onNewDecadeStyleClick(control) {
-	const origin = lib.config.extension_十周年UI_newDecadeStyle;
-	game.saveConfig("extension_十周年UI_newDecadeStyle", control);
+	const origin = lib.config["extension_十周年UI-Stars_newDecadeStyle"];
+	game.saveConfig("extension_十周年UI-Stars_newDecadeStyle", control);
 	if (origin !== control) {
 		setTimeout(() => game.reload(), UI_ANIMATION.RELOAD_DELAY);
 	}
@@ -45,7 +45,7 @@ export function onNewDecadeStyleClick(control) {
  */
 export function onNewDecadeStyleUpdate() {
 	if (!window.decadeUI) return;
-	const style = lib.config.extension_十周年UI_newDecadeStyle;
+	const style = lib.config["extension_十周年UI-Stars_newDecadeStyle"];
 	ui.arena.dataset.newDecadeStyle = style;
 	const decadeLayoutStyles = ["on", "othersOff", "onlineUI", "babysha", "codename"];
 	ui.arena.dataset.decadeLayout = decadeLayoutStyles.includes(style) ? "on" : "off";
@@ -56,8 +56,8 @@ export function onNewDecadeStyleUpdate() {
  * @param {string} item - 布局选项
  */
 export function onRightLayoutClick(item) {
-	lib.config.extension_十周年UI_rightLayout = item ?? "off";
-	game.saveConfig("extension_十周年UI_rightLayout", item);
+	lib.config["extension_十周年UI-Stars_rightLayout"] = item ?? "off";
+	game.saveConfig("extension_十周年UI-Stars_rightLayout", item);
 	game.reload();
 }
 
@@ -65,7 +65,7 @@ export function onRightLayoutClick(item) {
  * 左右布局更新处理
  */
 export function onRightLayoutUpdate() {
-	const layout = lib.config.extension_十周年UI_rightLayout;
+	const layout = lib.config["extension_十周年UI-Stars_rightLayout"];
 	if (layout === "on" || layout === "off") {
 		ui.arena.dataset.rightLayout = layout;
 	}
@@ -76,7 +76,7 @@ export function onRightLayoutUpdate() {
  * @param {string} item - 露头样式选项
  */
 export function onOutcropSkinClick(item) {
-	game.saveConfig("extension_十周年UI_outcropSkin", item);
+	game.saveConfig("extension_十周年UI-Stars_outcropSkin", item);
 	if (window.decadeUI) {
 		ui.arena.dataset.outcropSkin = item;
 		decadeUI.clearOutcropCache?.();
@@ -99,7 +99,7 @@ export function onOutcropSkinClick(item) {
  */
 export function onOutcropSkinUpdate() {
 	if (!window.decadeUI) return;
-	const style = lib.config.extension_十周年UI_outcropSkin;
+	const style = lib.config["extension_十周年UI-Stars_outcropSkin"];
 	ui.arena.dataset.outcropSkin = style;
 	decadeUI.updateAllOutcropAvatars?.(style);
 }
@@ -109,8 +109,8 @@ export function onOutcropSkinUpdate() {
  */
 export function onBorderLevelUpdate() {
 	if (!window.decadeUI) return;
-	const value = lib.config.extension_十周年UI_borderLevel;
-	const style = lib.config.extension_十周年UI_borderStyle || "xinsha";
+	const value = lib.config["extension_十周年UI-Stars_borderLevel"];
+	const style = lib.config["extension_十周年UI-Stars_borderStyle"] || "xinsha";
 
 	ui.arena.dataset.borderLevel = value;
 	ui.arena.dataset.longLevel = value;
@@ -137,7 +137,7 @@ export function onBorderLevelUpdate() {
  * 单独装备栏更新处理
  */
 export function onAloneEquipUpdate() {
-	const config = lib.config.extension_十周年UI_aloneEquip;
+	const config = lib.config["extension_十周年UI-Stars_aloneEquip"];
 	if (window.decadeUI) {
 		ui.arena.dataset.aloneEquip = config ? "on" : "off";
 	}
@@ -169,7 +169,7 @@ export function onAloneEquipUpdate() {
  * @param {boolean} bool - 是否开启
  */
 export function onMeanPrettifyClick(bool) {
-	game.saveConfig("extension_十周年UI_meanPrettify", bool);
+	game.saveConfig("extension_十周年UI-Stars_meanPrettify", bool);
 	ui.css.decadeMenu?.remove();
 	delete ui.css.decadeMenu;
 	if (bool) {
@@ -182,7 +182,7 @@ export function onMeanPrettifyClick(bool) {
  * @param {boolean} value - 是否开启
  */
 export function onDynamicSkinClick(value) {
-	game.saveConfig("extension_十周年UI_dynamicSkin", value);
+	game.saveConfig("extension_十周年UI-Stars_dynamicSkin", value);
 	lib.config.dynamicSkin = value;
 	game.saveConfig("dynamicSkin", value);
 }
@@ -192,7 +192,7 @@ export function onDynamicSkinClick(value) {
  */
 export function onDynamicSkinOutcropUpdate() {
 	if (!window.decadeUI) return;
-	const enable = lib.config.extension_十周年UI_dynamicSkinOutcrop;
+	const enable = lib.config["extension_十周年UI-Stars_dynamicSkinOutcrop"];
 	ui.arena.dataset.dynamicSkinOutcrop = enable ? "on" : "off";
 	game.players?.forEach(player => {
 		if (player.dynamic) {

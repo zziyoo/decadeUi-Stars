@@ -45,7 +45,7 @@ export function createShoushaCharacterPlugin(lib, game, ui, get, ai, _status, ap
 		 * @returns {HTMLElement} 创建的面板元素
 		 */
 		createLeftPane(parent) {
-			const skin = lib.config["extension_十周年UI_outcropSkin"];
+			const skin = lib.config["extension_十周年UI-Stars_outcropSkin"];
 			const classMap = { shizhounian: ".left3", shousha: ".left2" };
 			return ui.create.div(classMap[skin] || ".left", parent);
 		},

@@ -4,32 +4,14 @@
 import { lib, game, ui, get, ai, _status } from "noname";
 import { createScriptElement, createLinkElement } from "./loader.js";
 import { prefixMarkModule } from "../ui/prefixMark.js";
+import { STYLE_CONFIG_VALUES, STYLE_TO_SKIN, DEFAULT_SKIN } from "./styleRuntime.js";
 
 /** @type {Array<string>} 排除的游戏模式 */
 const EXCLUDED_MODES = ["chess", "tafang", "hs_hearthstone"];
 
-/** @type {Array<string>} 样式配置选项 */
-const STYLE_OPTIONS = ["on", "off", "othersOff", "onlineUI", "babysha", "codename"];
-
-/** @type {Object<string, string>} 样式到皮肤的映射 */
-const STYLE_TO_SKIN = {
-	on: "shizhounian",
-	off: "shousha",
-	othersOff: "xinsha",
-	onlineUI: "online",
-	babysha: "baby",
-	codename: "codename",
-};
-
-/** @type {Object<string, number>} 样式到索引的映射 */
-const STYLE_TO_INDEX = {
-	on: 2,
-	off: 1,
-	othersOff: 3,
-	onlineUI: 4,
-	babysha: 5,
-	codename: 6,
-};
+// P1：样式映射唯一数据源已收口至 styleRuntime.js（任务书§13）。
+// 原本地 STYLE_OPTIONS/STYLE_TO_SKIN 删除；原 STYLE_TO_INDEX 为死代码且与实际
+// playerN.css 序号逻辑相反（实际序号 = STYLE_CONFIG_VALUES.indexOf(style)+1），一并移除。
 
 /**
  * 获取配置项值
@@ -38,7 +20,7 @@ const STYLE_TO_INDEX = {
  * @returns {*} 配置值
  */
 function getConfigValue(key, defaultValue) {
-	const configKey = `extension_十周年UI_${key}`;
+	const configKey = `extension_十周年UI-Stars_${key}`;
 	const value = lib.config[configKey];
 	return value !== undefined ? value : defaultValue;
 }
@@ -93,7 +75,7 @@ export function initDecadeModule() {
 		cssFiles.forEach(path => this.css(`${decadeUIPath}${path}`));
 
 		const style = getConfigValue("newDecadeStyle", "on");
-		const styleIndex = STYLE_OPTIONS.indexOf(style);
+		const styleIndex = STYLE_CONFIG_VALUES.indexOf(style);
 		this.css(`${decadeUIPath}src/styles/player${styleIndex !== -1 ? styleIndex + 1 : 2}.css`);
 		this.css(`${decadeUIPath}src/styles/equip.css`);
 		this.css(`${decadeUIPath}src/styles/layout.css`);
@@ -110,7 +92,7 @@ export function initDecadeModule() {
 		const isPhoneLayout = lib.config.phonelayout;
 
 		if (!EXCLUDED_MODES.includes(currentMode)) {
-			const skinName = STYLE_TO_SKIN[style] || "shizhounian";
+			const skinName = STYLE_TO_SKIN[style] || DEFAULT_SKIN;
 			const uiPath = `${decadeUIPath}ui/`;
 
 			this.css(`${uiPath}styles/fonts.css`);

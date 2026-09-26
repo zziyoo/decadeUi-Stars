@@ -24,7 +24,7 @@ import {
  * @returns {{skinKey: string|null, isOff: boolean}} 皮肤配置
  */
 function getSkinConfig() {
-	const skinKey = lib.config.extension_十周年UI_cardPrettify;
+	const skinKey = lib.config["extension_十周年UI-Stars_cardPrettify"];
 	const isOff = !skinKey || skinKey === "off";
 	return { skinKey, isOff };
 }

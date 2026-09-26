@@ -13,8 +13,8 @@ export function createBaseCharacterPlugin(lib, game, ui, get, ai, _status, app) 
 		filter: () => !["chess", "tafang"].includes(get.mode()),
 
 		// 资源路径
-		assetPath: "extension/十周年UI/ui/assets/character/",
-		audioPath: "extension/十周年UI/ui/assets/lbtn/shousha/",
+		assetPath: "extension/十周年UI-Stars/ui/assets/character/",
+		audioPath: "extension/十周年UI-Stars/ui/assets/lbtn/shousha/",
 
 		// 有效势力列表
 		validGroups: ["wei", "shu", "wu", "qun", "ye", "jin", "daqin", "western", "shen", "key", "Han", "qin"],

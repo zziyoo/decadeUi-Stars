@@ -7,13 +7,13 @@ import { lib, game, ui, get, ai, _status } from "noname";
  * 获取当前样式配置
  * @returns {string} 样式名称
  */
-const getStyle = () => decadeUI?.config?.newDecadeStyle ?? lib.config.extension_十周年UI_newDecadeStyle;
+const getStyle = () => decadeUI?.config?.newDecadeStyle ?? lib.config["extension_十周年UI-Stars_newDecadeStyle"];
 
 /**
  * 获取弃牌缩放比例
  * @returns {number} 缩放比例
  */
-const getDiscardScale = () => lib.config?.extension_十周年UI_discardScale ?? 0.14;
+const getDiscardScale = () => lib.config?.["extension_十周年UI-Stars_discardScale"] ?? 0.14;
 
 /**
  * 弃牌区最大宽度占屏幕宽度的比例
@@ -66,7 +66,7 @@ export function createLayoutModule() {
 			if (totalW > limitW) {
 				xMargin = csw - Math.abs(limitW - csw * cards.length) / (cards.length - 1);
 				if (lib.config.fold_card) {
-					const foldMin = parseFloat(lib.config.extension_十周年UI_handFoldMin) || 9;
+					const foldMin = parseFloat(lib.config["extension_十周年UI-Stars_handFoldMin"]) || 9;
 					const min = cs * foldMin;
 					if (xMargin < min) {
 						expand = true;

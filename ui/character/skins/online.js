@@ -20,8 +20,8 @@ import { skillButtonTooltip } from "../../../src/ui/skillButtonTooltip.js";
 export function createOnlineCharacterPlugin(lib, game, ui, get, ai, _status, app) {
 	const base = createBaseCharacterPlugin(lib, game, ui, get, ai, _status, app);
 
-	const IMAGE_PATH = "extension/十周年UI/ui/assets/character/online/";
-	const AUDIO_PATH = "../extension/十周年UI/ui/assets/lbtn/shousha/caidan.mp3";
+	const IMAGE_PATH = "extension/十周年UI-Stars/ui/assets/character/online/";
+	const AUDIO_PATH = "../extension/十周年UI-Stars/ui/assets/lbtn/shousha/caidan.mp3";
 
 	/**
 	 * 常量配置

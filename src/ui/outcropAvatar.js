@@ -43,7 +43,7 @@ const requestQueue = {
  * 获取当前露头样式配置
  * @returns {string}
  */
-export const getOutcropStyle = () => lib.config?.extension_十周年UI_outcropSkin ?? "off";
+export const getOutcropStyle = () => lib.config?.["extension_十周年UI-Stars_outcropSkin"] ?? "off";
 
 /**
  * 解析武将图片引用，提取实际武将名称
@@ -148,7 +148,7 @@ export function getOutcropImagePath(characterName, outcropStyle) {
 	}
 
 	// 回退到十周年UI目录
-	return `${lib.assetURL}extension/十周年UI/image/character/${subdir}/${actualName}.jpg`;
+	return `${lib.assetURL}extension/十周年UI-Stars/image/character/${subdir}/${actualName}.jpg`;
 }
 
 /**
@@ -219,7 +219,7 @@ export async function applyOutcropAvatar(characterName, node, outcropStyle) {
 	// 检查是否处于隐匿状态
 	const isVice = node.classList.contains("avatar2");
 	if (isPlayerUnseen(node, isVice)) {
-		const hiddenPath = `${lib.assetURL}extension/十周年UI/image/character/${subdir}/hidden_image.jpg`;
+		const hiddenPath = `${lib.assetURL}extension/十周年UI-Stars/image/character/${subdir}/hidden_image.jpg`;
 		if (await checkImageExists(hiddenPath)) {
 			node.style.setProperty("background-image", `url("${hiddenPath}")`, "important");
 			node.classList.add("has-outcrop");
@@ -239,7 +239,7 @@ export async function applyOutcropAvatar(characterName, node, outcropStyle) {
 	}
 
 	// 2. 十周年UI目录的露头图
-	candidatePaths.push(`${lib.assetURL}extension/十周年UI/image/character/${subdir}/${actualName}.jpg`);
+	candidatePaths.push(`${lib.assetURL}extension/十周年UI-Stars/image/character/${subdir}/${actualName}.jpg`);
 
 	// 依次检查路径
 	for (const path of candidatePaths) {

@@ -67,7 +67,7 @@ export function initSkills() {
 	}
 
 	// 势力优化
-	if (lib.config["extension_十周年UI_shiliyouhua"]) {
+	if (lib.config["extension_十周年UI-Stars_shiliyouhua"]) {
 		Object.defineProperty(lib, "group", {
 			get: () => ["wei", "shu", "wu", "qun", "jin"],
 			set: () => {},

@@ -20,7 +20,7 @@ import { initChatSystem } from "../chatSystem.js";
  */
 export function createShoushaLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 	const base = createBaseLbtnPlugin(lib, game, ui, get, ai, _status, app);
-	const assetPath = "extension/十周年UI/ui/assets/lbtn/";
+	const assetPath = "extension/十周年UI-Stars/ui/assets/lbtn/";
 
 	/**
 	 * 手牌排序
@@ -277,7 +277,7 @@ export function createShoushaLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 	 * @description 在其他角色下面显示与当前玩家的距离，并启动定时更新
 	 */
 	const showDistanceDisplay = () => {
-		if (!lib.config["extension_十周年UI_showDistanceDisplay"]) {
+		if (!lib.config["extension_十周年UI-Stars_showDistanceDisplay"]) {
 			closeDistanceDisplay();
 			return;
 		}
@@ -399,7 +399,7 @@ export function createShoushaLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 
 			if (lib.announce?.subscribe) {
 				lib.announce.subscribe("extensionConfigChanged", data => {
-					if (data?.extension === "十周年UI" && data?.config === "showDistanceDisplay") {
+					if ((data?.extension === "十周年UI" || data?.extension === "十周年UI-Stars") && data?.config === "showDistanceDisplay") {
 						if (data.value) {
 							showDistanceDisplay();
 						} else {
@@ -484,7 +484,7 @@ export function createShoushaLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 		createChatButton() {
 			const btn = ui.create.node("img");
 			btn.src = `${lib.assetURL}${assetPath}uibutton/liaotian.png`;
-			const isRight = lib.config["extension_十周年UI_rightLayout"] === "on";
+			const isRight = lib.config["extension_十周年UI-Stars_rightLayout"] === "on";
 			btn.style.cssText = `display:block;--w:135px;--h:calc(var(--w)*1019/1400);width:var(--w);height:var(--h);position:absolute;top:calc(100% - 97px);${isRight ? "right" : "left"}:calc(100% - 129px);background-color:transparent;z-index:3;${isRight ? "" : "transform:scaleX(-1);"}`;
 
 			btn.onclick = () => {
@@ -727,7 +727,7 @@ export function createShoushaLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 				confirm.node.ok.link = "ok";
 				confirm.node.ok.classList.add("primary");
 				confirm.node.cancel.classList.add("primary2");
-				confirm.node.cancel.innerHTML = `<img draggable='false' src='${lib.assetURL}extension/十周年UI/ui/assets/lbtn/uibutton/QX.png'>`;
+				confirm.node.cancel.innerHTML = `<img draggable='false' src='${lib.assetURL}extension/十周年UI-Stars/ui/assets/lbtn/uibutton/QX.png'>`;
 				confirm.custom = (link, target) => {
 					if (link === "ok") ui.click.ok(target);
 					else if (link === "cancel") ui.click.cancel(target);
@@ -766,8 +766,8 @@ export function createShoushaLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 							const item = document.createElement("div");
 							item.link = skill;
 							item.classList.add("recasting-btn");
-							item.innerHTML = `<img draggable='false' src='${lib.assetURL}extension/十周年UI/ui/assets/lbtn/uibutton/CZ.png'>`;
-							item.style.backgroundImage = `url('${lib.assetURL}extension/十周年UI/ui/assets/lbtn/uibutton/game_btn_bg2.png')`;
+							item.innerHTML = `<img draggable='false' src='${lib.assetURL}extension/十周年UI-Stars/ui/assets/lbtn/uibutton/CZ.png'>`;
+							item.style.backgroundImage = `url('${lib.assetURL}extension/十周年UI-Stars/ui/assets/lbtn/uibutton/game_btn_bg2.png')`;
 							item.style.transform = "scale(0.75)";
 							item.style.setProperty("padding", "25px 10px", "important");
 							item.style.setProperty("margin", "0 -12px", "important");
@@ -880,7 +880,7 @@ export function createShoushaLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 			 * @returns {HTMLElement} 手牌数量元素
 			 */
 			handcardNumber() {
-				const isRight = lib.config["extension_十周年UI_rightLayout"] === "on";
+				const isRight = lib.config["extension_十周年UI-Stars_rightLayout"] === "on";
 
 				ui.create.div(".settingButton", ui.arena);
 

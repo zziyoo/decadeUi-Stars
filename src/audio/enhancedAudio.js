@@ -12,7 +12,7 @@ import { lib, game, _status } from "noname";
  * @param {string} name - 音效文件名
  */
 const playExtAudio = name => {
-	game.playAudio("..", "extension", "十周年UI", `audio/${name}`);
+	game.playAudio("..", "extension", "十周年UI-Stars", `audio/${name}`);
 };
 
 /**
@@ -20,7 +20,7 @@ const playExtAudio = name => {
  * 包含UI点击音效、准备阶段音效、掉血音效
  */
 export function setupEnhancedAudio() {
-	if (!lib.config["extension_十周年UI_bettersound"]) return;
+	if (!lib.config["extension_十周年UI-Stars_bettersound"]) return;
 
 	game._decadeUI_blockedEquipAudios = game._decadeUI_blockedEquipAudios || new Set(["loseHp"]);
 

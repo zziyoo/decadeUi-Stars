@@ -5,8 +5,8 @@
 import { _status } from "noname";
 import { createBaseCharacterPlugin } from "./base.js";
 
-const IMAGE_PATH = "extension/十周年UI/ui/assets/character/xinsha/";
-const AUDIO_PATH = "../extension/十周年UI/ui/assets/lbtn/shousha/";
+const IMAGE_PATH = "extension/十周年UI-Stars/ui/assets/character/xinsha/";
+const AUDIO_PATH = "../extension/十周年UI-Stars/ui/assets/lbtn/shousha/";
 
 const NICKNAMES = ["缘之空", "小小恐龙", "自然萌", "海边的ebao", "小云云", "无语", "点点", "猫猫虫", "小爱莉", "冰佬", "鹿鹿", "黎佬", "小曦", "浮牢师", "U佬", "蓝宝", "影宝", "柳下跖", "k9", "扶苏", "皇叔"];
 
@@ -160,7 +160,7 @@ export function createXinshaCharacterPlugin(lib, game, ui, get, ai, _status, app
 			const caizhu = ui.create.div(".caizhu", dialog);
 			caizhu.onclick = () => this._showProfileDialog(player, playname);
 
-			const leftPaneProfile = ui.create.div(lib.config.extension_十周年UI_ZLLT ? ".left" : ".left2", dialog);
+			const leftPaneProfile = ui.create.div(lib.config["extension_十周年UI-Stars_ZLLT"] ? ".left" : ".left2", dialog);
 			leftPaneProfile.style.backgroundImage = player.node.avatar.style.backgroundImage;
 		},
 
@@ -342,7 +342,7 @@ export function createXinshaCharacterPlugin(lib, game, ui, get, ai, _status, app
 				const playerSkin = player.style.backgroundImage || player.childNodes[0]?.style.backgroundImage;
 				this.utils.setLihuiDiv(skin1, playerSkin);
 			} else {
-				skin1.style.backgroundImage = `url("${lib.assetURL}extension/十周年UI/ui/assets/character/xinsha/unknown.png")`;
+				skin1.style.backgroundImage = `url("${lib.assetURL}extension/十周年UI-Stars/ui/assets/character/xinsha/unknown.png")`;
 			}
 
 			if (name2) {
@@ -350,7 +350,7 @@ export function createXinshaCharacterPlugin(lib, game, ui, get, ai, _status, app
 					const playerSkin2 = player.childNodes[1]?.style.backgroundImage;
 					this.utils.setLihuiDiv(skin2, playerSkin2);
 				} else {
-					skin2.style.backgroundImage = `url("${lib.assetURL}extension/十周年UI/ui/assets/character/xinsha/unknown.png")`;
+					skin2.style.backgroundImage = `url("${lib.assetURL}extension/十周年UI-Stars/ui/assets/character/xinsha/unknown.png")`;
 				}
 			}
 		},

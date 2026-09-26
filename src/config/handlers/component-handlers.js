@@ -43,7 +43,7 @@ export function onJindutiaoSetBlur() {
 		this.innerHTML = String(value);
 	}
 
-	game.saveConfig("extension_十周年UI_jindutiaoSet", value);
+	game.saveConfig("extension_十周年UI-Stars_jindutiaoSet", value);
 
 	const progressBar = document.getElementById("jindutiaopl");
 	if (progressBar) {
@@ -55,14 +55,14 @@ export function onJindutiaoSetBlur() {
  * 进度条高度更新处理
  */
 export function onJindutiaoSetUpdate() {
-	const height = lib.config.extension_十周年UI_jindutiaoSet ?? "22";
+	const height = lib.config["extension_十周年UI-Stars_jindutiaoSet"] ?? "22";
 	const progressBar = document.getElementById("jindutiaopl");
 	if (progressBar) {
 		progressBar.style.bottom = `${height}%`;
 	}
 
 	// 更新菜单显示值
-	const menu = lib.extensionMenu?.extension_十周年UI?.jindutiaoSet;
+	const menu = lib.extensionMenu?.["extension_十周年UI-Stars"]?.jindutiaoSet;
 	if (menu) {
 		const isInput = menu.tagName === "INPUT";
 		if (isInput) {
@@ -77,7 +77,7 @@ export function onJindutiaoSetUpdate() {
  * 阶段提示更新处理
  */
 export function onJDTSYangshiUpdate() {
-	if (lib.config.extension_十周年UI_JDTSYangshi === "0") {
+	if (lib.config["extension_十周年UI-Stars_JDTSYangshi"] === "0") {
 		game.as_removeImage?.();
 		delete _status.as_showImage_phase;
 	}
@@ -88,8 +88,8 @@ export function onJDTSYangshiUpdate() {
  * @param {string} item - 播报样式选项
  */
 export function onGTBBYangshiClick(item) {
-	const oldValue = lib.config.extension_十周年UI_GTBBYangshi;
-	game.saveConfig("extension_十周年UI_GTBBYangshi", item);
+	const oldValue = lib.config["extension_十周年UI-Stars_GTBBYangshi"];
+	game.saveConfig("extension_十周年UI-Stars_GTBBYangshi", item);
 
 	// 清理旧的定时器
 	if (window._gtbbCheckId) {
@@ -116,10 +116,10 @@ export function onGTBBYangshiClick(item) {
 export function onPlayerMarkStyleUpdate() {
 	if (!window.decadeUI) return;
 
-	ui.arena.dataset.playerMarkStyle = lib.config.extension_十周年UI_playerMarkStyle;
+	ui.arena.dataset.playerMarkStyle = lib.config["extension_十周年UI-Stars_playerMarkStyle"];
 
 	if (window.decadeUI.config) {
-		window.decadeUI.config.playerMarkStyle = lib.config.extension_十周年UI_playerMarkStyle;
+		window.decadeUI.config.playerMarkStyle = lib.config["extension_十周年UI-Stars_playerMarkStyle"];
 	}
 
 	game.players.concat(game.dead).forEach(player => {
@@ -162,7 +162,7 @@ export function onPlayerMarkStyleUpdate() {
  */
 export function onLoadingStyleUpdate() {
 	if (window.decadeUI) {
-		ui.arena.dataset.loadingStyle = lib.config.extension_十周年UI_loadingStyle;
+		ui.arena.dataset.loadingStyle = lib.config["extension_十周年UI-Stars_loadingStyle"];
 	}
 }
 
@@ -171,6 +171,6 @@ export function onLoadingStyleUpdate() {
  */
 export function onGainSkillsVisibleUpdate() {
 	if (window.decadeUI) {
-		ui.arena.dataset.gainSkillsVisible = lib.config.extension_十周年UI_gainSkillsVisible;
+		ui.arena.dataset.gainSkillsVisible = lib.config["extension_十周年UI-Stars_gainSkillsVisible"];
 	}
 }

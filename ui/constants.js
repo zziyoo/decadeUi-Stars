@@ -2,24 +2,15 @@
  * UI模块公共常量
  */
 
-/** 样式配置映射 */
-export const STYLE_TO_SKIN = {
-	off: "shousha",
-	on: "shizhounian",
-	othersOff: "xinsha",
-	onlineUI: "online",
-	babysha: "baby",
-	codename: "codename",
-};
-
-/** 默认样式 */
-export const DEFAULT_SKIN = "shizhounian";
+// P1：样式映射唯一数据源已收口至 src/core/styleRuntime.js（任务书§13），
+// 此处 re-export 保持 3 个 skins/index.js 消费方与外部用法的兼容。
+export { STYLE_TO_SKIN, DEFAULT_SKIN } from "../src/core/styleRuntime.js";
 
 /** 手杀风格常量 */
 export const SHOUSHA_CONSTANTS = {
-	IMAGE_PATH: "extension/十周年UI/ui/assets/character/shousha/",
-	IMAGE_PATH_PREFIX: "extension/十周年UI/ui/assets/character/shousha/dengjie/",
-	AUDIO_PATH: "../extension/十周年UI/ui/assets/lbtn/shousha/",
+	IMAGE_PATH: "extension/十周年UI-Stars/ui/assets/character/shousha/",
+	IMAGE_PATH_PREFIX: "extension/十周年UI-Stars/ui/assets/character/shousha/dengjie/",
+	AUDIO_PATH: "../extension/十周年UI-Stars/ui/assets/lbtn/shousha/",
 
 	NICKNAMES: [
 		"氪金抽66",

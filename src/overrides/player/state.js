@@ -279,7 +279,7 @@ function updateHandcardCount(player) {
 	const count = player.countCards("h");
 
 	if (player === game.me) {
-		const style = lib.config.extension_十周年UI_newDecadeStyle;
+		const style = lib.config["extension_十周年UI-Stars_newDecadeStyle"];
 		const showLimit = ["onlineUI", "babysha", "codename"].includes(style);
 
 		player.node.count.innerHTML = showLimit ? `${count}/${player.getHandcardLimit()}` : count;

@@ -12,7 +12,7 @@ import { lib, game, ui, get, ai, _status } from "noname";
 export function createScriptElement(path, isAsync = false) {
 	if (document.querySelector(`script[src*="${path}"]`)) return null;
 
-	const version = lib.extensionPack.十周年UI.version;
+	const version = lib.extensionPack[decadeUIName].version;
 	const script = document.createElement("script");
 
 	if (isAsync) {
@@ -48,7 +48,7 @@ export function createLinkElement(path) {
 	const basePath = path.split("?")[0];
 	if (document.querySelector(`link[href*="${basePath}"]`)) return null;
 
-	const version = lib.extensionPack.十周年UI.version;
+	const version = lib.extensionPack[decadeUIName].version;
 	const link = document.createElement("link");
 	link.rel = "stylesheet";
 	link.href = `${path}?v=${version}&t=${Date.now()}`;

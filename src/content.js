@@ -7,6 +7,7 @@ import { lib, game, ui, get, ai, _status } from "noname";
 import { bootstrapExtension } from "./core/bootstrap.js";
 import { createDecadeUIObject } from "./core/decadeUI.js";
 import { registerDecadeUIUtilityModule, enhanceDecadeUIRuntime } from "./core/utility.js";
+import { getModuleSystem } from "./core/moduleSystem.js";
 
 // 动画模块
 import { setupGameAnimation } from "./animation/gameIntegration.js";
@@ -93,7 +94,7 @@ export const finalizeDecadeUICore = (decadeUI, config) => {
 	setupAudioHooks();
 	setupCharacterAudio();
 	setupDynamicSkin();
-	setupWelcomeDialog(lib.extensionPack.十周年UI);
+	setupWelcomeDialog(lib.extensionPack[decadeUIName]);
 
 	console.timeEnd(decadeUIName);
 	return decadeUI;
@@ -112,7 +113,7 @@ async function loadUIPlugins() {
 		{
 			name: "character",
 			creator: createCharacterPlugin,
-			enabled: () => lib.config.extension_十周年UI_characterPlugin !== false,
+			enabled: () => lib.config["extension_十周年UI-Stars_characterPlugin"] !== false,
 		},
 	];
 
@@ -150,12 +151,21 @@ export async function content(config) {
 	const decadeUI = createDecadeUIObject();
 	window.decadeUI = decadeUI;
 
+	// P1：挂载模块系统公开API（任务书§57兼容API策略）
+	const { registry, moduleManager, styleRuntime, resourceLoader, packageInstaller } = getModuleSystem();
+	decadeUI.modules = registry;
+	decadeUI.moduleManager = moduleManager;
+	decadeUI.resource = resourceLoader;
+	decadeUI.style = styleRuntime;
+	decadeUI.packageInstaller = packageInstaller;
+	decadeUI.version = lib.extensionPack?.[decadeUIName]?.version || null;
+
 	decadeUI.config = {
 		...config,
-		dynamicSkin: lib.config.extension_十周年UI_dynamicSkin ?? false,
-		newDecadeStyle: lib.config.extension_十周年UI_newDecadeStyle ?? "on",
-		dynamicSkinOutcrop: lib.config.extension_十周年UI_dynamicSkinOutcrop ?? false,
-		rightLayout: lib.config.extension_十周年UI_rightLayout === "on",
+		dynamicSkin: lib.config["extension_十周年UI-Stars_dynamicSkin"] ?? false,
+		newDecadeStyle: lib.config["extension_十周年UI-Stars_newDecadeStyle"] ?? "on",
+		dynamicSkinOutcrop: lib.config["extension_十周年UI-Stars_dynamicSkinOutcrop"] ?? false,
+		rightLayout: lib.config["extension_十周年UI-Stars_rightLayout"] === "on",
 	};
 
 	enhanceDecadeUIRuntime(decadeUI);

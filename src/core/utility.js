@@ -73,7 +73,7 @@ export const registerDecadeUIUtilityModule = decadeUI => {
 	 * 获取卡牌缩放配置
 	 * @returns {number} 缩放比例
 	 */
-	const getCardScale = () => lib.config?.extension_十周年UI_cardScale ?? 0.18;
+	const getCardScale = () => lib.config?.["extension_十周年UI-Stars_cardScale"] ?? 0.18;
 
 	/**
 	 * 获取卡牌最佳缩放比例

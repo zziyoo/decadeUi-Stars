@@ -40,7 +40,7 @@ const updateStyle = (styleEl, css) => {
  */
 const getBorderCSS = (borderName, selector, imageWidth) => {
 	if (!borderName || borderName === "off") return "";
-	const url = `${lib.assetURL}extension/十周年UI/image/ui/card/${borderName}.png`;
+	const url = `${lib.assetURL}extension/十周年UI-Stars/image/ui/card/${borderName}.png`;
 	return `${selector} { width: 108px; height: 150px; border: 1px solid; border-radius: 10px; border-image-source: url('${url}'); border-image-slice: 17; border-image-width: ${imageWidth}px; }`;
 };
 
@@ -63,7 +63,7 @@ const levelToBg = { five: "kb4", four: "kb3", three: "kb2", two: "kb2", one: nul
  * @returns {boolean} 是否启用
  */
 function isFeatureEnabled() {
-	const config = lib.config.extension_十周年UI_cardkmh;
+	const config = lib.config["extension_十周年UI-Stars_cardkmh"];
 	return config && config !== "off";
 }
 
@@ -77,11 +77,11 @@ function isFeatureEnabled() {
 function getBorderByPlayer(player, isMe) {
 	if (!player) return null;
 	if (isMe) {
-		const config = lib.config.extension_十周年UI_cardkmh;
+		const config = lib.config["extension_十周年UI-Stars_cardkmh"];
 		return config && config !== "off" ? config : null;
 	}
 	if (!isFeatureEnabled()) return null;
-	const level = player.dataset?.borderLevel || lib.config.extension_十周年UI_borderLevel || "five";
+	const level = player.dataset?.borderLevel || lib.config["extension_十周年UI-Stars_borderLevel"] || "five";
 	return level in levelToBorder ? levelToBorder[level] : "kuang1";
 }
 
@@ -95,10 +95,10 @@ function getBorderByPlayer(player, isMe) {
 function getBgByPlayer(player, isMe) {
 	if (!player) return null;
 	if (isMe) {
-		return lib.config.extension_十周年UI_cardbj || null;
+		return lib.config["extension_十周年UI-Stars_cardbj"] || null;
 	}
 	if (!isFeatureEnabled()) return null;
-	const level = player.dataset?.borderLevel || lib.config.extension_十周年UI_borderLevel || "five";
+	const level = player.dataset?.borderLevel || lib.config["extension_十周年UI-Stars_borderLevel"] || "five";
 	return levelToBg[level] || null;
 }
 
@@ -114,7 +114,7 @@ export function applyCardBorder(card, player, isMe = false) {
 	const border = getBorderByPlayer(player, isMe);
 
 	if (border) {
-		const borderUrl = `${lib.assetURL}extension/十周年UI/image/ui/card/${border}.png`;
+		const borderUrl = `${lib.assetURL}extension/十周年UI-Stars/image/ui/card/${border}.png`;
 		Object.assign(card.style, {
 			width: "108px",
 			height: "150px",
@@ -128,7 +128,7 @@ export function applyCardBorder(card, player, isMe = false) {
 
 	const bg = getBgByPlayer(player, isMe);
 	if (bg && !card.dataset.identityCard && (card.classList.contains("infohidden") || card.classList.contains("infoflip") || !card.childElementCount)) {
-		const bgUrl = `${lib.assetURL}extension/十周年UI/image/ui/card/${bg}.png`;
+		const bgUrl = `${lib.assetURL}extension/十周年UI-Stars/image/ui/card/${bg}.png`;
 		card.style.setProperty("background", `url('${bgUrl}')`, "important");
 		card.style.setProperty("background-size", "100% 100%", "important");
 		if (card.classList.contains("infohidden") || card.classList.contains("infoflip")) {
@@ -143,13 +143,13 @@ export function applyCardBorder(card, player, isMe = false) {
  * @returns {void}
  */
 export function updateCardStyles() {
-	const borderConfig = lib.config.extension_十周年UI_cardkmh;
-	const cardBg = lib.config.extension_十周年UI_cardbj;
+	const borderConfig = lib.config["extension_十周年UI-Stars_cardkmh"];
+	const cardBg = lib.config["extension_十周年UI-Stars_cardbj"];
 	const selector = ".hand-cards > .handcards > .card";
 
 	borderStyleEl = updateStyle(borderStyleEl, getBorderCSS(borderConfig, selector, 20));
 
-	const bgCSS = cardBg ? `${selector}:empty, ${selector}.infohidden { background: url('${lib.assetURL}extension/十周年UI/image/ui/card/${cardBg}.png'); background-size: 100% 100% !important; }` : "";
+	const bgCSS = cardBg ? `${selector}:empty, ${selector}.infohidden { background: url('${lib.assetURL}extension/十周年UI-Stars/image/ui/card/${cardBg}.png'); background-size: 100% 100% !important; }` : "";
 	bgStyleEl = updateStyle(bgStyleEl, bgCSS);
 }
 
@@ -223,7 +223,7 @@ function processDialogCards(dialog) {
 		if (card.innerHTML) card.innerHTML = "";
 
 		if (bgName) {
-			const bgUrl = `${lib.assetURL}extension/十周年UI/image/ui/card/${bgName}.png`;
+			const bgUrl = `${lib.assetURL}extension/十周年UI-Stars/image/ui/card/${bgName}.png`;
 			card.style.setProperty("background-image", `url('${bgUrl}')`, "important");
 			card.style.setProperty("background-size", "100% 100%", "important");
 		} else {

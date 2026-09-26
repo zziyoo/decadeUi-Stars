@@ -37,7 +37,7 @@ export function setupSkillDieAudio() {
 		const pick = audioObj.audioList.slice().randomRemove();
 		if (!pick) return;
 
-		if (pick.text && player?.say && lib.config.extension_十周年UI_skillDieAudio) {
+		if (pick.text && player?.say && lib.config["extension_十周年UI-Stars_skillDieAudio"]) {
 			player.say(pick.text);
 		}
 
@@ -60,7 +60,7 @@ export function setupSkillDieAudio() {
 		const pick = audioObj.audioList.slice().randomRemove();
 		if (!pick) return;
 
-		if (pick.text && player.say && lib.config.extension_十周年UI_skillDieAudio) {
+		if (pick.text && player.say && lib.config["extension_十周年UI-Stars_skillDieAudio"]) {
 			player.say(pick.text);
 		}
 
