@@ -2416,3 +2416,16 @@ P0 审计
 ```
 
 任何未来修改必须优先遵循本路线；如果源码现实情况证明路线需要调整，应先记录调整原因和影响，再修改阶段计划。
+
+## v1.1（2026-09-27）
+
+- **P0 审计完成并验收通过**（报告：`docs/modularization-audit.md`）。
+- **仓库决策**：zziyoo/decadeUi-Stars 作为独立开发仓库，已迁入原版 v1.4.2 全部源码作为开发基线；原版仓库（zziyoo/decadeUi）与本地原版目录保持不动，玩家继续使用原版扩展。
+- **开发版命名**：定为「十周年UI-Stars」（info.json name）。运行时路径为 `extension/十周年UI-Stars/`，配置键前缀为 `extension_十周年UI-Stars_`（含连字符，代码中一律方括号访问 `lib.config["extension_十周年UI-Stars_xxx"]`）。开发版与原版不可在同一游戏环境同时启用。
+- **P1 模块基础设施完成**（任务书§35-§36）：
+  - 新增 `src/core/`：manifest.js、registry.js、builtInModules.js、moduleManager.js、styleRuntime.js、resourceLoader.js、packageInstaller.js、moduleSystem.js（8文件，纯逻辑部分不依赖 noname，可在 Node 独立测试）。
+  - STYLE_TO_SKIN 收口为 styleRuntime.js 单一数据源（原 decadeModule.js 与 ui/constants.js 两份定义删除，后者 re-export 保持兼容）；顺带移除死代码 STYLE_TO_INDEX（其值与实际 playerN.css 序号逻辑相反）。
+  - decadeUI 公开API挂载：modules / moduleManager / resource / style / packageInstaller / version。
+  - PackageInstaller 为骨架（install/update/uninstall 返回 P1_UNSUPPORTED，真正实现在 P5）。
+  - 验证：node 冒烟测试通过（tests/p1-smoke.test.mjs）、154 个 JS 全量语法校验通过、vite 构建成功。
+- 阶段推进：**P1 完成，待验收后进入 P2（公共依赖解耦）**。

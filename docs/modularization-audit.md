@@ -6,6 +6,8 @@
 > 本阶段未修改任何源码、未移动任何文件。运行时行为未实测，个别结论标注了置信度。
 >
 > 后记：2026-09-27 P0 验收后，原版源码已整体迁入本仓库（Stars）作为开发基线，运行时路径（`extension/十周年UI/`，由 info.json 的 name 决定）不变，本报告中的路径结论继续有效。原版目录保持不动，玩家继续使用原版扩展。
+>
+> 后记2（P1实施时发现）：src/core/decadeModule.js 原含未被使用的 STYLE_TO_INDEX 常量，其值与实际加载逻辑相反——playerN.css 的实际序号 = STYLE_CONFIG_VALUES.indexOf(style)+1，即 decade(on)→player1.css、mobile(off)→player2.css（app.js styleFileMap 的 on→main1.js 可佐证）。本报告 §3/§13 中两者的 playerN 对应已据此修正；该死代码已在 P1 中随映射收口一并移除。另 §7.1 原注的 ui/styles/{lbtn,skill}/xinsha.css"特例"实为排序展示造成的误读，一将成名无特殊文件，已修正。
 
 ---
 
@@ -85,8 +87,8 @@ extension.js（入口，读info.json，设 window.decadeUIName / window.decadeUI
 
 | 样式（内部ID） | JS | CSS | 图片 | ui/assets 资源 |
 |---|---|---|---|---|
-| 十周年 decade(shizhounian) | ui/*/skins/shizhounian.js ×3 | src/styles/player2.css、ui/styles/{character,lbtn,skill}/shizhounian.css(+window×2) | image/styles/decade/(132) | ui/assets/skill/shizhounian/ |
-| 移动版 mobile(shousha) | ui/*/skins/shousha.js ×3 | src/styles/player1.css、ui/styles/{character,lbtn,skill}/shousha.css(+window×2) | image/styles/shousha/(92) | ui/assets/character/shousha/(2.0MB)、ui/assets/skill/shousha/(1.8MB)、ui/assets/lbtn/shoushatip/ |
+| 十周年 decade(shizhounian) | ui/*/skins/shizhounian.js ×3 | src/styles/player1.css、ui/styles/{character,lbtn,skill}/shizhounian.css(+window×2) | image/styles/decade/(132) | ui/assets/skill/shizhounian/ |
+| 移动版 mobile(shousha) | ui/*/skins/shousha.js ×3 | src/styles/player2.css、ui/styles/{character,lbtn,skill}/shousha.css(+window×2) | image/styles/shousha/(92) | ui/assets/character/shousha/(2.0MB)、ui/assets/skill/shousha/(1.8MB)、ui/assets/lbtn/shoushatip/ |
 | 一将成名 yjcm(xinsha) | ui/*/skins/xinsha.js ×3 | src/styles/player3.css、ui/styles/{character,lbtn,skill}/xinsha.css、ui/styles/{lbtn,skill}/xinsha.css(额外顶层) | image/styles/xinsha/(24) | ui/assets/character/xinsha/(3.4MB)、ui/assets/skill/yijiang/(被跨样式CSS引用，见§8⚠️) |
 | Online(online) | ui/*/skins/online.js ×3 | src/styles/player4.css、ui/styles/{character,lbtn,skill}/online.css(+window×2) | image/styles/online/(57) | ui/assets/character/online/(1.7MB)、ui/assets/lbtn/OL_line/(跨样式引用，见§8⚠️)、ui/assets/chat/(聊天系统) |
 | 欢乐 baby(babysha) | ui/*/skins/baby.js ×3 | src/styles/player5.css、ui/styles/{character,lbtn,skill}/baby.css(+window×2) | image/styles/baby/(30) | ui/assets/character/baby/(1.5MB) |
@@ -168,7 +170,6 @@ ui/styles/（32）: base.css、fonts.css
                 + character/{6样式}.css
                 + lbtn/{6样式}.css + lbtn/window/{6样式}.css
                 + skill/{6样式}.css + skill/window/{6样式}.css
-                + lbtn/xinsha.css、skill/xinsha.css（一将成名额外顶层文件，特例）
 src/config/config-window.css、src/features/welcomeDialog.css（功能自带，2个）
 ```
 
@@ -275,8 +276,8 @@ audio/ 241 个 mp3 全部由 src/audio/easterEggs 配置表按文件名引用（
 |---|---|---|
 | P1 | 6 个样式 manifest.json（由现有枚举生成）+ ModuleManager/StyleRuntime/ResourceLoader 骨架 | 0（纯代码） |
 | P2 | STYLE_TO_SKIN 收口；assetURL 收口；共享资源登记 | 0（纯代码） |
-| P3 | decade Pack：3 皮肤JS + 7 CSS + player2.css + image/styles/decade(132文件) + ui/assets/skill/shizhounian | ~1.5MB |
-| P4 | mobile Pack：3 皮肤JS + 7 CSS + player1.css + image/styles/shousha(92) + ui/assets/character/shousha + skill/shousha + lbtn/shoushatip | ~5MB |
+| P3 | decade Pack：3 皮肤JS + 7 CSS + player1.css + image/styles/decade(132文件) + ui/assets/skill/shizhounian | ~1.5MB |
+| P4 | mobile Pack：3 皮肤JS + 7 CSS + player2.css + image/styles/shousha(92) + ui/assets/character/shousha + skill/shousha + lbtn/shoushatip | ~5MB |
 
 （P1/P2 阶段所有样式资源仍走原路径加载，manifest 先行注册，保证随时可回滚。）
 
