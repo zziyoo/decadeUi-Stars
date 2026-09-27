@@ -3,9 +3,10 @@
  * @description 支持gskills、xinfu_falu和starcanxi标记、playerMarkStyle配置
  */
 import { lib, game, ui, get, ai, _status } from "noname";
-import { createBaseSkillPlugin } from "./base.js";
-import { getAvailableSkills, updateSkillUsability, isGSkillCacheSame, shouldSkipEquipSkill } from "./gskillMixin.js";
-import { skillButtonTooltip } from "../../../src/ui/skillButtonTooltip.js";
+// P3-2：皮肤迁入独立包。base.js/gskillMixin.js 等共享模块仍在单体目录，跨包相对引用（回溯扩展根）
+import { createBaseSkillPlugin } from "../../../../../../ui/skill/skins/base.js";
+import { getAvailableSkills, updateSkillUsability, isGSkillCacheSame, shouldSkipEquipSkill } from "../../../../../../ui/skill/skins/gskillMixin.js";
+import { skillButtonTooltip } from "../../../../../../src/ui/skillButtonTooltip.js";
 
 export function createShizhounianSkillPlugin(lib, game, ui, get, ai, _status, app) {
 	const base = createBaseSkillPlugin(lib, game, ui, get, ai, _status, app);

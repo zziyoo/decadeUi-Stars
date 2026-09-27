@@ -3,7 +3,8 @@
  * 特点：十周年风格菜单、手牌整理、全选按钮
  */
 import { lib, game, ui, get, ai, _status } from "noname";
-import { createBaseLbtnPlugin } from "./base.js";
+// P3-2：皮肤迁入独立包。base.js 等共享模块仍在单体目录，跨包相对引用（回溯扩展根）
+import { createBaseLbtnPlugin } from "../../../../../../ui/lbtn/skins/base.js";
 
 export function createShizhounianLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 	const base = createBaseLbtnPlugin(lib, game, ui, get, ai, _status, app);

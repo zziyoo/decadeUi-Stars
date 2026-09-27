@@ -3,8 +3,9 @@
  * 功能：立绘显示、分包信息、简洁布局、千幻聆音样式支持
  */
 import { _status } from "noname";
-import { createBaseCharacterPlugin } from "./base.js";
-import { skillButtonTooltip } from "../../../src/ui/skillButtonTooltip.js";
+// P3-2：皮肤迁入独立包。base.js 等共享模块仍在单体目录，跨包相对引用（回溯扩展根）
+import { createBaseCharacterPlugin } from "../../../../../../ui/character/skins/base.js";
+import { skillButtonTooltip } from "../../../../../../src/ui/skillButtonTooltip.js";
 
 /**
  * 创建十周年风格角色插件

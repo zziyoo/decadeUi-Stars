@@ -1,7 +1,8 @@
 /**
  * @fileoverview 左侧按钮样式管理器 - 动态加载样式模块
  */
-import { readRawStyleValue } from "./../../../src/core/styleRuntime.js";
+import { readRawStyleValue, STYLE_TO_MODULE, DEFAULT_STYLE_VALUE } from "./../../../src/core/styleRuntime.js";
+import { getModuleSystem } from "./../../../src/core/moduleSystem.js";
 import { lib, game, ui, get, ai, _status } from "noname";
 import { STYLE_TO_SKIN, DEFAULT_SKIN } from "../../constants.js";
 
@@ -15,6 +16,8 @@ export function getCurrentSkin() {
 
 /**
  * 动态加载lbtn插件
+ * P3-2路由：已安装独立样式包 → 从包根加载皮肤模块；未安装 → 单体路径。
+ * 已拆分但未安装（包被移除）时单体副本已删除，加载失败被捕获 → 皮肤不可用而 Core 正常。
  * @param {string} skinName - 样式名
  * @param {*} lib
  * @param {*} game
@@ -27,7 +30,12 @@ export function getCurrentSkin() {
  */
 export async function createLbtnPluginForSkin(skinName, lib, game, ui, get, ai, _status, app) {
 	try {
-		const module = await import(/* @vite-ignore */ `./${skinName}.js`);
+		const styleId = STYLE_TO_MODULE[readRawStyleValue() ?? DEFAULT_STYLE_VALUE] || "decade";
+		const { moduleManager, resourceLoader } = getModuleSystem();
+		const specifier = moduleManager.getInstallState(styleId).independent
+			? resourceLoader.getAsset(styleId, `ui/lbtn/skins/${skinName}.js`)
+			: `./${skinName}.js`;
+		const module = await import(/* @vite-ignore */ specifier);
 		const creator = module[`create${skinName.charAt(0).toUpperCase() + skinName.slice(1)}LbtnPlugin`];
 		return creator?.(lib, game, ui, get, ai, _status, app) ?? null;
 	} catch (e) {
