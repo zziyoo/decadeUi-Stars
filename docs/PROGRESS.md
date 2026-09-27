@@ -14,7 +14,7 @@
 | Stars 仓库 | https://github.com/zziyoo/decadeUi-Stars （本仓库，**独立开发仓库，已迁入源码**） |
 | 原版扩展（玩家在用，不动） | `zziyoo/decadeUi`，本地路径 `C:\Users\32360\Desktop\无名杀-win32-x64\resources\app\extension\十周年UI` |
 | 总路线 | P0审计 → P1模块基础设施 → P2公共依赖解耦 → P3十周年Pack → P4移动版Pack → P5下载器 → P6模块管理界面 → P7全部Style → P8 Feature Pack → P9模块化构建 → P10 Release → P11自动更新 → P12回滚 → P13旧版本迁移 → P14全量测试 |
-| 当前阶段 | **P5 下载器/安装器完成（全部为纯代码验证，未进游戏实测），待验收**；yjcm/online/baby/codename 四包拆分仍是**未提交在制品**（上一会话遗留，详见§四末） |
+| 当前阶段 | **P5 下载器/安装器完成**（纯代码/Node 验证）：首版 `6c76534` + 审查修复 `f4a69ac` + 补充修复 `df2afea`/`29a69e3`，均已推送（`origin/main` = `29a69e3`）。**P5 的真机（Android/SAF）与游戏内实测按用户决定不再阻塞阶段推进，统一并入§八「项目收尾验证清单」**。下一阶段：P6 模块管理界面（任务书§43）。 |
 
 ## 二、环境备忘（本机关键信息）
 
@@ -48,10 +48,13 @@
 | 2026-09-27 | **（上一会话遗留，本轮收尾提交）yjcm/online/baby/codename 四包批量拆分**：`scripts/migrate-style-packs.mjs` 一次性拆四个样式（CSS组6×4+皮肤JS×12，自有图片随引用复制进包、共享/死引用指向扩展根并登记 deadRefs），单体 CSS/皮肤 JS 已 git rm（已 staged），`builtInModules` 全 `pack:true`、`MIGRATED_STYLE_IDS` 六样式、installed.json 六包。**状态：工作区在制品，未提交**（详见§四末） | verify-pack 881可达/17已知死引用/0未知缺失 ✓；skin-imports 37可达/0缺失 ✓ |
 | 2026-09-27 | **P5 下载器与包安装器完成**（任务书§42，详见§四"P5 记录"）：downloader.js（HTTP/进度/重试/取消/超时/SHA256）、packageInstaller.js 正式实现（§17/§18/§19/§11/§24/§20）、moduleIo.js（复用本体文件与 JSZip 能力 + zip-slip 防护）、registry.unregister、manifest 版本比较与 core 检查、moduleSystem 注入端口；顺带修 P3-1 手机布局 window CSS 多加载回归 | 210 JS 语法 ✓；P1/P2/P3/**P5** 测试 ✓；构建 ✓（未进游戏实测） |
 | 2026-09-27 | **P5 审查修复：可靠性与安全边界**（详见§四"P5 审查修复记录"）：IO 适配层重写为永不 pending（真实 error callback 优先、`IO_STALL` 兜底判失败、桌面端自建递归 mkdir 取代 `game.ensureDirectory`）；SHA256 判据收归外部 `expectedId/expectedVersion/expectedSha256`；安装让位目录保留到台账写成功后才清理、回滚失败 → `ROLLBACK_FAILED`；卸载改 `.removing-*` 让位事务；`force` 不再绕过 §19 三条边界；`atomicRename` 能力如实上报 | 215 JS/mjs 语法 ✓；P1/P2/P3/P5 四套测试 ✓；verify-pack 881/0、skin-imports 37/0 ✓；构建 ✓（仍未进游戏实测） |
+| 2026-09-27 | **P5 补充修复一：跨平台文件移动与 IO 吞错**（`df2afea`）：`movePath` 按源类型分流，修掉"用 copyTree 搬文件 → 一个字节不复制却把源删掉"（Android/SAF 上表现为 `installed.json` 永不更新）；`kindOf` 不再把权限/磁盘/`IO_STALL` 吞成"不存在"（entry 检查/已在位预检/发布目标/卸载根/localVersions 五处各自转结构化错误）；`writeInstalled` 无原子 rename 平台改「备份 → 提交 → 回读校验 → 失败还原」，还原失败抛 `StateCommitError` → 调用方报 `ROLLBACK_FAILED`+residual；卸载让位恢复失败改报 `ROLLBACK_FAILED`；空 `installed.json` 判 `INSTALLED_CORRUPT` 不再当空台账改写 | 215 JS/mjs 语法 ✓；四套测试 ✓（新增 21 块）；verify-pack/skin-imports ✓；构建 ✓ |
+| 2026-09-27 | **P5 补充修复二：非原子平台 file→已存在文件的目标事务**（`29a69e3`）：`movePath` 的 file 分支改为专用 `moveFileNonAtomic`（写临时目标并校验 → 备份旧目标 → 提交并回读校验 → 删源 → 清理事务件）；提交失败恢复旧目标、**提交成功但删源失败明确报 `IO_FAILED` 且不回滚已提交目标**、恢复失败抛 `IO_ROLLBACK_FAILED`+residual 并保留备份；目录搬运保持 `copyTree + removeTree` 未动 | 语法 ✓；四套测试 ✓（新增 A~H + 目录目标共 9 块）；verify-pack/skin-imports ✓；构建 ✓ |
 
 ## 四、进行中（当前任务指针）
 
-**当前任务：P5 真正实现下载器与包安装器 —— ✅ 代码完成（2026-09-27），仅纯代码验证，待游戏内实测**（任务书 §42，流程按 §17/§18/§19/§11/§24/§20）
+**当前任务：P6 模块管理界面（任务书§43）—— 设计已提交，待批准后实现**。
+P5（任务书§42 + §17/§18/§19/§11/§24/§20）已完成：首版 `6c76534` + 审查修复 `f4a69ac` + 补充修复 `df2afea`/`29a69e3`；**真机与游戏内实测并入§八收尾清单，不阻塞推进**。
 
 ### P5 记录
 
@@ -239,10 +242,10 @@
 
 ## 六、下一步
 
-1. ~~P0~~ ✅ ~~P1~~ ✅ ~~P2（含阻塞修复）~~ ✅ ~~P3/P4~~ ✅ ~~四包批量拆分（`33da307`）~~ ✅ ~~P5 下载器/安装器 + 可靠性与安全边界审查修复~~ ✅（2026-09-27，**全部为纯代码 / Node 验证，未进游戏实测**）。
-2. **当前阻塞：需要游戏内实测**——按§八清单跑 P5 的安装/卸载回路（四包已入库，一并验掉 6 样式可用性）。
-3. **推送待确认**：`origin/main` 停在 `b61643c`；本地已有四包提交 + P5 两笔提交未推送。另一份克隆 `extension/decadeUi-Stars` 落后，别在它上面开发。
-4. **P6 模块市场/管理界面**（任务书 §43）：`packageInstaller` 已具备全部所需数据与动作（`isAvailable`（含 atomicRename）/`listInstalled`/`localVersions`/`fetchIndex`/`install`/`update`/`uninstall` + `INSTALL_CODES` 文案码），P6 只做 UI 与进度呈现；建议 P6 前先有 P10 的最小可用索引（无网络环境下 P6 只能演示"离线"分支）。
+1. ~~P0~~ ✅ ~~P1~~ ✅ ~~P2（含阻塞修复）~~ ✅ ~~P3/P4~~ ✅ ~~四包批量拆分（`33da307`）~~ ✅ ~~P5 下载器/安装器 + 可靠性审查修复 + 两笔补充修复（`f4a69ac`/`df2afea`/`29a69e3`）~~ ✅（2026-09-27，**纯代码 / Node 验证**）。
+2. **无阶段阻塞**：P5 的 Android/SAF 真机与游戏内实测按用户决定**不再阻塞推进**，统一并入§八「项目收尾验证清单」，在收尾（P14 全量测试）阶段一次性执行。
+3. **推送**：已推送，`origin/main` = `29a69e3`（`git ls-remote` 核实）。另一份克隆 `extension/decadeUi-Stars` 落后，别在它上面开发。
+4. **P6 模块市场/管理界面**（任务书 §43，**当前任务**）：`packageInstaller` 已具备全部所需数据与动作（`isAvailable`（含 atomicRename）/`listInstalled`/`localVersions`/`fetchIndex`/`install`/`update`/`uninstall` + `INSTALL_CODES` 文案码），P6 只做 UI 与进度呈现。已定范围：仿配置窗口的独立窗口 + `decadeUI.showModuleManager` + `Ctrl+Shift+M` + 模块源 URL 配置键（默认空，离线可演示已装/卸载链路）；**本轮不做**启用/禁用（新运行时能力，另立子任务）、不做真实 `module-index.json` 资产（留 P10）。
 5. **P7 剩余官方样式包**已随 `33da307` 完成；任务书§44"每完成一个单独 PR"未按字面执行（四包一次提交），验收时按样式逐个切换确认。
 
 ## 七、会话记录
@@ -256,10 +259,12 @@
 | 2026-09-27 | **P2 阻塞修复完成**：extension.js 首启顺序、ResourceLoader getModuleBase 正式抽象、3 处模块求值期回归修复；测试基建（noname 解析钩子）；统计勘误 201 个 JS |
 | 2026-09-27 | **热修复：同步上游 equipCopy.js**（上游会话中更新导致快照捕获中间损坏态），修复 content() 中断与角色框布局问题 |
 | 2026-09-27 | **P5 完成（纯代码验证）**：新增 downloader.js（XHR+进度+重试+取消+超时+SHA256）、重写 packageInstaller.js（§17安装/§18更新/§19卸载/§11依赖/§20失败保护，全结构化返回不抛错）、新增 moduleIo.js（复用本体文件能力 + 本体 JSZip，zip-slip 防护）；registry.unregister、manifest 版本比较与 core 检查；顺带修复 P3-1 遗留的手机布局 window CSS 多加载回归；新增 tests/p5-installer.test.mjs；210 个 JS 语法 ✓、P1/P2/P3/P5 测试 ✓、verify-pack/skin-imports ✓、构建 ✓。四包拆分为上一会话遗留、本轮收尾提交 `33da307` |
-| 2026-09-27 | **P5 审查修复（可靠性与安全边界）**：moduleIo 重写为"永不 pending"的适配层（真实 error callback 优先 + IO_STALL 兜底判失败，桌面端自建递归 mkdir 取代 game.ensureDirectory）；SHA256 信任来源收归外部 expectedId/expectedVersion/expectedSha256（包内自述只作告警，缺外部摘要则 `hashVerified:false`）；安装/更新让位目录保留到台账写成功后才清理、回滚失败显式 `ROLLBACK_FAILED`+residual；卸载改为 `.removing-*` 让位→改台账→再删，失败可原样恢复；`force` 不再绕过 IN_USE/DEPENDED/core；`isAvailable().atomicRename` 如实上报非原子平台。215 JS ✓、四套测试 ✓、verify-pack/skin-imports ✓、构建 ✓ |
+| 2026-09-27 | **P5 补充修复两笔（`df2afea`/`29a69e3`，已推送）**：①`moduleIo.movePath` 按源类型分流（修掉"搬文件一个字节不复制却把源删掉"）、`kindOf` 不再吞 IO 异常、`writeInstalled` 非原子平台备份事务、卸载让位恢复失败报 `ROLLBACK_FAILED`、空台账判损坏；②`movePath` file 分支专用事务 `moveFileNonAtomic`（暂存校验→备份旧目标→提交并回读→删源→清理；提交失败恢复旧目标、删源失败不回滚、恢复失败 `IO_ROLLBACK_FAILED`+residual）。**真机实测按用户决定降级为收尾清单（§八）**，不再阻塞；进入 P6 设计（模块管理界面，任务书§43） |
 
-## 八、P5 游戏内实测清单（未执行，需你本人进游戏验证）
+## 八、项目收尾验证清单（真机 / 游戏内，收尾阶段统一执行）
 
+> 本清单原为 P5 阶段阻塞项。因 Android/SAF 真机与游戏内验证成本极高（用户决定，2026-09-27），**P5 的真机与游戏内实测不再阻塞阶段推进**，改为在**项目收尾（P14 全量测试）阶段统一执行**；P6 及后续阶段的真机项也追加到本清单。
+>
 > 前置：F12 Console 里 `decadeUI.packageInstaller` 应存在（content 阶段挂载）。以下均为**单行单表达式**，可逐条粘贴。
 
 | # | 目的 | 指令 / 操作 | 预期 |
@@ -281,4 +286,8 @@
 4. 真实模块包目前不存在（P9/P10 才产出 `module-index.json` 与分包 zip），所以 D~H 需要手工造包；不想造包时至少要跑 A/B/C/F 四条。
 5. **IO 故障无法在游戏内安全注入**（需要只读目录/断链回调），已在 Node 层用假 io 覆盖：`createDir` 报错 → 安装器返回 `IO_FAILED@stage=temp`；本体永不回调 → 15 秒后 `IO_STALL`（测试用 3 秒 `Promise.race` 断言不会 pending）。游戏内若安装**超过 15 秒无响应**即属异常，请把返回对象与 `tmp/modules/` 残留情况回贴。
 6. 卸载的事务顺序是"改名让位 → 改台账 → 才真删"，所以中途失败时模块仍在；若你看到 `modules/<id>/.removing-*` 目录，说明删除阶段没走完（不影响使用，可手工删）。
+7. **Android 已知残留面（代码层已尽力，真机仍需确认）**：
+   - 本体 `noname/init/cordova.js` 的 `game.checkFile` 把 `NOT_READABLE_ERR` 与 `NOT_FOUND_ERR` **一起映射成 `-1`（=不存在）**，所以无 Node fs 平台上"目录存在但不可读"仍可能被 `io.kind()` 当作不存在 → 卸载可能返回"已卸载"却在磁盘留下目录。**权限类故障请重点验证这一条**（桌面端不受影响：`moduleIo` 桌面分支直接走 `fs.stat`，能区分 ENOENT 与 EACCES）。
+   - Cordova 的 `game.writeFile` 走 `getFile(name, {create:true})`（**不带 `overwrite:true`**），覆盖已存在文件的真实行为未知：可能直接被拒。本轮已做成"写失败即保留源文件、并恢复旧目标（`29a69e3` 的目标事务）"，但**能否成功替换 `installed.json` 必须真机实测**；若稳定失败，需要评估"先删目标再写"或改用其他本体 API。
+   - 事务临时/备份件命名 `<dest>.moving-<txn>` / `<dest>.moving-backup-<txn>`（不以下划线或点开头，本体 `getFileList` 会列出）。正常事务结束即删；只有 `IO_ROLLBACK_FAILED` 时故意保留备份供人工恢复（`residual` 字段会点名路径）。
 

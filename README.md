@@ -2368,11 +2368,12 @@ Online 1.1 → 1.2
 # 六十七、当前任务指针
 
 ```text
-当前阶段：P5（下载器/安装器）
-当前任务：代码完成 + 可靠性与安全边界审查修复完成，待游戏内实测验收
-状态：纯代码/Node 验证通过；未推送（本地领先 origin 三笔）；四包拆分已入库 33da307
+当前阶段：P6（模块市场/管理界面）
+当前任务：P6 范围已定，待批准后实现
+状态：P5 已完成（纯代码/Node 验证）；已推送（origin/main = 29a69e3）；
+      P5 的真机/游戏内实测不再阻塞推进，统一并入收尾验证清单（docs/PROGRESS.md §八）
 
-下一阶段：P6（模块市场/管理界面）
+上一阶段：P5（下载器/安装器）✅ 代码完成（6c76534 + f4a69ac + df2afea + 29a69e3）
 
 注：本指针自 v1.1 起长期失更，历次阶段结论以
 「六十八、变更记录」与 docs/PROGRESS.md 为准。
@@ -2478,3 +2479,14 @@ P0 审计
 - 验证（**全部静态 / Node 环境，未进游戏**）：215 个 JS/mjs `node --check` 全过；P1/P2/P3/P5 四套测试全过；verify-pack 881 可达 / 0 未知缺失；check-skin-imports 37 可达 / 0 缺失；`pnpm build` 成功。
 - 是否改变旧行为：P1~P4 与四包的运行时行为**未改**；变化仅在 P5 安装器的 API 语义（`spec.sha256`→外部 `expectedSha256` 判据、卸载不再被 force 绕过、新增 `ROLLBACK_FAILED/UNINSTALL_FAILED/IO_STALL` 结果码、`installed.json` 条目新增 `hashVerified`）。
 - 提交：与四包拆分（`33da307`）分开、不 squash；P5 首版与本次审查修复各一笔。
+
+## v1.6（2026-09-27）P5 补充修复两笔 + 真机实测降级为收尾清单
+
+- **补充修复一（`df2afea`）跨平台文件移动与 IO 吞错**：
+  - `moduleIo.movePath` 按源类型分流。旧实现用 `copyTree + removeTree` 搬**文件**时，`copyTree` 只列举目录条目 → "一个字节都不复制、却把源删掉"（Android/SAF 上表现为 `installed.json` 永远没被替换、临时文件消失，安装"成功"但重启后模块无法恢复注册）。文件分支改为「读源 → 写目标 → **回读逐字节校验** → 才删源」，非 file/dir 类型显式报错。
+  - `packageInstaller.kindOf` 不再把权限/磁盘/`IO_STALL` 异常吞成 `null`（entry 检查、已在位预检、发布目标检查、卸载根检查、`localVersions` 五处各自转 `IO_FAILED`/`IO_STALL`），杜绝"磁盘目录仍在却被删台账/被覆盖"的路径。
+  - `writeInstalled` 在无原子 rename 平台改为「备份旧台账 → 提交 → 回读校验 JSON → 失败即还原」，还原失败抛 `StateCommitError`，安装/卸载两侧统一报 `ROLLBACK_FAILED` + `rolledBack:false` + `residual`；卸载让位恢复失败改报 `ROLLBACK_FAILED`；空 `installed.json` 判 `INSTALLED_CORRUPT`（不再当空台账覆盖）。
+- **补充修复二（`29a69e3`）非原子平台 file → 已存在文件的目标事务**：`movePath` 的 file 分支改为专用事务 `moveFileNonAtomic`——写 `<dest>.moving-<txn>` 并校验（正式目标尚未被触碰）→ 读旧目标并写备份 `<dest>.moving-backup-<txn>` 且校验 → 提交正式目标并回读校验 → 删源 → 清理事务件。提交失败：恢复旧目标、源保留；**提交已校验但删源失败：明确报 `IO_FAILED` 且不回滚已提交目标**（复制已完成，仅源残留）；旧目标恢复失败：`IoError(IO_ROLLBACK_FAILED)` + `residual`，并保留备份作为人工恢复来源。目录搬运保持 `copyTree + removeTree` 未动。
+- 验证（**纯代码 / Node**）：175 文件 `node --check` ✓；P1/P2/P3/P5 四套测试 ✓（两笔合计新增 30 个断言块）；verify-pack 881 可达 / 0 未知缺失；check-skin-imports 37 / 0 缺失；`pnpm build` ✓。
+- **阶段决定（用户）**：Android/SAF 真机与游戏内实测成本极高，**P5 的实测不再作为阶段阻塞**，统一并入收尾验证清单（`docs/PROGRESS.md` §八），在收尾（P14 全量测试）阶段执行；§八 已补记 Android 已知残留面（本体 `game.checkFile` 把 `NOT_READABLE_ERR` 报成 `-1`＝不存在；Cordova `writeFile` 走 `getFile({create:true})` 不带 `overwrite`，覆盖行为未知）。
+- 阶段推进：**进入 P6（模块市场/管理界面，任务书§43）**。范围已定：仿配置窗口的独立窗口 + `decadeUI.showModuleManager` / `hideModuleManager` + `Ctrl+Shift+M` + 模块源 URL 配置键（默认空，离线可演示已装/卸载链路）；本轮**不做**启用/禁用（新运行时能力，另立子任务）、不做真实 `module-index.json` 资产（留 P10）。
