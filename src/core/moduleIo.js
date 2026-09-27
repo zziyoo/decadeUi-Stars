@@ -15,6 +15,9 @@
  *
  * 原子性如实描述：同卷 rename 是原子的；跨卷（EXDEV）与非 Node 平台走 copy+remove，
  * **不是原子操作**，中途失败会留下部分副本——调用方必须按"可能残留"处理（清理+结构化错误）。
+ * 平台差异（本体 init/cordova.js，Node 侧无法验证）：其 writeFile 走 `getFile({create:true})` +
+ * FileWriter.write()，既可能因目标已存在而失败，也可能不截断而留下尾部残字节；因此非原子搬运
+ * 一律"写后回读逐字节校验"，校验不过就保留源、按失败上报。
  *
  * 路径约定：端口接受**扩展根相对**的 POSIX 路径（如 `modules/decade/1.5.0/manifest.json`），
  * 调用期拼 `extension/<decadeUIName>/` 前缀。禁止在模块求值期引用 decadeUIName（P2 规则）。
@@ -46,6 +49,16 @@ const dirOf = path => {
 	return parts.join("/");
 };
 const nameOf = path => path.split("/").pop();
+/** 逐字节比对（非原子平台搬运后必须自己验证落盘内容，回调"成功"不代表内容一致） */
+const sameBytes = (a, b) => {
+	if (!(a instanceof ArrayBuffer) || !(b instanceof ArrayBuffer) || a.byteLength !== b.byteLength) return false;
+	const left = new Uint8Array(a);
+	const right = new Uint8Array(b);
+	for (let index = 0; index < left.length; index++) {
+		if (left[index] !== right[index]) return false;
+	}
+	return true;
+};
 
 /** 默认卡死兜底：真实回调永远优先，只有本体彻底不回调时才判失败 */
 const DEFAULT_STALL_MS = 15000;
@@ -287,6 +300,17 @@ export function createNonameIo(options = {}) {
 		}
 	}
 
+	async function removeFile(rel) {
+		if ((await kind(rel)) !== "file") return;
+		if (fs) {
+			return settle((ok, err) => fs.unlink(abs(rel), error => (error && error.code !== "ENOENT" ? err(error) : ok(null))), {
+				label: `unlink ${rel}`,
+				stallMs,
+			});
+		}
+		return legacyRemoveFile(rel);
+	}
+
 	const io = {
 		/** 端口能力探测：桌面端 rename 同卷原子，其它平台为 copy+remove（非原子） */
 		capabilities: { atomicRename: !!(fs && typeof fs.rename === "function"), desktop: !!fs },
@@ -307,25 +331,26 @@ export function createNonameIo(options = {}) {
 		readBinary,
 		writeBinary,
 		listDir,
-		removeFile: async rel => {
-			if ((await kind(rel)) !== "file") return;
-			if (fs) {
-				return settle((ok, err) => fs.unlink(abs(rel), error => (error && error.code !== "ENOENT" ? err(error) : ok(null))), {
-					label: `unlink ${rel}`,
-					stallMs,
-				});
-			}
-			return legacyRemoveFile(rel);
-		},
+		removeFile,
 		removeTree,
 		copyTree,
 		/**
-		 * 改名到位：桌面端同卷 rename（原子）；跨卷 EXDEV 或无 fs 时 copy+remove（**非原子**，
-		 * 中途失败可能留下部分副本，调用方必须清理并返回结构化错误）。
+		 * 改名到位：桌面端同卷 rename（原子）；跨卷 EXDEV 或无 Node fs 平台走 copy+remove，
+		 * **不是原子操作**——中途失败可能留下部分副本，调用方必须清理并返回结构化错误。
+		 *
+		 * 必须按源类型分流：copyTree 只列举目录条目，拿它搬**文件**会"一个字节都不复制、
+		 * 却把源删掉"（Android/SAF 上表现为 installed.json 永远没被替换、临时文件消失）。
+		 * 非原子分支的顺序是硬约束：读源 → 写目标 → 回读逐字节校验 → 才删源；
+		 * 任一步失败都保持"源还在、旧目标未被提前删除"，让上层（writeInstalled 的备份）有恢复来源。
 		 */
 		movePath: async (srcRel, destRel) => {
 			const sourceKind = await kind(srcRel);
 			if (sourceKind === null) throw new IoError("IO_FAILED", `[ModuleIo] move 源不存在: ${srcRel}`);
+			if (sourceKind !== "file" && sourceKind !== "dir") {
+				throw new IoError("IO_FAILED", `[ModuleIo] move 源类型不支持（既不是文件也不是目录）: ${srcRel} → ${sourceKind}`);
+			}
+			// 自我搬运：不挡的话非原子分支会在"写回同一路径"之后把源删掉
+			if (safeRel(srcRel) === safeRel(destRel)) return;
 			if (fs && typeof fs.rename === "function") {
 				const from = abs(srcRel);
 				const to = abs(destRel);
@@ -337,6 +362,17 @@ export function createNonameIo(options = {}) {
 					if (error?.code !== "EXDEV" && error?.cause?.code !== "EXDEV") throw error;
 					// 跨卷：回落为非原子的 copy+remove
 				}
+			}
+			if (sourceKind === "file") {
+				const buffer = await readBinary(srcRel);
+				if (buffer === null) throw new IoError("IO_FAILED", `[ModuleIo] move 源文件不可读: ${srcRel}`);
+				await writeBinary(destRel, buffer);
+				const landed = await readBinary(destRel);
+				if (!sameBytes(landed, buffer)) {
+					throw new IoError("IO_FAILED", `[ModuleIo] move 目标内容校验不一致（源已保留）: ${srcRel} → ${destRel}`);
+				}
+				await removeFile(srcRel);
+				return;
 			}
 			await copyTree(srcRel, destRel);
 			await removeTree(srcRel);

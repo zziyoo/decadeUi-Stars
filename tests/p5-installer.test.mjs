@@ -11,6 +11,7 @@ import { registerBuiltInModules } from "../src/core/builtInModules.js";
 import { compareVersions, checkCoreRequirement } from "../src/core/manifest.js";
 import { downloadBuffer, DownloadError, DOWNLOAD_CODES, sha256Hex } from "../src/core/downloader.js";
 import { createPackageInstaller, INSTALL_CODES } from "../src/core/packageInstaller.js";
+import { createNonameIo, normalizeZipEntry, IoError } from "../src/core/moduleIo.js";
 
 /** ResourceLoader 在测试环境下的扩展根（window 桩） */
 globalThis.window = { decadeUIPath: "file:///ext/extension/十周年UI-Stars/" };
@@ -21,13 +22,17 @@ const norm = path => String(path).split("\\").join("/").replace(/^\.?\//, "");
 
 // ------------------------------------------------------------------ 虚拟文件系统端口
 
-function createFakeIo() {
+function createFakeIo(options = {}) {
 	/** @type {Map<string, string|Uint8Array>} */
 	const files = new Map();
 	const io = {
 		files,
+		/** 端口能力：默认按桌面端（同卷原子 rename）；atomicRename:false 走安装器的备份事务分支 */
+		capabilities: { atomicRename: options.atomicRename !== false, desktop: options.desktop !== false },
 		/** 一次性故障注入：命中即抛错并清除 */
 		failOnce: new Set(),
+		/** 一次性"半截落盘"：命中则把目标写成被截断的内容并当作成功（模拟 copy 中断） */
+		corruptOnce: new Set(),
 		kind: rel => {
 			const key = norm(rel);
 			if (files.has(key)) return "file";
@@ -94,6 +99,14 @@ function createFakeIo() {
 			const from = norm(src);
 			const to = norm(dest);
 			io.guard(`movePath:${from}`);
+			if (io.corruptOnce.has(`movePath:${from}`)) {
+				io.corruptOnce.delete(`movePath:${from}`);
+				const value = files.get(from);
+				if (value === undefined) throw new Error(`move 源不存在: ${from}`);
+				files.delete(from);
+				files.set(to, typeof value === "string" ? value.slice(0, Math.max(1, value.length >> 1)) : value.slice(0, Math.max(1, value.byteLength >> 1)));
+				return;
+			}
 			if (files.has(from)) {
 				files.set(to, files.get(from));
 				files.delete(from);
@@ -119,6 +132,174 @@ function createFakeIo() {
 		published: id => [...files.keys()].filter(key => key.startsWith(`modules/${id}/`)),
 	};
 	return io;
+}
+
+// ------------------------------------------------------------------ 无 Node fs 平台的 game 替身（Android / SAF）
+
+/**
+ * 按本体 noname/init/cordova.js 的回调契约实现的最小虚拟盘：
+ * checkFile / createDir / writeFile / readFile / readFileAsText / getFileList / removeFile / removeDir。
+ * 故障注入：failOnce 命中 `op:path` → 走错误回调；corruptOnce 命中 → 半截落盘后"成功"
+ * （Cordova 的 FileWriter 不做 truncate，短写正是这种结果）。
+ */
+function createLegacyGame(initial = {}) {
+	const strip = path => String(path).split("\\").join("/").replace(/^extension\/[^/]+\//, "").replace(/^\/+/, "");
+	/** @type {Map<string, Uint8Array>} */
+	const store = new Map();
+	const dirs = new Set();
+	for (const [rel, text] of Object.entries(initial)) store.set(strip(rel), encoder.encode(String(text)));
+
+	const hit = (bucket, label) => (bucket.has(label) ? (bucket.delete(label), true) : false);
+	const bytesOf = value => (value instanceof Uint8Array ? value : encoder.encode(String(value)));
+
+	const game = {
+		store,
+		failOnce: new Set(),
+		corruptOnce: new Set(),
+		has: rel => store.has(strip(rel)),
+		readText: rel => (store.has(strip(rel)) ? new TextDecoder().decode(store.get(strip(rel))) : null),
+		checkFile: (path, callback, onerror) => {
+			const key = strip(path);
+			if (hit(game.failOnce, `checkFile:${key}`)) return onerror(new Error(`注入故障: checkFile ${key}`));
+			if (store.has(key)) return callback(1);
+			if (dirs.has(key) || [...store.keys()].some(existing => existing.startsWith(`${key}/`))) return callback(0);
+			return callback(-1);
+		},
+		createDir: (path, callback, onerror) => {
+			const key = strip(path);
+			if (hit(game.failOnce, `createDir:${key}`)) return onerror(new Error(`注入故障: createDir ${key}`));
+			dirs.add(key);
+			callback();
+		},
+		writeFile: (data, dir, name, callback) => {
+			const key = strip(`${dir}/${name}`);
+			if (hit(game.failOnce, `writeFile:${key}`)) return callback(new Error(`注入故障: writeFile ${key}`));
+			const bytes = bytesOf(data);
+			if (hit(game.corruptOnce, `writeFile:${key}`)) {
+				store.set(key, bytes.slice(0, Math.max(1, Math.floor(bytes.byteLength / 2))));
+				return callback(null);
+			}
+			store.set(key, new Uint8Array(bytes));
+			dirs.add(key.slice(0, key.lastIndexOf("/")));
+			callback(null);
+		},
+		readFile: (path, callback, onerror) => {
+			const key = strip(path);
+			if (hit(game.failOnce, `readFile:${key}`)) return onerror(new Error(`注入故障: readFile ${key}`));
+			const bytes = store.get(key);
+			if (bytes === undefined) return onerror(new Error(`ENOENT ${key}`));
+			callback(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
+		},
+		readFileAsText: (path, callback, onerror) => {
+			const key = strip(path);
+			if (hit(game.failOnce, `readFileAsText:${key}`)) return onerror(new Error(`注入故障: readFileAsText ${key}`));
+			const bytes = store.get(key);
+			if (bytes === undefined) return onerror(new Error(`ENOENT ${key}`));
+			callback(new TextDecoder().decode(bytes));
+		},
+		getFileList: (dir, success, failure) => {
+			const prefix = `${strip(dir)}/`;
+			if (hit(game.failOnce, `getFileList:${strip(dir)}`)) return failure(new Error(`注入故障: getFileList ${strip(dir)}`));
+			const files = [];
+			const folders = new Set();
+			for (const key of store.keys()) {
+				if (!key.startsWith(prefix)) continue;
+				const rest = key.slice(prefix.length);
+				const slash = rest.indexOf("/");
+				if (slash === -1) files.push(rest);
+				else folders.add(rest.slice(0, slash));
+			}
+			success([...folders], files);
+		},
+		removeFile: (path, callback) => {
+			const key = strip(path);
+			if (hit(game.failOnce, `removeFile:${key}`)) return callback(new Error(`注入故障: removeFile ${key}`));
+			store.delete(key);
+			callback(null);
+		},
+		removeDir: (path, callback, onerror) => {
+			const key = strip(path);
+			if (hit(game.failOnce, `removeDir:${key}`)) return onerror(new Error(`注入故障: removeDir ${key}`));
+			dirs.delete(key);
+			callback();
+		},
+	};
+	return game;
+}
+
+/** 只给 rename 会 EXDEV 的桌面虚拟 fs（跨卷场景：movePath 必须走非原子 copy+remove 分支） */
+function createDesktopStore(initial = {}) {
+	/** @type {Map<string, Uint8Array>} */
+	const store = new Map();
+	for (const [rel, text] of Object.entries(initial)) store.set(rel, encoder.encode(String(text)));
+	const key = path => String(path).replace(/^extension\/[^/]+\//, "");
+	const dirNames = new Set();
+	const fs = {
+		failOnce: new Set(),
+		exdev: false,
+		store,
+		calls: [],
+		has: rel => store.has(rel),
+		readText: rel => (store.has(rel) ? new TextDecoder().decode(store.get(rel)) : null),
+		stat: (path, cb) => {
+			const name = key(path);
+			if (fs.failOnce.has(`stat:${name}`)) return cb(Object.assign(new Error("EACCES"), { code: "EACCES" }));
+			if (store.has(name)) return cb(null, { isDirectory: () => false, isFile: () => true });
+			if ([...store.keys()].some(existing => existing.startsWith(`${name}/`))) return cb(null, { isDirectory: () => true, isFile: () => false });
+			return cb(Object.assign(new Error("ENOENT"), { code: "ENOENT" }));
+		},
+		mkdir: (path, options, cb) => {
+			const name = key(path);
+			if (fs.failOnce.has(`mkdir:${name}`)) return cb(Object.assign(new Error("EACCES"), { code: "EACCES" }));
+			dirNames.add(name);
+			cb(null);
+		},
+		readFile: (path, encoding, cb) => {
+			const done = typeof encoding === "function" ? encoding : cb;
+			const name = key(path);
+			if (fs.failOnce.has(`readFile:${name}`)) return done(Object.assign(new Error("EACCES"), { code: "EACCES" }));
+			const bytes = store.get(name);
+			if (bytes === undefined) return done(Object.assign(new Error("ENOENT"), { code: "ENOENT" }));
+			done(null, typeof encoding === "string" ? new TextDecoder().decode(bytes) : bytes);
+		},
+		writeFile: (path, data, encoding, cb) => {
+			const done = typeof encoding === "function" ? encoding : cb;
+			const name = key(path);
+			if (fs.failOnce.has(`writeFile:${name}`)) return done(Object.assign(new Error("ENOSPC"), { code: "ENOSPC" }));
+			store.set(name, typeof data === "string" ? encoder.encode(data) : new Uint8Array(data));
+			done(null);
+		},
+		unlink: (path, cb) => {
+			const name = key(path);
+			if (fs.failOnce.has(`unlink:${name}`)) return cb(Object.assign(new Error("EACCES"), { code: "EACCES" }));
+			store.delete(name);
+			cb(null);
+		},
+		rm: (path, options, cb) => {
+			const name = key(path);
+			if (fs.failOnce.has(`rm:${name}`)) return cb(Object.assign(new Error("EACCES"), { code: "EACCES" }));
+			for (const existing of [...store.keys()]) {
+				if (existing === name || existing.startsWith(`${name}/`)) store.delete(existing);
+			}
+			cb(null);
+		},
+		readdir: (path, cb) => {
+			const prefixPath = `${key(path)}/`;
+			if (fs.failOnce.has(`readdir:${key(path)}`)) return cb(Object.assign(new Error("EACCES"), { code: "EACCES" }));
+			const names = [...new Set([...store.keys()].filter(name => name.startsWith(prefixPath)).map(name => name.slice(prefixPath.length).split("/")[0]))];
+			cb(null, names);
+		},
+		rename: (from, to, cb) => {
+			if (fs.exdev) return cb(Object.assign(new Error("EXDEV: cross-device link not permitted"), { code: "EXDEV" }));
+			const fromKey = key(from);
+			const toKey = key(to);
+			if (!store.has(fromKey)) return cb(Object.assign(new Error("ENOENT"), { code: "ENOENT" }));
+			store.set(toKey, store.get(fromKey));
+			store.delete(fromKey);
+			cb(null);
+		},
+	};
+	return fs;
 }
 
 // ------------------------------------------------------------------ ZIP 与传输替身
@@ -197,8 +378,8 @@ const styleFiles = id => ({ "player.css": `${id} 样式`, [`ui/${id}.js`]: "expo
 const makeDownload = transport => (url, options = {}) => downloadBuffer(url, { ...options, transport });
 
 /** 组装一套可测环境 */
-function makeEnv({ packages = {}, script = [], manifest, files, coreVersion = "1.4.2", isInUse = () => false, random } = {}) {
-	const io = createFakeIo();
+function makeEnv({ packages = {}, script = [], manifest, files, coreVersion = "1.4.2", isInUse = () => false, random, atomicRename = true } = {}) {
+	const io = createFakeIo({ atomicRename });
 	const allPackages = { "https://test/a.zip": makePackage(manifest || styleManifest("testmod", "1.0.0"), files || styleFiles("testmod")), ...packages };
 	const registry = createModuleRegistry();
 	registerBuiltInModules(registry, { version: coreVersion });
@@ -810,10 +991,258 @@ assert.equal(checkCoreRequirement("~1.5.0", "1.9.0").ok, false, "不认识的写
 	assert.deepEqual(io.tempLeftovers(), []);
 }
 
+// ------------------------------------------------------------------ IO 异常不得伪装成"不存在"（P0-2）
+
+{
+	// 安装：kind 抛真实 IO_FAILED → 必须原样失败，不得当作"目标不存在"继续发布
+	const pkg = makePackage(styleManifest("testmod", "1.0.0"), styleFiles("testmod"));
+	const { io, installer } = makeEnv({ packages: { "https://test/a.zip": pkg }, manifest: pkg });
+	await io.writeText("modules/installed.json", JSON.stringify({ schema: 1, modules: { decade: { version: "1.4.2" } } }));
+	const before = io.files.get("modules/installed.json");
+	io.kind = async rel => {
+		throw new IoError("IO_FAILED", `permission denied: ${rel}`);
+	};
+	const result = await installer.install({ id: "testmod", version: "1.0.0", url: "https://test/a.zip" });
+	assert.equal(result.ok, false, `真实 IO 异常不得被当成"不存在"（实际 ${result.code}）`);
+	assert.equal(result.code, INSTALL_CODES.IO_FAILED, `期望 IO_FAILED，实际 ${result.code}: ${result.message}`);
+	assert.deepEqual(io.published("testmod"), [], "IO 异常时不得发布模块目录");
+	assert.equal(io.files.get("modules/installed.json"), before, "IO 异常不得改动台账");
+	assert.deepEqual(io.tempLeftovers(), [], "IO 失败仍要清理临时产物");
+}
+
+{
+	// kind 的 IO_STALL 同样不得被吞：单列成 IO_STALL，便于与真实错误区分
+	const pkg = makePackage(styleManifest("testmod", "1.0.0"), styleFiles("testmod"));
+	const { io, installer } = makeEnv({ packages: { "https://test/a.zip": pkg }, manifest: pkg });
+	io.kind = async () => {
+		throw new IoError("IO_STALL", "本体回调未触发");
+	};
+	const result = await installer.install({ id: "testmod", version: "1.0.0", url: "https://test/a.zip" });
+	assert.equal(result.ok, false);
+	assert.equal(result.code, INSTALL_CODES.IO_STALL, `期望 IO_STALL，实际 ${result.code}: ${result.message}`);
+	assert.deepEqual(io.published("testmod"), []);
+}
+
+{
+	// 卸载：检查 modules/<id> 时权限失败 → 直接失败，台账与目录都原样保持
+	const pkg = makePackage(styleManifest("testmod", "1.0.0"), styleFiles("testmod"));
+	const { io, installer } = makeEnv({ packages: { "https://test/a.zip": pkg }, manifest: pkg });
+	assert.equal((await installer.install({ id: "testmod", version: "1.0.0", url: "https://test/a.zip" })).ok, true);
+	const before = io.files.get("modules/installed.json");
+	io.kind = async rel => {
+		throw new IoError("IO_FAILED", `permission denied: ${rel}`);
+	};
+	const result = await installer.uninstall("testmod");
+	assert.equal(result.ok, false);
+	assert.equal(result.code, INSTALL_CODES.IO_FAILED, `卸载检查失败必须显式报错，实际 ${result.code}: ${result.message}`);
+	assert.equal(io.files.get("modules/installed.json"), before, "检查失败时不得删台账（否则目录还在、记录没了）");
+	assert.equal(io.files.get("modules/installed.json").includes("testmod"), true, "台账仍须登记 testmod");
+	assert.equal(textAt(io, "modules/testmod/1.0.0/player.css"), "testmod 样式", "模块目录必须原样");
+	assert.equal(
+		[...io.files.keys()].some(key => key.includes(".removing-")),
+		false,
+		"检查失败时不应已经让位"
+	);
+}
+
+{
+	// 发布前的"目标在不在"检查失败 → 不得覆盖可能存在的旧目录
+	const v1 = makePackage(styleManifest("testmod", "1.0.0"), { ...styleFiles("testmod"), "player.css": "old" });
+	const v2 = makePackage(styleManifest("testmod", "1.0.0"), { ...styleFiles("testmod"), "player.css": "new" });
+	const { io, installer } = makeEnv({ packages: { "https://test/a.zip": v1, "https://test/b.zip": v2 }, manifest: v1 });
+	assert.equal((await installer.install({ id: "testmod", version: "1.0.0", url: "https://test/a.zip" })).ok, true);
+	const before = io.files.get("modules/installed.json");
+	const originalKind = io.kind;
+	// 只让发布目标这一条路径探测失败：不带 expectedVersion，跳过已在位预检，逼到发布前检查
+	io.kind = rel => {
+		if (norm(rel) === "modules/testmod/1.0.0") throw new IoError("IO_FAILED", "permission denied");
+		return originalKind(rel);
+	};
+	const result = await installer.install({ id: "testmod", url: "https://test/b.zip" }, { force: true });
+	assert.equal(result.ok, false);
+	assert.equal(result.code, INSTALL_CODES.IO_FAILED, `期望 IO_FAILED，实际 ${result.code}: ${result.message}`);
+	assert.equal(result.stage, "publishing");
+	assert.equal(textAt(io, "modules/testmod/1.0.0/player.css"), "old", "检查失败时旧目录一个字节都不能动");
+	assert.equal(io.files.get("modules/installed.json"), before, "检查失败时台账不变");
+	assert.equal(
+		[...io.files.keys()].some(key => key.includes(".replacing-")),
+		false,
+		"检查失败时不得让位"
+	);
+	assert.deepEqual(io.tempLeftovers(), []);
+}
+
+{
+	// localVersions：IO 异常不得当成"本地没有版本"
+	const pkg = makePackage(styleManifest("testmod", "1.0.0"), styleFiles("testmod"));
+	const { io, installer } = makeEnv({ packages: { "https://test/a.zip": pkg }, manifest: pkg });
+	assert.equal((await installer.install({ id: "testmod", version: "1.0.0", url: "https://test/a.zip" })).ok, true);
+	io.kind = async rel => {
+		throw new IoError("IO_FAILED", `permission denied: ${rel}`);
+	};
+	const result = await installer.localVersions("testmod");
+	assert.equal(result.ok, false, "列举失败不得返回空列表");
+	assert.equal(result.code, INSTALL_CODES.IO_FAILED);
+}
+
+{
+	// entry 文件存在性检查失败 → 不能伪装成 ENTRY_MISSING，也不能放行
+	const pkg = makePackage(styleManifest("testmod", "1.0.0"), styleFiles("testmod"));
+	const { io, installer } = makeEnv({ packages: { "https://test/a.zip": pkg }, manifest: pkg });
+	const originalKind = io.kind;
+	io.kind = rel => {
+		if (norm(rel).startsWith("tmp/modules/")) throw new IoError("IO_FAILED", "permission denied");
+		return originalKind(rel);
+	};
+	const result = await installer.install({ id: "testmod", version: "1.0.0", url: "https://test/a.zip" });
+	assert.equal(result.ok, false);
+	assert.equal(result.code, INSTALL_CODES.IO_FAILED, `entry 检查失败应报 IO 错误，实际 ${result.code}: ${result.message}`);
+	assert.deepEqual(io.published("testmod"), []);
+}
+
+// ------------------------------------------------------------------ 无原子 rename 平台的 installed.json 事务（P1）
+
+{
+	// 桌面端保持 temp → rename：不为了理论一致性平白造备份
+	const pkg = makePackage(styleManifest("testmod", "1.0.0"), styleFiles("testmod"));
+	const { io, installer } = makeEnv({ packages: { "https://test/a.zip": pkg }, manifest: pkg });
+	assert.equal((await installer.install({ id: "testmod", version: "1.0.0", url: "https://test/a.zip" })).ok, true);
+	assert.equal(
+		[...io.files.keys()].filter(key => key.includes(".backup-")).length,
+		0,
+		"原子 rename 平台不应产生备份文件"
+	);
+}
+
+{
+	// 提交这一步把台账写坏（copy 中断）→ 必须用备份还原旧内容，并按普通失败上报
+	const pkg = makePackage(styleManifest("testmod", "1.0.0"), styleFiles("testmod"));
+	const { io, installer } = makeEnv({ packages: { "https://test/a.zip": pkg }, manifest: pkg, atomicRename: false, random: () => "t4" });
+	await io.writeText("modules/installed.json", JSON.stringify({ schema: 1, modules: { decade: { version: "1.4.2" } } }));
+	const before = io.files.get("modules/installed.json");
+	io.corruptOnce.add("movePath:modules/installed.json.t4.tmp");
+	const result = await installer.install({ id: "testmod", version: "1.0.0", url: "https://test/a.zip" });
+	assert.equal(result.ok, false);
+	assert.equal(result.code, INSTALL_CODES.STATE_FAILED, `旧台账已还原时该报 STATE_FAILED，实际 ${result.code}: ${result.message}`);
+	assert.equal(result.rolledBack, true);
+	assert.equal(io.files.get("modules/installed.json"), before, "installed.json 必须恢复为旧内容");
+	assert.equal(
+		[...io.files.keys()].some(key => key.includes(".backup-")),
+		false,
+		"恢复完成后不留备份文件"
+	);
+	assert.equal(
+		[...io.files.keys()].some(key => key.endsWith(".tmp")),
+		false,
+		"失败后不留临时台账"
+	);
+	assert.deepEqual(io.published("testmod"), [], "台账没更新就不该留下新模块目录");
+}
+
+{
+	// 提交 outright 失败（目标根本没被动过）→ 旧台账原样，且不留下备份与临时文件
+	const pkg = makePackage(styleManifest("testmod", "1.0.0"), styleFiles("testmod"));
+	const { io, installer } = makeEnv({ packages: { "https://test/a.zip": pkg }, manifest: pkg, atomicRename: false, random: () => "t5" });
+	await io.writeText("modules/installed.json", JSON.stringify({ schema: 1, modules: { decade: { version: "1.4.2" } } }));
+	const before = io.files.get("modules/installed.json");
+	io.failOnce.add("movePath:modules/installed.json.t5.tmp");
+	const result = await installer.install({ id: "testmod", version: "1.0.0", url: "https://test/a.zip" });
+	assert.equal(result.ok, false);
+	assert.equal(result.code, INSTALL_CODES.STATE_FAILED);
+	assert.equal(io.files.get("modules/installed.json"), before, "旧台账一个字节都不能变");
+	assert.equal(
+		[...io.files.keys()].some(key => key.includes(".backup-") || key.endsWith(".tmp")),
+		false,
+		"失败路径必须清掉备份与临时文件"
+	);
+}
+
+{
+	// 备份也恢复不了 → 必须是 ROLLBACK_FAILED + rolledBack:false + 点出台账残留，绝不假装已恢复
+	const pkg = makePackage(styleManifest("testmod", "1.0.0"), styleFiles("testmod"));
+	const { io, installer } = makeEnv({ packages: { "https://test/a.zip": pkg }, manifest: pkg, atomicRename: false, random: () => "t6" });
+	await io.writeText("modules/installed.json", JSON.stringify({ schema: 1, modules: { decade: { version: "1.4.2" } } }));
+	const before = io.files.get("modules/installed.json");
+	io.corruptOnce.add("movePath:modules/installed.json.t6.tmp"); // 提交写坏
+	io.failOnce.add("movePath:modules/installed.json.backup-t6"); // 还原也失败
+	const result = await installer.install({ id: "testmod", version: "1.0.0", url: "https://test/a.zip" });
+	assert.equal(result.ok, false);
+	assert.equal(result.code, INSTALL_CODES.ROLLBACK_FAILED, `实际 ${result.code}: ${result.message}`);
+	assert.equal(result.rolledBack, false);
+	assert.equal(result.stage, "state");
+	assert.match(String(result.residual), /modules\/installed\.json/, "必须给出待人工恢复的台账路径");
+	assert.notEqual(io.files.get("modules/installed.json"), before, "此时台账确实仍是坏的（不得谎报已恢复）");
+	assert.throws(() => JSON.parse(io.files.get("modules/installed.json")), "残留的应是被截断的台账");
+}
+
+{
+	// 原本没有台账：提交写坏后应清掉半成品，而不是留下一份坏台账
+	const pkg = makePackage(styleManifest("testmod", "1.0.0"), styleFiles("testmod"));
+	const { io, installer } = makeEnv({ packages: { "https://test/a.zip": pkg }, manifest: pkg, atomicRename: false, random: () => "t8" });
+	io.corruptOnce.add("movePath:modules/installed.json.t8.tmp");
+	const result = await installer.install({ id: "testmod", version: "1.0.0", url: "https://test/a.zip" });
+	assert.equal(result.ok, false);
+	assert.equal(result.code, INSTALL_CODES.STATE_FAILED, `实际 ${result.code}: ${result.message}`);
+	assert.equal(io.files.has("modules/installed.json"), false, "旧状态是不存在，半成品必须清掉");
+	assert.deepEqual(io.published("testmod"), []);
+}
+
+{
+	// 卸载侧同样受保护：非原子平台台账提交失败 → 目录改回原位、旧台账保持
+	const pkg = makePackage(styleManifest("testmod", "1.0.0"), styleFiles("testmod"));
+	const { io, installer } = makeEnv({ packages: { "https://test/a.zip": pkg }, manifest: pkg, atomicRename: false, random: () => "t9" });
+	assert.equal((await installer.install({ id: "testmod", version: "1.0.0", url: "https://test/a.zip" })).ok, true);
+	const before = io.files.get("modules/installed.json");
+	io.corruptOnce.add("movePath:modules/installed.json.t9.tmp");
+	const result = await installer.uninstall("testmod");
+	assert.equal(result.ok, false);
+	assert.equal(result.code, INSTALL_CODES.STATE_FAILED, `卸载失败应报 STATE_FAILED，实际 ${result.code}: ${result.message}`);
+	assert.equal(result.rolledBack, true);
+	assert.equal(io.files.get("modules/installed.json"), before, "卸载失败不得破坏安装状态");
+	assert.equal(textAt(io, "modules/testmod/1.0.0/player.css"), "testmod 样式", "让位的目录必须改回原位");
+	assert.equal(
+		[...io.files.keys()].some(key => key.includes(".removing-") || key.includes(".backup-")),
+		false,
+		"不留让位/备份残骸"
+	);
+}
+
+{
+	// 让位做到一半失败，且已让位的目录改不回去 → 只能是 ROLLBACK_FAILED（台账没写，但磁盘已不对称）
+	const v1 = makePackage(styleManifest("testmod", "1.0.0"), styleFiles("testmod"));
+	const v2 = makePackage(styleManifest("testmod", "1.2.0"), styleFiles("testmod"));
+	const { io, installer } = makeEnv({
+		packages: { "https://test/1.zip": v1, "https://test/2.zip": v2 },
+		manifest: v1,
+		random: () => "rp",
+	});
+	assert.equal((await installer.install({ id: "testmod", version: "1.0.0", url: "https://test/1.zip" })).ok, true);
+	assert.equal((await installer.install({ id: "testmod", version: "1.2.0", url: "https://test/2.zip" })).ok, true);
+	const before = io.files.get("modules/installed.json");
+	io.failOnce.add("movePath:modules/testmod/1.2.0"); // 第二个目录让位失败
+	io.failOnce.add("movePath:modules/testmod/.removing-1.0.0-rp"); // 把第一个改回去也失败
+	const result = await installer.uninstall("testmod");
+	assert.equal(result.ok, false);
+	assert.equal(result.code, INSTALL_CODES.ROLLBACK_FAILED, `恢复失败必须报 ROLLBACK_FAILED，实际 ${result.code}: ${result.message}`);
+	assert.equal(result.rolledBack, false);
+	assert.match(String(result.residual), /modules\/testmod/, "要给出残留的让位目录");
+	assert.equal(io.files.get("modules/installed.json"), before, "让位阶段失败不得改台账");
+}
+
+{
+	// 空文件是被截断的台账，不是"什么都没装"：必须拒绝改写，不能顺手当空台账覆盖
+	const pkg = makePackage(styleManifest("testmod", "1.0.0"), styleFiles("testmod"));
+	const { io, installer } = makeEnv({ packages: { "https://test/a.zip": pkg }, manifest: pkg });
+	await io.writeText("modules/installed.json", "");
+	const result = await installer.install({ id: "testmod", version: "1.0.0", url: "https://test/a.zip" });
+	assert.equal(result.code, INSTALL_CODES.INSTALLED_CORRUPT, `空台账应判损坏，实际 ${result.code}: ${result.message}`);
+	assert.equal(io.files.get("modules/installed.json"), "", "判损坏时不得改写台账");
+	assert.deepEqual(io.published("testmod"), []);
+}
+
 // ------------------------------------------------------------------ IO 适配层：失败与卡死都必须落定
 
 {
-	const { createNonameIo, IoError } = await import("../src/core/moduleIo.js");
 	const pkg = makePackage(styleManifest("testmod", "1.0.0"), styleFiles("testmod"));
 
 	// 1) createDir 真实报错 → writeBinary reject（IoError），不再有静默挂起
@@ -877,10 +1306,92 @@ assert.equal(checkCoreRequirement("~1.5.0", "1.9.0").ok, false, "不认识的写
 	assert.equal(roIo.capabilities.desktop, true);
 }
 
+// ------------------------------------------------------------------ movePath：无 Node fs 平台的文件搬运（P0-1）
+
+{
+	// 1) 纯 game 回调平台：move 一个文件必须把内容搬过去，搬成功后才删源
+	const game = createLegacyGame({ "modules/installed.json": "OLD", "modules/installed.json.tmp": "NEW" });
+	const io = createNonameIo({ game, fs: null, stallMs: 800 });
+	assert.equal(io.capabilities.atomicRename, false);
+	await io.movePath("modules/installed.json.tmp", "modules/installed.json");
+	assert.equal(game.readText("modules/installed.json"), "NEW", "目标内容必须等于源内容");
+	assert.equal(game.has("modules/installed.json.tmp"), false, "搬运成功后源必须消失");
+}
+
+{
+	// 2) 目标写失败：源必须原样保留，旧目标不许被提前删除
+	const game = createLegacyGame({ "modules/installed.json": "OLD", "modules/installed.json.tmp": "NEW" });
+	game.failOnce.add("writeFile:modules/installed.json");
+	const io = createNonameIo({ game, fs: null, stallMs: 800 });
+	await assert.rejects(
+		() => io.movePath("modules/installed.json.tmp", "modules/installed.json"),
+		error => error instanceof IoError && error.ioCode === "IO_FAILED"
+	);
+	assert.equal(game.readText("modules/installed.json.tmp"), "NEW", "写目标失败时源必须还在");
+	assert.equal(game.readText("modules/installed.json"), "OLD", "写目标失败时旧目标内容不得消失");
+}
+
+{
+	// 2b) 目标"写回调成功但内容半截"（Cordova 的 FileWriter 不 truncate）→ 判失败并保住源
+	const game = createLegacyGame({ "modules/installed.json": "OLD", "modules/installed.json.tmp": "NEW-LEDGER" });
+	game.corruptOnce.add("writeFile:modules/installed.json");
+	const io = createNonameIo({ game, fs: null, stallMs: 800 });
+	await assert.rejects(
+		() => io.movePath("modules/installed.json.tmp", "modules/installed.json"),
+		error => error instanceof IoError && /校验|不一致/.test(error.message)
+	);
+	assert.equal(game.readText("modules/installed.json.tmp"), "NEW-LEDGER", "内容校验失败时源必须仍在，供上层用备份回滚");
+}
+
+{
+	// 2c) 目录 move 在无 Node fs 平台仍走 copyTree + removeTree（防止只修文件把目录改坏）
+	const game = createLegacyGame({ "tmp/modules/x/1.0.0/manifest.json": "M", "tmp/modules/x/1.0.0/ui/a.css": "A" });
+	const io = createNonameIo({ game, fs: null, stallMs: 800 });
+	await io.movePath("tmp/modules/x/1.0.0", "modules/x/1.0.0");
+	assert.equal(game.readText("modules/x/1.0.0/manifest.json"), "M");
+	assert.equal(game.readText("modules/x/1.0.0/ui/a.css"), "A");
+	assert.equal(game.has("tmp/modules/x/1.0.0/ui/a.css"), false, "目录搬运后源目录必须消失");
+}
+
+{
+	// 2d) 源既不是文件也不是目录（FIFO/设备）→ 明确拒绝，不静默什么都不做
+	const weirdIo = createNonameIo({
+		fs: { stat: (path, cb) => cb(null, { isDirectory: () => false, isFile: () => false }) },
+		stallMs: 300,
+	});
+	await assert.rejects(
+		() => weirdIo.movePath("modules/fifo", "modules/fifo2"),
+		error => error instanceof IoError && error.ioCode === "IO_FAILED" && /不支持/.test(error.message)
+	);
+}
+
+{
+	// 3) 桌面端：文件 move 优先原子 rename，不因上面的修复退化成复制
+	const fs = createDesktopStore({ "modules/installed.json": "OLD", "modules/installed.json.tmp": "NEW" });
+	let writes = 0;
+	const originalWrite = fs.writeFile;
+	fs.writeFile = (...args) => (writes++, originalWrite(...args));
+	const io = createNonameIo({ fs, stallMs: 500 });
+	await io.movePath("modules/installed.json.tmp", "modules/installed.json");
+	assert.equal(io.capabilities.atomicRename, true);
+	assert.equal(fs.readText("modules/installed.json"), "NEW");
+	assert.equal(fs.has("modules/installed.json.tmp"), false);
+	assert.equal(writes, 0, "rename 可用时不得走复制路径");
+}
+
+{
+	// 4) 桌面端跨卷 EXDEV：回落 copy+remove 时文件同样必须搬对
+	const fs = createDesktopStore({ "modules/installed.json": "OLD", "modules/installed.json.tmp": "NEW" });
+	fs.exdev = true;
+	const io = createNonameIo({ fs, stallMs: 500 });
+	await io.movePath("modules/installed.json.tmp", "modules/installed.json");
+	assert.equal(fs.readText("modules/installed.json"), "NEW", "EXDEV 回落路径必须真的搬运内容");
+	assert.equal(fs.has("modules/installed.json.tmp"), false);
+}
+
 // ------------------------------------------------------------------ ZIP 条目越界防护（zip-slip）
 
 {
-	const { normalizeZipEntry } = await import("../src/core/moduleIo.js");
 	assert.equal(normalizeZipEntry("styles/player.css"), "styles/player.css");
 	assert.equal(normalizeZipEntry("./assets/a.png"), "assets/a.png");
 	for (const bad of ["../evil.js", "/etc/passwd", "a/../../b", "C:/Windows/system32", "a\0b", ""]) {

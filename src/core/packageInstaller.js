@@ -15,6 +15,10 @@
  *     覆盖同版本时旧目录先改名让位，**保留到 installed.json 写成功之后**才清理，
  *     中途失败一律把让位目录改回；回滚本身失败 → code=ROLLBACK_FAILED（不假装成功）。
  *   - 卸载同样先让位（.removing-*）再改台账，台账写失败则原样改回。
+ *   - installed.json 是唯一的状态落盘点：桌面端 temp → 原子 rename；无原子 rename 的平台
+ *     （Android/SAF）先备份旧台账 → 提交 → 回读校验，失败即用备份还原，还原也失败
+ *     → code=ROLLBACK_FAILED + residual，绝不带着半截台账返回成功。
+ *   - io.kind 的权限/磁盘/卡死异常一律按 IO_FAILED / IO_STALL 返回，不伪装成"路径不存在"。
  *   - IO 端口（moduleIo）保证不会永久 pending：真实 error callback 优先，
  *     本体"既不成功也不失败地回调"那一类才由 IO_STALL 兜底判失败。
  *   - 全部方法返回结构化结果 {ok, code, ...}，不向外抛异常。
@@ -156,7 +160,8 @@ export function createPackageInstaller(deps = {}) {
 		} catch (error) {
 			return failure(INSTALL_CODES.IO_FAILED, `读取 ${paths.installedFile} 失败: ${error?.message ?? error}`);
 		}
-		if (!text) return success({ data: { schema: 1, modules: {} } });
+		// 只有"文件不存在"才是"还没有台账"；空文件是被截断的台账，不能当空台账覆盖掉
+			if (text === null || text === undefined) return success({ data: { schema: 1, modules: {} } });
 		try {
 			const data = JSON.parse(text);
 			if (!data || typeof data !== "object") throw new Error("非对象");
@@ -167,11 +172,105 @@ export function createPackageInstaller(deps = {}) {
 		}
 	}
 
-	/** 写入 installed.json：先写临时文件再改名覆盖，避免半截状态（.tmp 已被 .gitignore 覆盖） */
+	/** writeInstalled 提交失败且旧台账还原不了时抛出：调用方必须转成 ROLLBACK_FAILED，不得当普通失败或成功 */
+	class StateCommitError extends Error {
+		constructor(message, residual, cause) {
+			super(message);
+			this.name = "StateCommitError";
+			this.installCode = INSTALL_CODES.ROLLBACK_FAILED;
+			this.residual = residual;
+			if (cause) this.cause = cause;
+		}
+	}
+
+	/** 尽力清除事务残留文件；清不掉不改变结论（台账好不好另说），但绝不借此把失败说成成功 */
+	const removeQuiet = async rel => {
+		if (!rel) return;
+		try {
+			await io.removeFile(rel);
+		} catch {}
+	};
+
+	/**
+	 * 安全提交 installed.json —— 安装/卸载唯一的状态落盘点。契约：
+	 *   成功        → 新台账已完整落盘且可解析
+	 *   普通失败    → 旧台账内容保持原样（没动过，或已由备份还原回去）
+	 *   还原也失败  → 抛 StateCommitError（带 residual=台账路径），调用方必须报 ROLLBACK_FAILED
+	 * 桌面端同卷 rename 本身原子，保持 temp → rename；无原子 rename 的平台（Android/SAF 走
+	 * copy+remove）不能拿唯一一份台账当赌注，因此先备份、提交后回读校验、失败即还原。
+	 */
 	async function writeInstalled(data) {
+		const text = `${JSON.stringify(data, null, "\t")}\n`;
 		const tmp = `${paths.installedFile}.${random()}.tmp`;
-		await io.writeText(tmp, `${JSON.stringify(data, null, "\t")}\n`);
-		await io.movePath(tmp, paths.installedFile);
+
+		if (io.capabilities?.atomicRename) {
+			try {
+				await io.writeText(tmp, text);
+				await io.movePath(tmp, paths.installedFile);
+			} finally {
+				await removeQuiet(tmp);
+			}
+			return;
+		}
+
+		let previousText;
+		try {
+			previousText = await io.readText(paths.installedFile);
+		} catch (error) {
+			throw new StateCommitError(`读取 ${paths.installedFile} 失败，无法安全提交新台账：${error?.message ?? error}`, paths.installedFile, error);
+		}
+		const backup = previousText === null || previousText === undefined ? null : `${paths.installedFile}.backup-${random()}`;
+
+		let problem = null;
+		try {
+			if (backup) await io.writeText(backup, previousText);
+			await io.writeText(tmp, text);
+			// 覆盖唯一台账之前先验证待提交内容本身可读且合法
+			const staged = await io.readText(tmp);
+			if (staged !== text) throw new Error(`临时台账回读不一致: ${tmp}`);
+			JSON.parse(staged);
+			await io.movePath(tmp, paths.installedFile);
+			const committed = await io.readText(paths.installedFile);
+			if (committed === null) throw new Error(`${paths.installedFile} 提交后不可读`);
+			JSON.parse(committed);
+		} catch (error) {
+			problem = error;
+		}
+		await removeQuiet(tmp);
+		if (!problem) {
+			await removeQuiet(backup);
+			return;
+		}
+
+		let intact;
+		try {
+			intact = (await io.readText(paths.installedFile)) === previousText;
+		} catch {
+			intact = false; // 连读都读不出来，按"旧台账已不可用"处理
+		}
+		if (intact) {
+			await removeQuiet(backup);
+			throw problem; // 旧台账完好，调用方按普通失败处理
+		}
+
+		try {
+			if (backup) {
+				const saved = await io.readText(backup);
+				if (saved !== previousText) throw new Error(`备份内容不完整: ${backup}`);
+				await io.movePath(backup, paths.installedFile);
+			} else {
+				await io.removeFile(paths.installedFile); // 原本没有台账：清掉半成品就是还原
+			}
+			const restored = await io.readText(paths.installedFile);
+			if (restored !== previousText) throw new Error("还原后内容与旧台账不一致");
+		} catch (restoreError) {
+			throw new StateCommitError(
+				`写入 ${paths.installedFile} 失败（${problem?.message ?? problem}），且旧台账还原失败：${restoreError?.message ?? restoreError}`,
+				paths.installedFile,
+				restoreError
+			);
+		}
+		throw problem;
 	}
 
 	// ---------------------------------------------------------------- 规格与依赖
@@ -276,7 +375,13 @@ export function createPackageInstaller(deps = {}) {
 		const missing = [];
 		for (const file of entryFiles) {
 			if (typeof file !== "string" || !file) continue;
-			if ((await kindOf(`${dir}/${file}`)) === null) missing.push(file);
+			let type;
+			try {
+				type = await kindOf(`${dir}/${file}`);
+			} catch (error) {
+				return toIoFailure(error, "verifying", { message: `检查 entry 文件 ${file} 失败: ${error?.message ?? error}` });
+			}
+			if (type === null) missing.push(file);
 		}
 		if (missing.length) {
 			return failure(INSTALL_CODES.ENTRY_MISSING, `entry 声明的文件缺失: ${missing.join(", ")}`, { stage: "verifying", missing });
@@ -293,13 +398,13 @@ export function createPackageInstaller(deps = {}) {
 		return failure(code, String(error?.message ?? error), { stage, ...extra });
 	}
 
-	/** 探测路径类型；IO 异常按"不存在"处理并由调用方的错误路径接管 */
+	/**
+	 * 探测路径类型。**`null` 只表示"确定不存在"**：权限错误、磁盘错误、IO_STALL 等真实异常
+	 * 一律向上传播，由调用点转成 IO_FAILED / IO_STALL（P5 审查：吞掉异常当"不存在"会让安装器
+	 * 覆盖掉可能存在的旧目录，或让卸载删掉台账却留下磁盘目录）。
+	 */
 	async function kindOf(rel) {
-		try {
-			return await io.kind(rel);
-		} catch {
-			return null;
-		}
+		return await io.kind(rel);
 	}
 
 	async function installInner(rawSpec, opts = {}, chain = new Set()) {
@@ -336,11 +441,20 @@ export function createPackageInstaller(deps = {}) {
 		const preState = await readInstalled();
 		if (!preState.ok) return preState;
 		const preEntry = preState.data.modules[id];
-		if (spec.version && preEntry?.version === spec.version && !opts.force && (await kindOf(packDir(id, spec.version))) === "dir") {
-			return failure(INSTALL_CODES.ALREADY_INSTALLED, `${id}@${spec.version} 已安装（同版本覆盖需 force）`, {
-				stage: "resolving",
-				path: packDir(id, spec.version),
-			});
+		if (spec.version && preEntry?.version === spec.version && !opts.force) {
+			const installedDir = packDir(id, spec.version);
+			let preKind;
+			try {
+				preKind = await kindOf(installedDir);
+			} catch (error) {
+				return toIoFailure(error, "resolving", { message: `检查 ${installedDir} 失败: ${error?.message ?? error}` });
+			}
+			if (preKind === "dir") {
+				return failure(INSTALL_CODES.ALREADY_INSTALLED, `${id}@${spec.version} 已安装（同版本覆盖需 force）`, {
+					stage: "resolving",
+					path: installedDir,
+				});
+			}
 		}
 
 		// 3. 下载（重试/取消/进度，任务书§42）
@@ -446,7 +560,15 @@ export function createPackageInstaller(deps = {}) {
 			return state;
 		}
 		const currentEntry = state.data.modules[manifest.id];
-		const targetExists = (await kindOf(target)) === "dir";
+		// 发布前必须先探明目标状态：探测失败绝不按"不存在"继续（否则会把可能存在的旧目录直接覆盖掉）
+		let targetKind;
+		try {
+			targetKind = await kindOf(target);
+		} catch (error) {
+			await cleanup();
+			return toIoFailure(error, "publishing", { message: `检查发布目标 ${target} 失败: ${error?.message ?? error}` });
+		}
+		const targetExists = targetKind === "dir";
 		if (targetExists && currentEntry?.version === manifest.version && !opts.force) {
 			await cleanup();
 			return failure(INSTALL_CODES.ALREADY_INSTALLED, `${manifest.id}@${manifest.version} 已安装（同版本覆盖需 force）`, {
@@ -514,13 +636,15 @@ export function createPackageInstaller(deps = {}) {
 			state.data.modules[manifest.id] = nextEntry;
 			await writeInstalled(state.data);
 		} catch (error) {
+			// writeInstalled 自己已把台账还原；还原不了会带 StateCommitError 上来，两种都要算"回滚未完成"
+			const ledgerProblem = error instanceof StateCommitError ? error.message : null;
 			const rollbackProblem = await undoPublish();
 			await cleanup();
-			if (rollbackProblem) {
-				return failure(INSTALL_CODES.ROLLBACK_FAILED, `写入 ${paths.installedFile} 失败（${error?.message ?? error}），且旧版本回滚未完成：${rollbackProblem}`, {
+			if (ledgerProblem || rollbackProblem) {
+				return failure(INSTALL_CODES.ROLLBACK_FAILED, `安装状态未能回滚：${[ledgerProblem, rollbackProblem].filter(Boolean).join("；")}`, {
 					stage: "state",
 					rolledBack: false,
-					residual: replacedDir || target,
+					residual: [error.residual, rollbackProblem ? replacedDir || target : null].filter(Boolean).join("、"),
 				});
 			}
 			return failure(INSTALL_CODES.STATE_FAILED, `写入 ${paths.installedFile} 失败：${error?.message ?? error}（已撤销本次安装，旧版本仍在）`, {
@@ -726,11 +850,11 @@ export function createPackageInstaller(deps = {}) {
 
 				const root = `${paths.modulesRoot}/${id}`;
 				const removed = [];
-				/** @type {Array<{from: string, to: string}>} 让位记录，用于失败回滚 */
+				/** @type {Array<{from: string, to: string}>} 让位记录，用于失败回滚（回滚需逆序遍历，故不得就地 reverse） */
 				const parked = [];
 				const restoreParked = async () => {
 					const problems = [];
-					for (const item of parked.reverse()) {
+					for (const item of [...parked].reverse()) {
 						try {
 							await io.movePath(item.from, item.to);
 						} catch (error) {
@@ -740,7 +864,14 @@ export function createPackageInstaller(deps = {}) {
 					return problems;
 				};
 
-				if ((await kindOf(root)) === "dir") {
+				// 探测不到就什么都不动：绝不能把"检查失败"当"目录不存在"，那会留下目录却删掉台账
+				let rootKind;
+				try {
+					rootKind = await kindOf(root);
+				} catch (error) {
+					return toIoFailure(error, "checking", { id, message: `检查 ${root} 失败: ${error?.message ?? error}` });
+				}
+				if (rootKind === "dir") {
 					let dirs = [];
 					try {
 						({ dirs } = await io.listDir(root));
@@ -754,11 +885,19 @@ export function createPackageInstaller(deps = {}) {
 							await io.movePath(live, park);
 						} catch (error) {
 							const problems = await restoreParked();
-							return failure(
-								INSTALL_CODES.UNINSTALL_FAILED,
-								`让位 ${live} 失败：${error?.message ?? error}${problems.length ? `；已恢复其余目录，未恢复项：${problems.join("；")}` : "（已恢复先前让位的目录）"}`,
-								{ stage: "parking", id, residual: problems.length ? root : null }
-							);
+							if (problems.length) {
+								return failure(INSTALL_CODES.ROLLBACK_FAILED, `让位 ${live} 失败：${error?.message ?? error}，且已让位的目录未能全部改回：${problems.join("；")}`, {
+									stage: "parking",
+									id,
+									rolledBack: false,
+									residual: root,
+								});
+							}
+							return failure(INSTALL_CODES.UNINSTALL_FAILED, `让位 ${live} 失败：${error?.message ?? error}（先前让位的目录已全部改回原位）`, {
+								stage: "parking",
+								id,
+								rolledBack: true,
+							});
 						}
 						parked.push({ from: park, to: live });
 						removed.push(version);
@@ -769,14 +908,19 @@ export function createPackageInstaller(deps = {}) {
 				try {
 					await writeInstalled(state.data);
 				} catch (error) {
+					const ledgerProblem = error instanceof StateCommitError ? error.message : null;
 					const problems = await restoreParked();
-					if (problems.length) {
-						return failure(INSTALL_CODES.ROLLBACK_FAILED, `写入 ${paths.installedFile} 失败（${error?.message ?? error}），且模块目录未能全部改回：${problems.join("；")}`, {
-							stage: "state",
-							id,
-							rolledBack: false,
-							residual: root,
-						});
+					if (ledgerProblem || problems.length) {
+						return failure(
+							INSTALL_CODES.ROLLBACK_FAILED,
+							`卸载状态未能回滚：${[ledgerProblem, problems.length ? problems.join("；") : null].filter(Boolean).join("；")}`,
+							{
+								stage: "state",
+								id,
+								rolledBack: false,
+								residual: [error.residual, problems.length ? root : null].filter(Boolean).join("、"),
+							}
+						);
 					}
 					return failure(INSTALL_CODES.STATE_FAILED, `写入 ${paths.installedFile} 失败：${error?.message ?? error}（模块目录已原样恢复，安装状态未变）`, {
 						stage: "state",
@@ -816,7 +960,14 @@ export function createPackageInstaller(deps = {}) {
 		async localVersions(id) {
 			if (!io) return failure(INSTALL_CODES.NO_IO, "未注入文件系统端口");
 			const root = `${paths.modulesRoot}/${id}`;
-			if ((await kindOf(root)) !== "dir") return success({ id, versions: [] });
+			// 探测失败 ≠ "本地没有版本"：P12 的回滚/清理界面据此决策，误报空列表会诱导误删
+			let rootKind;
+			try {
+				rootKind = await kindOf(root);
+			} catch (error) {
+				return toIoFailure(error, "listing", { id, message: `检查 ${root} 失败: ${error?.message ?? error}` });
+			}
+			if (rootKind !== "dir") return success({ id, versions: [] });
 			try {
 				const { dirs } = await io.listDir(root);
 				return success({ id, versions: dirs.filter(dir => !/\.(replacing|removing)-/.test(dir)) });
