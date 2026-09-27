@@ -1,47 +1,47 @@
 #!/usr/bin/env node
-/** 校验包内 CSS 的全部 url() 引用在包内/扩展根中真实可达 */
+/**
+ * 校验所有已安装样式包的 CSS url() 引用与皮肤 JS 相对导入真实可达。
+ * 数据源：modules/installed.json + 各包 manifest.json（含 deadRefs 死引用登记）。
+ */
 import { readFileSync, existsSync } from "node:fs";
 import { dirname, join, resolve, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const CSS_FILES = [
-	"modules/decade/1.4.2/player.css",
-	"modules/decade/1.4.2/styles/character.css",
-	"modules/decade/1.4.2/styles/lbtn.css",
-	"modules/decade/1.4.2/styles/skill.css",
-	"modules/decade/1.4.2/styles/lbtn-window.css",
-	"modules/decade/1.4.2/styles/skill-window.css",
-];
-let bad = 0;
+const installed = JSON.parse(readFileSync(join(ROOT, "modules", "installed.json"), "utf8"));
+
 let ok = 0;
 let knownDead = 0;
-/**
- * 上游已知的死引用（原版 css 引用了仓库中不存在的资源，行为=404）。
- * 迁移包内指针已修正为与原版相同的解析目标，故仅告警不判失败。
- */
-const KNOWN_DEAD = new Set(["ui/assets/character/shizhounian/dialog3.png"]);
-for (const rel of CSS_FILES) {
-	const cssPath = join(ROOT, rel);
-	const css = readFileSync(cssPath, "utf8");
-	const dir = dirname(cssPath);
-	const refs = css.match(/url\(\s*(['"]?)([^'")]+)\1\s*\)/g) || [];
-	for (const m of refs) {
-		const ref = m.replace(/^url\(\s*(['"]?)/, "").replace(/(['"]?)\s*\)$/, "").trim();
-		if (ref.startsWith("#") || ref.startsWith("data:")) continue;
-		const abs = resolve(dir, ref);
-		const rootRef = relative(ROOT, abs).split("\\").join("/");
-		if (existsSync(abs)) {
-			ok++;
-		} else if (KNOWN_DEAD.has(rootRef)) {
-			knownDead++;
-			console.warn(`已知上游死引用（指针正确）: ${rel} -> ${rootRef}`);
-		} else {
-			bad++;
-			console.error(`缺失: ${rel} -> ${ref}\n  解析: ${abs}`);
-		}
+let bad = 0;
+
+function checkRef(cssRel, ref, deadRefs) {
+	if (ref.startsWith("#") || ref.startsWith("data:")) return;
+	const abs = resolve(dirname(join(ROOT, cssRel)), ref);
+	const rootRef = relative(ROOT, abs).split("\\").join("/");
+	if (existsSync(abs)) {
+		ok++;
+	} else if ((deadRefs || []).includes(rootRef)) {
+		knownDead++;
+		console.warn(`已知上游死引用（指针正确）: ${cssRel} -> ${rootRef}`);
+	} else {
+		bad++;
+		console.error(`缺失: ${cssRel} -> ${ref}\n  解析: ${abs}`);
 	}
-	console.log(`${rel}: 引用计毕`);
+}
+
+for (const [id, info] of Object.entries(installed.modules || {})) {
+	const packRoot = join(ROOT, "modules", id, info.version);
+	const manifest = JSON.parse(readFileSync(join(packRoot, "manifest.json"), "utf8"));
+	for (const cssRel of manifest.entry?.css || []) {
+		const cssPath = join(packRoot, cssRel);
+		const css = readFileSync(cssPath, "utf8");
+		const refs = css.match(/url\(\s*(['"]?)([^'")]+)\1\s*\)/g) || [];
+		for (const m of refs) {
+			const ref = m.replace(/^url\(\s*(['"]?)/, "").replace(/(['"]?)\s*\)$/, "").trim();
+			checkRef(`modules/${id}/${info.version}/${cssRel}`, ref, manifest.deadRefs);
+		}
+		console.log(`modules/${id}/${info.version}/${cssRel}: 引用计毕`);
+	}
 }
 console.log(`\n可达 ${ok}，已知上游死引用 ${knownDead}，未知缺失 ${bad}`);
 process.exit(bad ? 1 : 0);

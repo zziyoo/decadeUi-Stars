@@ -3,9 +3,10 @@
  * 特点：失效技能显示、转换技图标、技能次数显示、判定图标位置调整、gskillControl支持
  */
 import { lib, game, ui, get, ai, _status } from "noname";
-import { createBaseSkillPlugin } from "./base.js";
-import { getAvailableSkills, isGSkillCacheSame, shouldSkipEquipSkill } from "./gskillMixin.js";
-import { skillButtonTooltip } from "../../../src/ui/skillButtonTooltip.js";
+// P4-2：皮肤迁入独立包。base.js/gskillMixin.js/skillButtonTooltip 等共享模块仍在单体目录，跨包相对引用（回溯扩展根）
+import { createBaseSkillPlugin } from "../../../../../../ui/skill/skins/base.js";
+import { getAvailableSkills, isGSkillCacheSame, shouldSkipEquipSkill } from "../../../../../../ui/skill/skins/gskillMixin.js";
+import { skillButtonTooltip } from "../../../../../../src/ui/skillButtonTooltip.js";
 
 const ASSETS_PATH = `${decadeUIPath}ui/assets/skill/shousha`;
 

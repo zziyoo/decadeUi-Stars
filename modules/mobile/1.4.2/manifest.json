@@ -1,7 +1,7 @@
 {
 	"schema": 1,
-	"id": "decade",
-	"name": "十周年样式",
+	"id": "mobile",
+	"name": "移动版样式",
 	"version": "1.4.2",
 	"type": "style",
 	"core": ">=1.4.2",
@@ -10,9 +10,9 @@
 	],
 	"entry": {
 		"js": [
-			"ui/character/skins/shizhounian.js",
-			"ui/skill/skins/shizhounian.js",
-			"ui/lbtn/skins/shizhounian.js"
+			"ui/character/skins/shousha.js",
+			"ui/skill/skins/shousha.js",
+			"ui/lbtn/skins/shousha.js"
 		],
 		"css": [
 			"player.css",
@@ -24,7 +24,8 @@
 		]
 	},
 	"deadRefs": [
-		"ui/assets/character/shizhounian/dialog3.png"
+		"image/ui/effects/sprites_shadow_lvse.png",
+		"ui/assets/character/shousha/bigdialog.png"
 	],
 	"capabilities": [
 		"player-frame",

@@ -117,7 +117,7 @@
 	width: 147%;
 	height: 170%;
 	font-family: "HYZLSJ";
-	background-image: url("../../assets/skill/shousha/btn0.png");
+	background-image: url("../../../../ui/assets/skill/shousha/btn0.png");
 	background-size: 100% 100%;
 }
 
@@ -132,12 +132,12 @@
 	width: 147%;
 	height: 170%;
 	font-family: "HYZLSJ";
-	background-image: url("../../assets/skill/shousha/feng.png");
+	background-image: url("../../../../ui/assets/skill/shousha/feng.png");
 	background-size: 100% 100%;
 }
 
 .skill-control > .enable > .skillitem_smh_lianhuan:not(.usable):not(.select)::before {
-	background-image: url("../../assets/skill/shousha/feng_no.png");
+	background-image: url("../../../../ui/assets/skill/shousha/feng_no.png");
 }
 
 /* 司马徽特殊按钮 - 火计 */
@@ -151,12 +151,12 @@
 	width: 147%;
 	height: 170%;
 	font-family: "HYZLSJ";
-	background-image: url("../../assets/skill/shousha/long.png");
+	background-image: url("../../../../ui/assets/skill/shousha/long.png");
 	background-size: 100% 100%;
 }
 
 .skill-control > .enable > .skillitem_smh_huoji:not(.usable):not(.select)::before {
-	background-image: url("../../assets/skill/shousha/long_no.png");
+	background-image: url("../../../../ui/assets/skill/shousha/long_no.png");
 }
 
 /* 司马徽特殊按钮 - 业炎 */
@@ -173,24 +173,24 @@
 	width: 147%;
 	height: 170%;
 	font-family: "HYZLSJ";
-	background-image: url("../../assets/skill/shousha/longfeng.png");
+	background-image: url("../../../../ui/assets/skill/shousha/longfeng.png");
 	background-size: 100% 100%;
 }
 
 .skill-control > .enable > .skillitem_smh_yeyan:not(.usable):not(.select)::before {
-	background-image: url("../../assets/skill/shousha/longfeng_no.png");
+	background-image: url("../../../../ui/assets/skill/shousha/longfeng_no.png");
 }
 
 .skill-control
 	> .enable
 	> *.select:not(.skillitem_smh_yeyan):not(.skillitem_smh_huoji):not(.skillitem_smh_lianhuan):not([data-gskill="true"])::before {
-	background-image: url("../../assets/skill/shousha/btn1.png");
+	background-image: url("../../../../ui/assets/skill/shousha/btn1.png");
 }
 
 /* 技能失效按钮变灰 */
 .skill-control > .enable > .skillitem.shixiao::before,
 .skill-control > .enable > .skillitem:not(.usable):not(.select)::before {
-	background-image: url("../../assets/skill/shousha/btn2.png");
+	background-image: url("../../../../ui/assets/skill/shousha/btn2.png");
 }
 
 /* 技能标记 */
@@ -224,7 +224,7 @@
 
 /* 限定技标记 */
 .skillMarkItem.xiandingji {
-	background-image: url("../../assets/skill/shousha/xianding.png");
+	background-image: url("../../../../ui/assets/skill/shousha/xianding.png");
 	background-size: 100% 100%;
 	text-shadow: none;
 	font-family: "HYZLSJ";
@@ -261,7 +261,7 @@
 	width: var(--w);
 	height: var(--h);
 	left: 2px;
-	background-image: url("../../assets/skill/shousha/used.png");
+	background-image: url("../../../../ui/assets/skill/shousha/used.png");
 	background-size: 100% 100%;
 	text-shadow: none;
 	font-family: "HYZLSJ";
@@ -279,7 +279,7 @@
 	--h: calc(var(--w) * 34 / 55);
 	width: var(--w);
 	height: var(--h);
-	background-image: url("../../assets/skill/shousha/noxianding.png");
+	background-image: url("../../../../ui/assets/skill/shousha/noxianding.png");
 	background-size: 100% 100%;
 	right: -1px;
 	top: -3px;
@@ -288,7 +288,7 @@
 
 /* 觉醒技标记 */
 .skillMarkItem.juexingji {
-	background-image: url("../../assets/skill/shousha/juexing.png");
+	background-image: url("../../../../ui/assets/skill/shousha/juexing.png");
 	background-size: 100% 100%;
 	--w: 36px;
 	font-size: 16px;
@@ -305,7 +305,7 @@
 
 /* 使命技标记 */
 .skillMarkItem.duty {
-	background-image: url("../../assets/skill/shousha/duty.png");
+	background-image: url("../../../../ui/assets/skill/shousha/duty.png");
 	background-size: 100% 100%;
 	--w: 36px;
 	font-size: 16px;
@@ -328,7 +328,7 @@
 	width: var(--w);
 	height: var(--h);
 	left: 2px;
-	background-image: url("../../assets/skill/shousha/used.png");
+	background-image: url("../../../../ui/assets/skill/shousha/used.png");
 	background-size: 100% 100%;
 	text-shadow: none;
 	font-family: "HYZLSJ";
@@ -346,7 +346,7 @@
 	--h: calc(var(--w) * 1 / 2);
 	width: var(--w);
 	height: var(--h) !important;
-	background-image: url("../../assets/skill/shousha/noxianding.png");
+	background-image: url("../../../../ui/assets/skill/shousha/noxianding.png");
 	background-size: 100% 100%;
 	right: -1px;
 	top: -3px;
@@ -361,7 +361,7 @@
 .skillitem .suo {
 	height: 30px;
 	width: 30px;
-	background-image: url("../../assets/skill/shousha/suo.png");
+	background-image: url("../../../../ui/assets/skill/shousha/suo.png");
 	background-size: 100% 100%;
 	position: absolute;
 	left: 20px;
@@ -371,7 +371,7 @@
 .skillitem .suo1 {
 	height: 35px;
 	width: 35px;
-	background-image: url("../../assets/skill/shousha/suo.png");
+	background-image: url("../../../../ui/assets/skill/shousha/suo.png");
 	background-size: 100% 100%;
 	position: absolute;
 	left: 20px;
@@ -383,7 +383,7 @@
 /* 阴阳标记 */
 .skillitem .yang {
 	width: 90px;
-	background-image: url("../../assets/skill/shousha/yang.png");
+	background-image: url("../../../../ui/assets/skill/shousha/yang.png");
 	background-size: 100% 100%;
 	position: absolute;
 	z-index: 6;
@@ -391,7 +391,7 @@
 
 .skillitem .ying {
 	width: 90px;
-	background-image: url("../../assets/skill/shousha/ying.png");
+	background-image: url("../../../../ui/assets/skill/shousha/ying.png");
 	background-size: 100% 100%;
 	position: absolute;
 	z-index: 6;
@@ -400,7 +400,7 @@
 .trigger .yang {
 	height: 20px;
 	width: 60px;
-	background-image: url("../../assets/skill/shousha/Tyang.png");
+	background-image: url("../../../../ui/assets/skill/shousha/Tyang.png");
 	background-size: 100% 100%;
 	position: absolute;
 	left: -7px;
@@ -410,7 +410,7 @@
 .trigger .ying {
 	height: 20px;
 	width: 60px;
-	background-image: url("../../assets/skill/shousha/Tying.png");
+	background-image: url("../../../../ui/assets/skill/shousha/Tying.png");
 	background-size: 100% 100%;
 	position: absolute;
 	left: -7px;
@@ -609,22 +609,22 @@
 	width: 147%;
 	height: 170%;
 	font-family: "HYZLSJ";
-	background-image: url("../../assets/skill/shousha/btn0.png");
+	background-image: url("../../../../ui/assets/skill/shousha/btn0.png");
 	background-size: 100% 100%;
 }
 
 .skill-controlzuoshou
 	> .enable
 	> *.select:not(.skillitem_smh_yeyan):not(.skillitem_smh_huoji):not(.skillitem_smh_lianhuan):not([data-gskill="true"])::before {
-	background-image: url("../../assets/skill/shousha/btn1.png");
+	background-image: url("../../../../ui/assets/skill/shousha/btn1.png");
 }
 
 .skill-controlzuoshou > .enable > .skillitem:not(.usable):not(.select)::before {
-	background-image: url("../../assets/skill/shousha/btn2.png");
+	background-image: url("../../../../ui/assets/skill/shousha/btn2.png");
 }
 
 .skill-controlzuoshou > .enable > .skillitem.shixiao::before {
-	background-image: url("../../assets/skill/shousha/btn2.png");
+	background-image: url("../../../../ui/assets/skill/shousha/btn2.png");
 }
 
 /* 左手布局司马徽特殊按钮 */
@@ -638,12 +638,12 @@
 	width: 147%;
 	height: 170%;
 	font-family: "HYZLSJ";
-	background-image: url("../../assets/skill/shousha/feng.png");
+	background-image: url("../../../../ui/assets/skill/shousha/feng.png");
 	background-size: 100% 100%;
 }
 
 .skill-controlzuoshou > .enable > .skillitem_smh_lianhuan:not(.usable):not(.select)::before {
-	background-image: url("../../assets/skill/shousha/feng_no.png");
+	background-image: url("../../../../ui/assets/skill/shousha/feng_no.png");
 }
 
 .skill-controlzuoshou > .enable > .skillitem_smh_huoji::before {
@@ -656,12 +656,12 @@
 	width: 147%;
 	height: 170%;
 	font-family: "HYZLSJ";
-	background-image: url("../../assets/skill/shousha/long.png");
+	background-image: url("../../../../ui/assets/skill/shousha/long.png");
 	background-size: 100% 100%;
 }
 
 .skill-controlzuoshou > .enable > .skillitem_smh_huoji:not(.usable):not(.select)::before {
-	background-image: url("../../assets/skill/shousha/long_no.png");
+	background-image: url("../../../../ui/assets/skill/shousha/long_no.png");
 }
 
 .skill-controlzuoshou > .enable > .skillitem_smh_yeyan::before {
@@ -677,12 +677,12 @@
 	width: 147%;
 	height: 170%;
 	font-family: "HYZLSJ";
-	background-image: url("../../assets/skill/shousha/longfeng.png");
+	background-image: url("../../../../ui/assets/skill/shousha/longfeng.png");
 	background-size: 100% 100%;
 }
 
 .skill-controlzuoshou > .enable > .skillitem_smh_yeyan:not(.usable):not(.select)::before {
-	background-image: url("../../assets/skill/shousha/longfeng_no.png");
+	background-image: url("../../../../ui/assets/skill/shousha/longfeng_no.png");
 }
 
 /* 左手布局技能次数 */
@@ -745,7 +745,7 @@
 /* 左手布局阴阳标记 */
 .skill-controlzuoshou .skillitem .yang {
 	width: 90px;
-	background-image: url("../../assets/skill/shousha/yang.png");
+	background-image: url("../../../../ui/assets/skill/shousha/yang.png");
 	background-size: 100% 100%;
 	position: absolute;
 	z-index: 6;
@@ -753,7 +753,7 @@
 
 .skill-controlzuoshou .skillitem .ying {
 	width: 90px;
-	background-image: url("../../assets/skill/shousha/ying.png");
+	background-image: url("../../../../ui/assets/skill/shousha/ying.png");
 	background-size: 100% 100%;
 	position: absolute;
 	z-index: 6;
@@ -762,7 +762,7 @@
 .skill-controlzuoshou .trigger .yang {
 	height: 20px;
 	width: 60px;
-	background-image: url("../../assets/skill/shousha/Tyang.png");
+	background-image: url("../../../../ui/assets/skill/shousha/Tyang.png");
 	background-size: 100% 100%;
 	position: absolute;
 	left: -7px;
@@ -772,7 +772,7 @@
 .skill-controlzuoshou .trigger .ying {
 	height: 20px;
 	width: 60px;
-	background-image: url("../../assets/skill/shousha/Tying.png");
+	background-image: url("../../../../ui/assets/skill/shousha/Tying.png");
 	background-size: 100% 100%;
 	position: absolute;
 	left: -7px;
@@ -782,15 +782,17 @@
 /* gskill按钮红色背景（用于区分） */
 .skill-control > .enable > .skillitem[data-gskill="true"]::before,
 .skill-controlzuoshou > .enable > .skillitem[data-gskill="true"]::before {
-	background-image: url("../../assets/skill/shousha/gskill1.png");
+	background-image: url("../../../../ui/assets/skill/shousha/gskill1.png");
 }
 
 .skill-control > .enable > .skillitem[data-gskill="true"]:not(.usable):not(.select)::before,
 .skill-controlzuoshou > .enable > .skillitem[data-gskill="true"]:not(.usable):not(.select)::before {
-	background-image: url("../../assets/skill/shousha/gskill0.png");
+	background-image: url("../../../../ui/assets/skill/shousha/gskill0.png");
 }
 
 .skill-control > .enable > .skillitem[data-gskill="true"].select::before,
 .skill-controlzuoshou > .enable > .skillitem[data-gskill="true"].select::before {
-	background-image: url("../../assets/skill/shousha/gskill2.png");
+	background-image: url("../../../../ui/assets/skill/shousha/gskill2.png");
 }
+
+/* NOTE: 上游死引用已按原解析目标改写指针（目标文件上游不存在，行为=404），详见 manifest.deadRefs */

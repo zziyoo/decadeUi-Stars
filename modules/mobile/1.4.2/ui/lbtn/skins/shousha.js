@@ -4,8 +4,9 @@
  * @version 2.0
  */
 import { _status } from "noname";
-import { createBaseLbtnPlugin } from "./base.js";
-import { initChatSystem } from "../chatSystem.js";
+// P4-2：皮肤迁入独立包。base.js/chatSystem.js 等共享模块仍在单体目录，跨包相对引用（回溯扩展根）
+import { createBaseLbtnPlugin } from "../../../../../../ui/lbtn/skins/base.js";
+import { initChatSystem } from "../../../../../../ui/lbtn/chatSystem.js";
 
 /**
  * 创建手杀风格lbtn插件

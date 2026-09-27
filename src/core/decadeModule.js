@@ -10,6 +10,9 @@ import { getModuleSystem } from "./moduleSystem.js";
 /** @type {Array<string>} 排除的游戏模式 */
 const EXCLUDED_MODES = ["chess", "tafang", "hs_hearthstone"];
 
+/** 已拆分为独立样式包的样式ID（其单体CSS副本已删除，未安装时跳过加载） */
+const MIGRATED_STYLE_IDS = new Set(["decade", "mobile"]);
+
 // P1：样式映射唯一数据源已收口至 styleRuntime.js（任务书§13）。
 // P2：本模块的JS/CSS加载经 resourceLoader.getAsset(moduleId, path) 寻址——
 //     核心资源用 "core"，样式资源用当前样式模块ID（P2阶段均解析到扩展根，P3切换模块根只改 getModuleBase）。
@@ -91,8 +94,8 @@ export function initDecadeModule() {
 		document.body.setAttribute("data-style", style);
 
 		// P3：样式主CSS。已安装独立样式包 → 从包根按 manifest.entry.css 加载（首项为
-		// player 主样式）；decade 的单体副本已迁移删除，未安装时跳过（样式不可用而
-		// Core 正常，P3验收路径）；其余未拆分样式走单体路径。
+		// player 主样式）；已拆分但未安装（包被移除）时跳过（样式不可用而 Core 正常，
+		// P3/P4验收路径）；其余未拆分样式走单体路径。
 		const installState = moduleManager.getInstallState(styleId);
 		const packCss = installState.independent ? moduleManager.getManifest(styleId)?.entry?.css || null : null;
 
@@ -101,7 +104,7 @@ export function initDecadeModule() {
 
 		if (packCss) {
 			this.css(styleId, packCss[0]);
-		} else if (styleId !== "decade") {
+		} else if (!MIGRATED_STYLE_IDS.has(styleId)) {
 			this.css(CORE, `src/styles/player${styleIndex !== -1 ? styleIndex + 1 : 2}.css`);
 		}
 		this.css(CORE, "src/styles/equip.css");
@@ -130,7 +133,7 @@ export function initDecadeModule() {
 					if (p.includes("/window/") && isPhoneLayout) continue;
 					this.css(styleId, p);
 				}
-			} else if (styleId !== "decade") {
+			} else if (!MIGRATED_STYLE_IDS.has(styleId)) {
 				this.css(styleId, `ui/styles/character/${skinName}.css`);
 				this.css(styleId, `ui/styles/lbtn/${skinName}.css`);
 				this.css(styleId, `ui/styles/skill/${skinName}.css`);

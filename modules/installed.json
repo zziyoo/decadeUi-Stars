@@ -3,6 +3,9 @@
 	"modules": {
 		"decade": {
 			"version": "1.4.2"
+		},
+		"mobile": {
+			"version": "1.4.2"
 		}
 	}
 }

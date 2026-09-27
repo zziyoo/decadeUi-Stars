@@ -3,10 +3,11 @@
  * 功能：官阶系统、详细资料、胜率显示、查看名片
  */
 import { _status } from "noname";
-import { createBaseCharacterPlugin } from "./base.js";
-import { applyOutcropAvatar } from "../../../src/ui/outcropAvatar.js";
-import { skillButtonTooltip } from "../../../src/ui/skillButtonTooltip.js";
-import { SHOUSHA_CONSTANTS, SHOUSHA_LAYOUT } from "../../constants.js";
+// P4-2：皮肤迁入独立包。base.js/outcropAvatar/skillButtonTooltip/constants 等共享模块仍在单体目录，跨包相对引用（回溯扩展根）
+import { createBaseCharacterPlugin } from "../../../../../../ui/character/skins/base.js";
+import { applyOutcropAvatar } from "../../../../../../src/ui/outcropAvatar.js";
+import { skillButtonTooltip } from "../../../../../../src/ui/skillButtonTooltip.js";
+import { SHOUSHA_CONSTANTS, SHOUSHA_LAYOUT } from "../../../../../../ui/constants.js";
 
 /**
  * 创建手杀风格角色插件

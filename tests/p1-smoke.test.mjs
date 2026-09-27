@@ -27,7 +27,7 @@ const decade = moduleManager.getManifest("decade");
 assert.equal(decade.type, "style");
 assert.equal(decade.name, "十周年样式");
 assert.ok(decade.entry.css.includes("player.css"), "decade(on) 已拆包 → 包内 player.css");
-assert.ok(moduleManager.getManifest("mobile").entry.css.includes("src/styles/player2.css"), "mobile(off) 未拆包 → 单体路径");
+assert.ok(moduleManager.getManifest("mobile").entry.css.includes("player.css"), "mobile(off) 已拆包 → 包内 player.css");
 assert.ok(moduleManager.getManifest("yjcm").capabilities.includes("border-style"));
 assert.ok(moduleManager.getManifest("online").capabilities.includes("online-chat"));
 assert.equal(moduleManager.getManifest("nope"), null);
