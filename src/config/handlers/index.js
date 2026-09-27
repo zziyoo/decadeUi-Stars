@@ -12,3 +12,6 @@ export { onTranslateClick, onCardGhostEffectClick, onAutoSelectClick, onAutoSele
 
 // 部件管理处理函数
 export { onJindutiaoYangshiUpdate, onJindutiaoSetBlur, onJindutiaoSetUpdate, onJDTSYangshiUpdate, onGTBBYangshiClick, onPlayerMarkStyleUpdate, onLoadingStyleUpdate, onGainSkillsVisibleUpdate } from "./component-handlers.js";
+
+// 模块管理处理函数
+export { onModuleIndexUrlBlur } from "./module-handlers.js";

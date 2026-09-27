@@ -27,6 +27,7 @@ import { setupStyleHotkeys } from "./features/styleHotkeys.js";
 import { setupDisableBrowserShortcuts } from "./features/disableBrowserShortcuts.js";
 import { setupWelcomeDialog } from "./features/welcomeDialog.js";
 import { setupConfigWindow } from "./features/configWindow.js";
+import { setupModuleManagerWindow } from "./features/moduleManagerWindow.js";
 
 // 音频模块
 import { setupSkillDieAudio, setupAudioHooks, setupEnhancedAudio, setupCharacterAudio } from "./audio/index.js";
@@ -85,6 +86,7 @@ export const finalizeDecadeUICore = (decadeUI, config) => {
 	setupStyleHotkeys();
 	setupDisableBrowserShortcuts();
 	setupConfigWindow();
+	setupModuleManagerWindow();
 	setupEnhancedAudio();
 	setupCharacterBackground();
 	setupCardStyles();

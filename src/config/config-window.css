@@ -308,3 +308,22 @@
 	background: rgba(255, 255, 255, 1);
 	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
+
+/* 动作按钮（P6 模块管理入口等） */
+.decade-config-button {
+	padding: 7px 18px;
+	border: none;
+	border-radius: 8px;
+	background: rgba(255, 255, 255, 0.9);
+	color: #4c1d95;
+	font-size: 14px;
+	font-family: inherit;
+	cursor: pointer;
+	writing-mode: horizontal-tb !important;
+	transition: all 0.3s ease;
+}
+
+.decade-config-button:hover {
+	background: rgba(255, 255, 255, 1);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}

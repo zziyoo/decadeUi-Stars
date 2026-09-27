@@ -5,6 +5,7 @@
  */
 import { createCollapseTitle, createCollapseEnd } from "../utils.js";
 import { onRightLayoutClick, onRightLayoutUpdate } from "../handlers/appearance-handlers.js";
+import { onModuleIndexUrlBlur } from "../handlers/module-handlers.js";
 
 /**
  * 小小玩楞折叠标题
@@ -121,6 +122,19 @@ export const rightLayout = {
 };
 
 /**
+ * 模块源地址（P6 模块管理界面用）
+ * 留空＝不使用在线模块源：模块管理界面只做本地已安装模块的查看/卸载。
+ * @type {Object}
+ */
+export const moduleIndexUrl = {
+	name: "模块源地址",
+	intro: "模块管理界面的索引地址（module-index.json 的 https 地址）。留空表示不使用在线模块源；可安装/可更新需要它。",
+	init: "",
+	input: true,
+	onblur: onModuleIndexUrlBlur,
+};
+
+/**
  * 小小玩楞折叠结束标记
  * @type {Object}
  */
@@ -142,5 +156,6 @@ export const miscConfigs = {
 	enableRecastInteraction,
 	enableEquipCopy,
 	rightLayout,
+	moduleIndexUrl,
 	stuff_title_end,
 };

@@ -2368,12 +2368,11 @@ Online 1.1 → 1.2
 # 六十七、当前任务指针
 
 ```text
-当前阶段：P6（模块市场/管理界面）
-当前任务：P6 范围已定，待批准后实现
-状态：P5 已完成（纯代码/Node 验证）；已推送（origin/main = 29a69e3）；
-      P5 的真机/游戏内实测不再阻塞推进，统一并入收尾验证清单（docs/PROGRESS.md §八）
+当前阶段：P6（模块市场/管理界面）✅ 代码完成
+当前任务：P6 已完成（纯代码 / Node 验证），窗口 UI 待游戏内实测（清单见 docs/PROGRESS.md §八）
+状态：P5 + P6 均已推送；真机/游戏内实测统一并入收尾验证清单，不阻塞推进
 
-上一阶段：P5（下载器/安装器）✅ 代码完成（6c76534 + f4a69ac + df2afea + 29a69e3）
+下一步候选：P8 Feature Pack（§四十五）或 P10 最小 module-index（§四十七；P6 在线分支的前置）
 
 注：本指针自 v1.1 起长期失更，历次阶段结论以
 「六十八、变更记录」与 docs/PROGRESS.md 为准。
@@ -2490,3 +2489,14 @@ P0 审计
 - 验证（**纯代码 / Node**）：175 文件 `node --check` ✓；P1/P2/P3/P5 四套测试 ✓（两笔合计新增 30 个断言块）；verify-pack 881 可达 / 0 未知缺失；check-skin-imports 37 / 0 缺失；`pnpm build` ✓。
 - **阶段决定（用户）**：Android/SAF 真机与游戏内实测成本极高，**P5 的实测不再作为阶段阻塞**，统一并入收尾验证清单（`docs/PROGRESS.md` §八），在收尾（P14 全量测试）阶段执行；§八 已补记 Android 已知残留面（本体 `game.checkFile` 把 `NOT_READABLE_ERR` 报成 `-1`＝不存在；Cordova `writeFile` 走 `getFile({create:true})` 不带 `overwrite`，覆盖行为未知）。
 - 阶段推进：**进入 P6（模块市场/管理界面，任务书§43）**。范围已定：仿配置窗口的独立窗口 + `decadeUI.showModuleManager` / `hideModuleManager` + `Ctrl+Shift+M` + 模块源 URL 配置键（默认空，离线可演示已装/卸载链路）；本轮**不做**启用/禁用（新运行时能力，另立子任务）、不做真实 `module-index.json` 资产（留 P10）。
+
+## v1.7（2026-09-27）P6 模块管理界面
+
+- **新增 `src/core/moduleAdmin.js`（纯逻辑，可 Node 全量测）**：把"台账 + 模块源索引 + 注册表"合成界面行——`buildRows()` 产出每行的状态（`core / in_use / incompatible / dep_missing / update_available / installed / not_installed`）、版本/大小/依赖/兼容性文案与动作（`install / update / uninstall`，各带 `enabled` + 禁用理由）；`summarize()` 出顶部汇总；`codeText()` 覆盖 `INSTALL_CODES` 全码中文文案（未知码兜底带原码）；`resultText()` 拼 message + 告警；`formatSize()`。动作 `spec` 与 `packageInstaller.specFromIndex` 同形，可直接交给 `install/update`。
+- **判定口径与后端同源**（避免"UI 说可点、安装器拒绝"）：§19 三条卸载边界（使用中 / 被依赖 / 非独立安装，`force` 不绕过）、依赖是否满足按注册表口径（同 `ensureDependencies`）、Core 兼容性复用 `manifest.checkCoreRequirement`。
+- **新增 `src/features/moduleManagerWindow.js` + `module-manager-window.css`**：独立 overlay 窗口（与配置窗口同一视觉语言），列表行显示名称/状态徽标/版本/大小/依赖/兼容性，行内按钮执行安装·更新·卸载；动作进行中显示进度（阶段 + 百分比）与**取消**（AbortController，安装器返回 `CANCELLED`）；卸载与重载均需二次确认（4 秒自动复原）；窗口内可填写模块源地址（写 `moduleIndexUrl`）。
+- **入口**：`decadeUI.showModuleManager()` / `hideModuleManager()`、`Ctrl+Shift+M`、配置窗口新增 `type:"button"` 行类型后的"模块管理界面"按钮。
+- **新增配置键 `moduleIndexUrl`**（`src/config/definitions/misc.js` + `src/config/handlers/module-handlers.js`，本体扩展菜单与配置窗口都可编辑）：留空＝离线，仍可完整管理本地已装模块（查看/卸载/重载）；填写后 `fetchIndex` 合并出"可安装/可更新"。
+- **明确不做**：启用/禁用（当前架构无此概念，属新运行时能力，另立子任务）；真实 `module-index.json` 资产与上传（P10）；热切换与对局中卸载。
+- 验证（**纯代码 / Node**）：179 文件 `node --check` ✓；P1/P2/P3/P5/P6 五套测试 ✓（新增 `tests/p6-module-admin.test.mjs`：格式化 9 例、全码文案、行模型 9 行夹具、动作启用/禁用理由、summary、离线降级、缺省输入）；verify-pack 881 可达 / 0 未知缺失；check-skin-imports 37 / 0 缺失；`pnpm build` ✓（产物含 `moduleAdmin.js`、`moduleManagerWindow.js`、`module-manager-window.css`）。
+- **未验证**：窗口 UI（DOM/热键/进度渲染）无法在 Node 验证，需游戏内实测——清单见 `docs/PROGRESS.md` §八「P6 部分」。

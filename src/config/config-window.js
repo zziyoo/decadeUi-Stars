@@ -4,6 +4,7 @@
  */
 import { lib, game, ui } from "noname";
 import { config } from "./index.js";
+import { showModuleManager } from "../features/moduleManagerWindow.js";
 
 let currentOverlay = null;
 let lastActiveTab = "appearance";
@@ -108,6 +109,30 @@ function loadConfigs(container, tabId) {
 		if (configItem.isTitle) {
 			const titleEl = ui.create.div(".decade-config-section-title", container);
 			titleEl.innerHTML = configItem.name;
+			return;
+		}
+
+		// 动作按钮：不需要配置定义，点击即执行（P6 模块管理入口）
+		if (configItem.type === "button") {
+			const buttonItem = ui.create.div(".decade-config-item", container);
+			const buttonTable = document.createElement("table");
+			buttonTable.className = "decade-config-table";
+			const buttonTr = document.createElement("tr");
+			const buttonTdName = document.createElement("td");
+			buttonTdName.className = "decade-config-name";
+			buttonTdName.innerHTML = configItem.name;
+			const buttonTdControl = document.createElement("td");
+			buttonTdControl.className = "decade-config-control";
+			const button = document.createElement("button");
+			button.type = "button";
+			button.className = "decade-config-button";
+			button.textContent = configItem.buttonText || "打开";
+			button.onclick = configItem.onclick;
+			buttonTdControl.appendChild(button);
+			buttonTr.appendChild(buttonTdName);
+			buttonTr.appendChild(buttonTdControl);
+			buttonTable.appendChild(buttonTr);
+			buttonItem.appendChild(buttonTable);
 			return;
 		}
 
@@ -321,6 +346,9 @@ function getConfigsByTab(tabId) {
 			{ key: "characterPlugin", name: "武将详情插件", type: "toggle" },
 		],
 		misc: [
+			{ isTitle: true, name: "模块管理" },
+			{ key: "__moduleManager", name: "模块管理界面", type: "button", buttonText: "打开", onclick: showModuleManager },
+			{ key: "moduleIndexUrl", name: "模块源地址", type: "input" },
 			{ isTitle: true, name: "音效与视觉" },
 			{ key: "bettersound", name: "更多音效", type: "toggle" },
 			{ key: "skillDieAudio", name: "中二模式", type: "toggle" },
