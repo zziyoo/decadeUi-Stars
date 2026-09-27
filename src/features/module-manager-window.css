@@ -323,3 +323,43 @@
 	text-align: center;
 	padding: 24px 12px;
 }
+
+/* ------------------------------------------------------------ 本体 div 默认样式的覆盖
+   本体 layout/default/layout.css 里有 `div { display: inline-block; position: absolute; transition: all .5s }`，
+   于是"没写 position 的 div"会全部脱离文档流、各自收缩到最小宽度并叠在一起
+   （窗口最初就是这样挤成一团）。凡是要参与文档流的盒子必须显式声明 position；
+   装饰件（.decade-module-pattern）与进度条（-bar/-text/-cancel）刻意脱流，维持各自规则里的 absolute。 */
+.decade-module-title,
+.decade-module-row,
+.decade-module-main,
+.decade-module-head-line,
+.decade-module-actions,
+.decade-module-empty,
+.decade-module-btn,
+.decade-module-close {
+	position: static;
+	transition: none;
+}
+
+.decade-module-name,
+.decade-module-version,
+.decade-module-meta {
+	position: static;
+	display: block;
+	transition: none;
+}
+
+.decade-module-badge {
+	position: static;
+	display: inline-block;
+	white-space: nowrap;
+	transition: none;
+}
+
+.decade-module-version {
+	white-space: nowrap;
+}
+
+.decade-module-meta {
+	word-break: break-word;
+}

@@ -78,6 +78,7 @@ async function refresh() {
 	const api = window.decadeUI;
 	const installer = api?.packageInstaller;
 	if (!installer) {
+		summaryBox.textContent = "安装器未挂载";
 		el("decade-module-empty", listBox).textContent = "安装器不可用：扩展尚未完成 content 初始化。";
 		return;
 	}
@@ -85,13 +86,16 @@ async function refresh() {
 	const available = installer.isAvailable?.() || {};
 	if (!available.available) {
 		const missing = [available.missingIo ? "文件系统端口" : null, available.missingExtractor ? "解压端口" : null].filter(Boolean).join("、");
+		summaryBox.textContent = "本平台不支持模块安装";
 		el("decade-module-empty", listBox).textContent = `本平台不支持模块安装（缺少：${missing}）。`;
 		return;
 	}
 
+	// 提示行可能同时有"台账读取失败"与"模块源状态"两条，不能互相覆盖
+	const notes = [];
 	const installedResult = await installer.readInstalled();
 	const ledger = installedResult.ok ? installedResult.data.modules || {} : {};
-	if (!installedResult.ok) noteBox.textContent = resultText(installedResult);
+	if (!installedResult.ok) notes.push(`读取安装台账失败：${resultText(installedResult)}`);
 
 	const sourceUrl = String(lib.config[indexKey()] || "").trim();
 	let index = null;
@@ -99,13 +103,14 @@ async function refresh() {
 		const fetchResult = await installer.fetchIndex(sourceUrl, { timeoutMs: 10000 });
 		if (fetchResult.ok) {
 			index = fetchResult.index;
-			noteBox.textContent = `模块源已连接（索引 schema ${index?.schema ?? "?"}）`;
+			notes.push(`模块源已连接（索引 schema ${index?.schema ?? "?"}）`);
 		} else {
-			noteBox.textContent = `模块源不可用：${resultText(fetchResult)}`;
+			notes.push(`模块源不可用：${resultText(fetchResult)}`);
 		}
 	} else {
-		noteBox.textContent = "未配置模块源：可安装/可更新不可用（P10 产出索引后填写地址）";
+		notes.push("未配置模块源：可安装/可更新不可用（P10 产出索引后填写地址）");
 	}
+	noteBox.textContent = notes.join("；");
 
 	const { rows, summary } = buildRows({
 		installed: ledger,

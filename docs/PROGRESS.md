@@ -254,6 +254,14 @@ P5（任务书§42 + §17/§18/§19/§11/§24/§20）已完成：首版 `6c76534
    - `uninstall` 后注册表里该 id 的**内置记录一并消失**（内置清单只在启动时注册），P6 若要显示"可安装"状态需从 module-index 反查，或届时再恢复内置影子记录。
    - §19 三条边界（使用中 / 被依赖 / core）**不受 force 影响**，是刻意设计：卸载正在使用的模块等于允许运行时抽掉自己脚下的地板。P6 的 UI 必须引导"先切换样式再卸载"。
 
+9. **【P6 实测发现，未解决】模块管理窗口显示"已独立安装 0"（预期 6）**：游戏内 `readInstalled()` **成功返回但台账为空**——`moduleIo` 桌面分支的 `fs.stat(extension/十周年UI-Stars/modules/installed.json)` 没找到文件（ENOENT → `kind()` 返回 null → 被当成"还没有台账"，所以既没有报错也没有记录）。怀疑点：本体在本机这套 dev/Electron 运行环境里的 fs 相对路径锚点与扩展假设的 `__dirname`（假定为 `resources/app`）不一致。**待你自己跑探针确认锚点**：
+   - `await new Promise(r => game.checkFile("extension/十周年UI-Stars/modules/installed.json", c => r(c), e => r(String(e))))` → 期望 `1`；若为 `-1`，说明本体锚点不同，应把 `moduleIo` 桌面分支改成与本体同一锚点。
+   - `await decadeUI.packageInstaller.isAvailable()` → 看 `atomicRename`/`desktop` 是否都为 true（判断走的是 Node fs 还是 game 回调分支）。
+   - `await decadeUI.packageInstaller.readInstalled()` → 正常应返回 6 个模块；返回空 `modules:{}` 即复现本问题。
+   > 影响面：只影响"显示已安装状态/卸载入口"（纯读）；安装、卸载的写入路径是否同样受影响尚未验证——**在查清锚点前，不要用窗口执行安装/更新**。
+
+10. **【P6 已修，待你复核】本体 `div` 默认绝对定位导致窗口布局挤压**：本体 `layout/default/layout.css` 有 `div { display: inline-block; position: absolute; }`，窗口里未显式声明 `position` 的 div 全部脱离文档流、各自收缩并重叠（用户实测：文字竖挤成一堆）。已为所有该留在流里的类显式 `position: static`（装饰件与进度条保持绝对定位）。**这类坑对后续任何自绘 UI（P6 后续界面、P8 Feature 面板）都成立：在无名杀里自绘 div 必须显式声明 position。**
+
 ## 六、下一步
 
 1. ~~P0~~ ✅ ~~P1~~ ✅ ~~P2（含阻塞修复）~~ ✅ ~~P3/P4~~ ✅ ~~四包批量拆分（`33da307`）~~ ✅ ~~P5 下载器/安装器 + 可靠性审查修复 + 两笔补充修复（`f4a69ac`/`df2afea`/`29a69e3`）~~ ✅（2026-09-27，**纯代码 / Node 验证**）。
