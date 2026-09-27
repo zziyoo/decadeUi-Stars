@@ -2369,8 +2369,8 @@ Online 1.1 → 1.2
 
 ```text
 当前阶段：P5（下载器/安装器）
-当前任务：代码完成，待游戏内实测验收
-状态：纯代码验证通过；四包拆分（yjcm/online/baby/codename）仍为未提交在制品
+当前任务：代码完成 + 可靠性与安全边界审查修复完成，待游戏内实测验收
+状态：纯代码/Node 验证通过；未推送（本地领先 origin 三笔）；四包拆分已入库 33da307
 
 下一阶段：P6（模块市场/管理界面）
 
@@ -2465,3 +2465,16 @@ P0 审计
 - 验证（**全部为静态 / Node 环境验证，未进游戏实测**）：210 个 JS `node --check` 全过；`tests/p5-installer.test.mjs` 新增并通过（覆盖下载六类失败、安装五类校验失败零落地、依赖缺失/循环、更新保旧版、发布失败回滚、状态写失败撤销、台账损坏拒改、卸载四分支、zip-slip 六类）；P1/P2/P3 回归全过；verify-pack 881 可达/0 未知缺失；vite build 成功。
 - 是否改变旧行为：**仅上述 window CSS 回归修复一处**（属恢复原行为）；其余为新增能力，P1/P2/P3/P4 的既有加载路径未改。
 - 阶段推进：**P5 完成，待游戏内实测验收（清单见交接文档§八）后进入 P6（模块管理界面）**。
+
+## v1.5（2026-09-27）P5 审查修复：可靠性与安全边界
+
+不改架构、不动 P3/P4 既有抽象（`getModuleBase`/ResourceLoader/StyleRuntime/四包产物均未触碰），只收紧 P5 安装器本身：
+
+- **IO 不再可能永久 pending**：`src/core/moduleIo.js` 重写为"只落定一次"的适配层（未改 noname 本体）。桌面端全部使用 `lib.node.fs` 的真实 error callback，目录创建用自建递归 `fs.mkdir({recursive})` **取代** `game.ensureDirectory`（后者失败路径只 `console.log`、不回调，会让 `game.promises.writeFile` 永挂）；无 Node fs 的平台先 `game.createDir`（实现里有真 errorCallback）再写文件；两者都不回调时才由 watchdog 以 `IoError(ioCode:"IO_STALL")` **reject**——真实错误优先，兜底也判失败而非成功。安装器侧新增 `toIoFailure()`，把目录创建/读写失败归入 `IO_FAILED` / `IO_STALL` 结构化返回。
+- **SHA256 信任来源唯一化**：只有外部安装目标（`expectedId` / `expectedVersion` / `expectedSha256`，兼容 `id`/`version`/`sha256` 别名）能作判据；顺序为「外部摘要 → 落盘内容实际摘要 → 不符即 `SHA_MISMATCH` 且零落地 → 解压 → 包内 `manifest.id/version` 必须等于外部目标 → 结构校验」。包内 `manifest.sha256` 属自述，最多产生 warning，不参与裁决；缺外部摘要允许本地/开发安装，但结果 `hashVerified:false`、`installed.json` 记 `sha256:""`。
+- **事务一致性**：安装/更新的旧内容让位目录（`.replacing-*`）**保留到 `installed.json` 写成功之后**才清理；`undoPublish()` 统一回滚，回滚自身失败返回 `ROLLBACK_FAILED` + `rolledBack:false` + `residual` 路径（不再"假装成功"）。卸载改为「`modules/<id>/<ver>` → 改名 `.removing-*` → 写台账 → 成功后才真删」，让位失败返回 `UNINSTALL_FAILED`、台账写失败原样改回，杜绝"目录已删但台账称已安装"。原子性如实描述：`io.capabilities.atomicRename` 与 `isAvailable().atomicRename` 上报，无 Node fs 平台走非原子 copy+remove。
+- **force 边界**：`uninstall` 的 `force` 不再绕过任务书§19 的三条硬检查——使用中（`IN_USE`）、被依赖（`DEPENDED`）、core 一律拒绝；`force` 只对安装侧"同版本覆盖"有意义。
+- 新增/更新测试：SHA 信任 6 类、事务 6 类（含"更新失败旧版本仍可用""首装失败不留正式目录""回滚失败"）、IO 失败与卡死 5 类（含 3 秒 `Promise.race` 断言不 pending）、force 边界双跑；`.gitignore` 增 `modules/*/*.removing-*/`。
+- 验证（**全部静态 / Node 环境，未进游戏**）：215 个 JS/mjs `node --check` 全过；P1/P2/P3/P5 四套测试全过；verify-pack 881 可达 / 0 未知缺失；check-skin-imports 37 可达 / 0 缺失；`pnpm build` 成功。
+- 是否改变旧行为：P1~P4 与四包的运行时行为**未改**；变化仅在 P5 安装器的 API 语义（`spec.sha256`→外部 `expectedSha256` 判据、卸载不再被 force 绕过、新增 `ROLLBACK_FAILED/UNINSTALL_FAILED/IO_STALL` 结果码、`installed.json` 条目新增 `hashVerified`）。
+- 提交：与四包拆分（`33da307`）分开、不 squash；P5 首版与本次审查修复各一笔。

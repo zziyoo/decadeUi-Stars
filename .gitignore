@@ -28,5 +28,6 @@ build.bat
 *.tmp
 tmp/
 modules/*/*.replacing-*/
+modules/*/*.removing-*/
 Thumbs.db
 .DS_Store

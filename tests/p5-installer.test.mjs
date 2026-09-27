@@ -333,12 +333,16 @@ assert.equal(checkCoreRequirement("~1.5.0", "1.9.0").ok, false, "不认识的写
 	assert.equal(registry.get("core").manifest.type, "core");
 }
 
-// 索引未提供 sha256：安装但显式告警（不假装校验过）
+// 缺外部 expectedSha256：允许安装，但显式标记"未校验"（不假装校验过）
 {
-	const { installer } = makeEnv({});
+	const { io, installer } = makeEnv({});
 	const result = await installer.install({ id: "testmod", version: "1.0.0", url: "https://test/a.zip" });
 	assert.equal(result.ok, true);
-	assert.match(result.warnings.join(" "), /sha256/);
+	assert.match(result.warnings.join(" "), /expectedSha256/);
+	assert.equal(result.hashVerified, false);
+	const entry = JSON.parse(io.files.get("modules/installed.json")).modules.testmod;
+	assert.equal(entry.sha256, "", "未校验时不得把任何摘要写成已验证");
+	assert.equal(entry.hashVerified, false);
 }
 
 // SHA 不符：一个文件都不落地，installed.json 与临时目录保持干净
@@ -563,41 +567,72 @@ assert.equal(checkCoreRequirement("~1.5.0", "1.9.0").ok, false, "不认识的写
 	assert.equal((await installer.install({ id: "shared-ui", version: "1.0.0", url: "https://test/b.zip" })).ok, true);
 	assert.equal((await installer.install({ id: "depender", version: "1.0.0", url: "https://test/c.zip", dependencies: ["core", "shared-ui"] })).ok, true);
 
-	// 使用中的样式不允许卸载（且不动文件）
-	const inUse = await installer.uninstall("testmod");
-	assert.equal(inUse.code, INSTALL_CODES.IN_USE);
-	assert.equal(io.files.has("modules/testmod/1.0.0/player.css"), true);
+	// 使用中：§19 硬边界，force 也不许绕过
+	for (const opts of [{}, { force: true }]) {
+		const inUse = await installer.uninstall("testmod", opts);
+		assert.equal(inUse.code, INSTALL_CODES.IN_USE);
+		assert.equal(io.files.has("modules/testmod/1.0.0/player.css"), true, "拒绝卸载时不得动文件");
+	}
 
-	// 被依赖的共享包不允许卸载
-	const depended = await installer.uninstall("shared-ui");
-	assert.equal(depended.code, INSTALL_CODES.DEPENDED);
-	assert.match(depended.message, /depender/);
-	assert.equal(io.files.has("modules/shared-ui/1.0.0/ui.css"), true);
+	// 被其他模块依赖：force 同样不许绕过
+	for (const opts of [{}, { force: true }]) {
+		const depended = await installer.uninstall("shared-ui", opts);
+		assert.equal(depended.code, INSTALL_CODES.DEPENDED);
+		assert.match(depended.message, /depender/);
+		assert.equal(io.files.has("modules/shared-ui/1.0.0/ui.css"), true);
+	}
 
-	// Core 属使用中，直接拒绝
-	assert.equal((await installer.uninstall("core")).code, INSTALL_CODES.IN_USE);
+	// Core：既使用中又被依赖，force 无效
+	for (const opts of [{}, { force: true }]) {
+		assert.equal((await installer.uninstall("core", opts)).code, INSTALL_CODES.IN_USE);
+	}
 
-	// 正常卸载：删目录 + 清 installed.json + 注销注册
+	// 让位（rename）失败要等依赖解除后才谈得上，见下方 shared-ui 卸载事务测试
+
+	// 正常卸载：让位 → 清台账 → 才真删；成功后不留 .removing- 残骸
 	const removed = await installer.uninstall("depender");
 	assert.equal(removed.ok, true, removed.message);
 	assert.deepEqual(removed.removedVersions, ["1.0.0"]);
 	assert.equal(io.files.has("modules/depender/1.0.0/player.css"), false);
 	assert.equal(JSON.parse(io.files.get("modules/installed.json")).modules.depender, undefined);
 	assert.equal(moduleManager.isInstalled("depender"), false);
+	assert.equal(
+		[...io.files.keys()].some(key => key.includes(".removing-")),
+		false,
+		"让位目录应在状态落定后被清理"
+	);
+
+	// 让位（rename）失败 → 结构化错误，台账与文件都不变
+	io.failOnce.add("movePath:modules/shared-ui/1.0.0");
+	const parkFailed = await installer.uninstall("shared-ui");
+	assert.equal(parkFailed.code, INSTALL_CODES.UNINSTALL_FAILED);
+	assert.equal(io.files.has("modules/shared-ui/1.0.0/ui.css"), true);
+	assert.equal(JSON.parse(io.files.get("modules/installed.json")).modules["shared-ui"].version, "1.0.0");
+
+	// 台账写失败 → 模块目录原样改回，不出现"目录没了但台账说装着"
+	const originalWriteText = io.writeText;
+	io.writeText = async (rel, text) => {
+		if (rel.startsWith("modules/installed.json")) throw new Error("磁盘已满");
+		return originalWriteText(rel, text);
+	};
+	const stateFailed = await installer.uninstall("shared-ui");
+	assert.equal(stateFailed.ok, false);
+	assert.equal(stateFailed.code, INSTALL_CODES.STATE_FAILED);
+	assert.equal(stateFailed.rolledBack, true);
+	assert.equal(textAt(io, "modules/shared-ui/1.0.0/ui.css"), "x", "卸载失败必须可恢复");
+	assert.equal(JSON.parse(io.files.get("modules/installed.json")).modules["shared-ui"].version, "1.0.0");
+	io.writeText = originalWriteText;
 
 	// 未安装 / 内置（非独立安装）模块：一律拒绝，绝不删单体资源
 	assert.equal((await installer.uninstall("ghost")).code, INSTALL_CODES.NOT_INSTALLED);
 	assert.equal((await installer.uninstall("decade")).code, INSTALL_CODES.NOT_INSTALLED);
 	assert.equal(io.files.has("modules/testmod/1.0.0/player.css"), true);
 
-	// 强制卸载（P6 界面二次确认后使用）
-	const forced = await installer.uninstall("testmod", { force: true });
-	assert.equal(forced.ok, true, forced.message);
-	assert.equal(io.files.has("modules/testmod/1.0.0/player.css"), false);
-	const listed = await installer.listInstalled();
+	// 依赖解除后可正常卸载；台账只剩使用中的 testmod
+	assert.equal((await installer.uninstall("shared-ui")).ok, true);
 	assert.deepEqual(
-		listed.items.map(item => item.id).sort(),
-		["shared-ui"]
+		(await installer.listInstalled()).items.map(item => item.id),
+		["testmod"]
 	);
 }
 
@@ -605,7 +640,7 @@ assert.equal(checkCoreRequirement("~1.5.0", "1.9.0").ok, false, "不认识的写
 
 {
 	const bare = createPackageInstaller();
-	assert.deepEqual(bare.isAvailable(), { available: false, missingIo: true, missingExtractor: true });
+	assert.deepEqual(bare.isAvailable(), { available: false, missingIo: true, missingExtractor: true, atomicRename: false });
 	assert.equal((await bare.install({ id: "x", url: "https://test/a.zip" })).code, INSTALL_CODES.NO_IO);
 	assert.equal((await bare.uninstall("x")).code, INSTALL_CODES.NO_IO);
 	assert.equal((await bare.listInstalled()).code, INSTALL_CODES.NO_IO);
@@ -639,6 +674,207 @@ assert.equal(checkCoreRequirement("~1.5.0", "1.9.0").ok, false, "不认识的写
 
 	const corrupt = createPackageInstaller({ io, download: makeDownload(createTransport({ "https://test/index.json": { buffer: encoder.encode("{ 坏").buffer } })) });
 	assert.equal((await corrupt.fetchIndex("https://test/index.json")).code, INSTALL_CODES.STRUCTURE_INVALID);
+}
+
+// ------------------------------------------------------------------ SHA256 的信任来源
+
+{
+	// 1) 外部 expectedSha256 正确 → 成功，且标记 hashVerified
+	const honest = makePackage(styleManifest("testmod", "1.0.0"), styleFiles("testmod"));
+	const honestHash = await shaOf(honest.buffer);
+	{
+		const { io, installer } = makeEnv({ packages: { "https://test/a.zip": honest }, manifest: honest });
+		const ok = await installer.install({ id: "testmod", expectedVersion: "1.0.0", url: "https://test/a.zip", expectedSha256: honestHash });
+		assert.equal(ok.ok, true, ok.message);
+		assert.equal(ok.hashVerified, true);
+		assert.equal(ok.sha256, honestHash);
+		assert.equal(JSON.parse(io.files.get("modules/installed.json")).modules.testmod.hashVerified, true);
+	}
+
+	// 2) 外部 expectedSha256 错误 → SHA_MISMATCH，零落地
+	{
+		const { io, installer } = makeEnv({ packages: { "https://test/a.zip": honest }, manifest: honest });
+		const bad = await installer.install({ id: "testmod", version: "1.0.0", url: "https://test/a.zip", expectedSha256: "a".repeat(64) });
+		assert.equal(bad.ok, false);
+		assert.equal(bad.code, INSTALL_CODES.SHA_MISMATCH);
+		assert.deepEqual(io.published("testmod"), []);
+		assert.deepEqual(io.tempLeftovers(), []);
+	}
+
+	// 3) 包内 manifest.sha256 被改成假值，但外部摘要正确 → 仍按外部值放行并告警
+	const lying = makePackage(styleManifest("testmod", "1.0.0", { sha256: "b".repeat(64) }), styleFiles("testmod"));
+	{
+		const { installer } = makeEnv({ packages: { "https://test/a.zip": lying }, manifest: lying });
+		const result = await installer.install({
+			id: "testmod",
+			version: "1.0.0",
+			url: "https://test/a.zip",
+			expectedSha256: await shaOf(lying.buffer),
+		});
+		assert.equal(result.ok, true, "包内自述摘要不得拥有裁决权");
+		assert.match(result.warnings.join(" "), /自述|不作判据|为准/);
+	}
+
+	// 3b) 没有外部摘要、包内自述值"恰好正确" → 仍算未校验（不采信自述）
+	{
+		const { io, installer } = makeEnv({ packages: { "https://test/a.zip": lying }, manifest: lying });
+		const result = await installer.install({ id: "testmod", version: "1.0.0", url: "https://test/a.zip" });
+		assert.equal(result.ok, true);
+		assert.equal(result.hashVerified, false);
+		assert.equal(JSON.parse(io.files.get("modules/installed.json")).modules.testmod.sha256, "");
+	}
+
+	// 4) 包内 manifest.id 与外部目标不一致 → 拒绝
+	const idClash = makePackage(styleManifest("evil", "1.0.0"), { "player.css": "x", "ui/evil.js": "x" });
+	{
+		const { io, installer } = makeEnv({ packages: { "https://test/a.zip": idClash }, manifest: idClash });
+		const result = await installer.install({
+			expectedId: "testmod",
+			url: "https://test/a.zip",
+			expectedVersion: "1.0.0",
+			expectedSha256: await shaOf(idClash.buffer),
+		});
+		assert.equal(result.code, INSTALL_CODES.ID_MISMATCH);
+		assert.match(result.message, /expectedId\(testmod\)/);
+		assert.deepEqual(io.published("testmod"), []);
+		assert.deepEqual(io.published("evil"), []);
+	}
+
+	// 5) 包内 manifest.version 与外部目标不一致 → 拒绝
+	const verClash = makePackage(styleManifest("testmod", "6.6.6"), styleFiles("testmod"));
+	{
+		const { io, installer } = makeEnv({ packages: { "https://test/a.zip": verClash }, manifest: verClash });
+		const result = await installer.install({ id: "testmod", version: "1.0.0", url: "https://test/a.zip" });
+		assert.equal(result.code, INSTALL_CODES.VERSION_MISMATCH);
+		assert.match(result.message, /expectedVersion\(1\.0\.0\)/);
+		assert.deepEqual(io.published("testmod"), []);
+	}
+
+	// 6) id/version/sha256 与 expected* 等价（向后兼容既有调用方）
+	{
+		const { installer } = makeEnv({ packages: { "https://test/a.zip": honest }, manifest: honest });
+		const legacy = await installer.install({ id: "testmod", version: "1.0.0", url: "https://test/a.zip", sha256: honestHash });
+		assert.equal(legacy.ok, true, legacy.message);
+		assert.equal(legacy.hashVerified, true);
+	}
+}
+
+// ------------------------------------------------------------------ 事务一致性（更新/回滚/残留）
+
+{
+	const v1 = makePackage(styleManifest("testmod", "1.0.0"), styleFiles("testmod"));
+	const packages = { "https://test/v1.zip": v1 };
+	const { io, installer } = makeEnv({ packages, manifest: v1 });
+	assert.equal((await installer.install({ id: "testmod", version: "1.0.0", url: "https://test/v1.zip" })).ok, true);
+
+	// 更新下载失败 → 旧版本目录与台账原样可用
+	const failedUpdate = await installer.update("testmod", {
+		index: { schema: 1, modules: { testmod: { latest: "9.9.9", url: "https://test/offline.zip" } } },
+	});
+	assert.equal(failedUpdate.ok, false);
+	assert.equal(failedUpdate.code, INSTALL_CODES.DOWNLOAD_FAILED);
+	assert.equal(textAt(io, "modules/testmod/1.0.0/player.css"), "testmod 样式");
+	assert.equal(JSON.parse(io.files.get("modules/installed.json")).modules.testmod.version, "1.0.0");
+	assert.deepEqual(io.tempLeftovers(), []);
+}
+
+{
+	// 转正失败 + 回滚也失败 → 明确 ROLLBACK_FAILED，不假装成功
+	const pkg = makePackage(styleManifest("testmod", "1.0.0"), styleFiles("testmod"));
+	const { io, installer } = makeEnv({ packages: { "https://test/a.zip": pkg }, manifest: pkg, random: () => "t2" });
+	assert.equal((await installer.install({ id: "testmod", version: "1.0.0", url: "https://test/a.zip" }, { force: true })).ok, true);
+	io.files.set("modules/testmod/1.0.0/player.css", encoder.encode("old"));
+
+	io.failOnce.add("movePath:tmp/modules/testmod-1.0.0-t2"); // 转正失败
+	io.failOnce.add("movePath:modules/testmod/1.0.0.replacing-t2"); // 回滚也失败
+	const result = await installer.install({ id: "testmod", version: "1.0.0", url: "https://test/a.zip" }, { force: true });
+	assert.equal(result.ok, false);
+	assert.equal(result.code, INSTALL_CODES.ROLLBACK_FAILED);
+	assert.equal(result.rolledBack, false);
+	assert.match(result.message, /回滚/);
+	assert.ok(result.residual, "必须给出残留路径供人工恢复");
+}
+
+{
+	// 首次安装转正失败 → 不留正式模块目录
+	const pkg = makePackage(styleManifest("testmod", "1.0.0"), styleFiles("testmod"));
+	const { io, installer } = makeEnv({ packages: { "https://test/a.zip": pkg }, manifest: pkg, random: () => "t3" });
+	io.failOnce.add("movePath:tmp/modules/testmod-1.0.0-t3");
+	const result = await installer.install({ id: "testmod", version: "1.0.0", url: "https://test/a.zip" });
+	assert.equal(result.ok, false);
+	assert.equal(result.code, INSTALL_CODES.PUBLISH_FAILED);
+	assert.equal(result.rolledBack, true);
+	assert.deepEqual(io.published("testmod"), [], "首装失败不得留下正式模块目录");
+	const ledger = io.files.get("modules/installed.json");
+	assert.ok(ledger === undefined || JSON.parse(ledger).modules.testmod === undefined, "首装失败不得写入台账");
+	assert.deepEqual(io.tempLeftovers(), []);
+}
+
+// ------------------------------------------------------------------ IO 适配层：失败与卡死都必须落定
+
+{
+	const { createNonameIo, IoError } = await import("../src/core/moduleIo.js");
+	const pkg = makePackage(styleManifest("testmod", "1.0.0"), styleFiles("testmod"));
+
+	// 1) createDir 真实报错 → writeBinary reject（IoError），不再有静默挂起
+	const deniedGame = {
+		checkFile: (path, cb) => cb(-1),
+		createDir: (path, ok, err) => err(new Error("EACCES: 目录创建被拒绝")),
+		writeFile: () => {
+			throw new Error("createDir 已失败，不应再写文件");
+		},
+	};
+	const deniedIo = createNonameIo({ game: deniedGame, fs: null, stallMs: 500 });
+	await assert.rejects(() => deniedIo.writeBinary("modules/x/1.0.0/a.css", new Uint8Array([1])), error => error instanceof IoError && /EACCES/.test(error.message));
+
+	// 端到端：目录创建失败必须变成安装器的结构化错误，而不是永远 pending
+	const deniedInstaller = createPackageInstaller({
+		io: deniedIo,
+		extractZip: createFakeExtractor(createFakeIo()),
+		download: makeDownload(createTransport({ "https://test/a.zip": pkg })),
+	});
+	const deniedResult = await Promise.race([
+		deniedInstaller.install({ id: "testmod", version: "1.0.0", url: "https://test/a.zip" }),
+		new Promise(resolve => setTimeout(() => resolve("PENDING"), 3000)),
+	]);
+	assert.notEqual(deniedResult, "PENDING", "IO 失败不得让安装器永久 pending");
+	assert.equal(deniedResult.ok, false);
+	assert.equal(deniedResult.code, INSTALL_CODES.IO_FAILED);
+	assert.equal(deniedResult.stage, "temp");
+
+	// 2) 本体既不成功也不失败地回调（ensureDirectory 的失败路径就是这样）→ 兜底判失败，不当成功
+	const hungGame = { checkFile: (path, cb) => cb(-1), createDir: () => {}, writeFile: () => {} };
+	const hungIo = createNonameIo({ game: hungGame, fs: null, stallMs: 60 });
+	await assert.rejects(
+		() => hungIo.writeText("modules/x/1.0.0/a.css", "x"),
+		error => error instanceof IoError && error.ioCode === "IO_STALL" && /不当作成功/.test(error.message)
+	);
+	const hungInstaller = createPackageInstaller({
+		io: hungIo,
+		extractZip: createFakeExtractor(createFakeIo()),
+		download: makeDownload(createTransport({ "https://test/a.zip": pkg })),
+	});
+	const hungResult = await hungInstaller.install({ id: "testmod", version: "1.0.0", url: "https://test/a.zip" });
+	assert.equal(hungResult.ok, false);
+	assert.equal(hungResult.code, INSTALL_CODES.IO_STALL, "卡死兜底必须单列成 IO_STALL，便于与普通 IO 失败区分");
+
+	// 3) 桌面端 Node fs 的真实错误同样进入 reject
+	const deadFs = {
+		stat: (path, cb) => cb(Object.assign(new Error("ENOENT"), { code: "ENOENT" })),
+		mkdir: (path, options, cb) => cb(Object.assign(new Error("EROFS: 只读文件系统"), { code: "EROFS" })),
+		writeFile: () => {},
+		rename: (from, to, cb) => cb(null),
+	};
+	const roIo = createNonameIo({ fs: deadFs, stallMs: 500 });
+	await assert.rejects(() => roIo.writeBinary("modules/x/a.css", new Uint8Array([1])), /EROFS/);
+
+	// 4) 路径上跳在端口层就被拒绝
+	await assert.rejects(() => roIo.writeBinary("../../outside.css", new Uint8Array([1])), /越出扩展根/);
+
+	// 5) 能力如实上报：无 Node fs 的平台没有原子 rename
+	assert.equal(deniedIo.capabilities.atomicRename, false);
+	assert.equal(deniedIo.capabilities.desktop, false);
+	assert.equal(roIo.capabilities.desktop, true);
 }
 
 // ------------------------------------------------------------------ ZIP 条目越界防护（zip-slip）

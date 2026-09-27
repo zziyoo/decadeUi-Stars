@@ -2,53 +2,280 @@
  * @fileoverview P5 安装器的落地适配层（noname 运行时侧）
  *
  * 分层：PackageInstaller 只依赖注入的 io / extractZip 端口（纯逻辑、可在 Node 测试）；
- * 本文件提供端口的**运行时实现**，全部复用本体既有能力，不另建文件/解压系统（任务书§56禁止1）：
- *   - 读写列删：game.promises.{readFile,readFileAsText,writeFile,getFileList,removeFile,removeDir}
- *   - 存在性：game.checkFile（1=文件 0=目录 -1=不存在）
- *   - 改名（发布/回滚的原子切换）：lib.node.fs.rename，缺失时回落 copy+remove
- *   - ZIP：window.JSZip，加载方式与 app.importPlugin 完全一致（lib.init.js 本体自带 jszip）
+ * 本文件提供端口的**运行时实现**，复用本体既有能力，不另建文件/解压系统（任务书§56禁止1）。
  *
- * 路径约定：端口一律接受**扩展根相对**的 POSIX 路径（如 `modules/decade/1.5.0/manifest.json`），
- * 由本文件在调用期拼 `extension/<decadeUIName>/` 前缀。禁止在模块求值期引用 decadeUIName（P2 规则）。
+ * 可靠性契约（P5 审查后收紧）：**端口永远不会永久 pending**，任一路径都会落定：
+ *   - 桌面端（lib.node.fs 可用）全部走 Node fs 的真实 error callback，
+ *     目录创建用自建递归 mkdir 取代本体 game.ensureDirectory
+ *     （后者的失败路径只 console.log、既不回调也不抛出，会让 game.promises.writeFile 永挂）。
+ *   - 无 Node fs 的平台回落到 game.* 回调：先 game.createDir（有真实 errorCallback）
+ *     把 ensureDirectory 的风险路径变成"目录已存在"的快路径，再写文件。
+ *   - 兜底 watchdog：仅用于"本体既不成功也不失败地回调"这一类卡死，
+ *     以 ioCode=IO_STALL **reject**（绝不静默当成成功），真实错误优先于兜底。
+ *
+ * 原子性如实描述：同卷 rename 是原子的；跨卷（EXDEV）与非 Node 平台走 copy+remove，
+ * **不是原子操作**，中途失败会留下部分副本——调用方必须按"可能残留"处理（清理+结构化错误）。
+ *
+ * 路径约定：端口接受**扩展根相对**的 POSIX 路径（如 `modules/decade/1.5.0/manifest.json`），
+ * 调用期拼 `extension/<decadeUIName>/` 前缀。禁止在模块求值期引用 decadeUIName（P2 规则）。
  */
-import { lib, game } from "noname";
+import { lib as nonameLib, game as nonameGame } from "noname";
+
+/** IO 失败带 code，供安装器区分"卡死兜底"与"真实错误" */
+export class IoError extends Error {
+	constructor(code, message, cause) {
+		super(message);
+		this.name = "IoError";
+		this.ioCode = code;
+		if (cause) this.cause = cause;
+	}
+}
 
 /** 扩展根（文件系统视角，相对本体 __dirname）；调用期求值 */
 const extRoot = () => `extension/${(typeof window !== "undefined" && window.decadeUIName) || "十周年UI-Stars"}`;
 const toPosix = path => String(path).split("\\").join("/");
-const abs = rel => {
+const safeRel = rel => {
 	const cleaned = toPosix(rel).replace(/^\/+/, "");
 	// 端口自身再挡一次路径上跳：安装器的临时目录名来自外部索引，不能相信任何输入
-	if (cleaned.split("/").includes("..")) throw new Error(`[ModuleIo] 路径越出扩展根: ${rel}`);
-	return `${extRoot()}/${cleaned}`;
+	if (cleaned.split("/").includes("..")) throw new IoError("IO_UNSAFE_PATH", `[ModuleIo] 路径越出扩展根: ${rel}`);
+	return cleaned;
 };
-const dirOf = rel => {
-	const parts = abs(rel).split("/");
+const dirOf = path => {
+	const parts = path.split("/");
 	parts.pop();
 	return parts.join("/");
 };
-const nameOf = rel => abs(rel).split("/").pop();
+const nameOf = path => path.split("/").pop();
 
-/** 回调式本体 API → Promise，并把"不存在"归一化为 null 而非抛错 */
-const checkKind = rel =>
-	new Promise(resolve => {
-		if (typeof game?.checkFile !== "function") {
-			resolve(null);
-			return;
+/** 默认卡死兜底：真实回调永远优先，只有本体彻底不回调时才判失败 */
+const DEFAULT_STALL_MS = 15000;
+
+/**
+ * 回调式 API → 只落定一次的 Promise。
+ * @param {(ok: Function, err: Function) => void} run
+ * @param {{label: string, stallMs: number}} meta
+ */
+function settle(run, { label, stallMs }) {
+	return new Promise((resolve, reject) => {
+		let settled = false;
+		let timer = null;
+		const finish = (fn, value) => {
+			if (settled) return;
+			settled = true;
+			if (timer) clearTimeout(timer);
+			fn(value);
+		};
+		if (stallMs > 0) {
+			timer = setTimeout(() => finish(reject, new IoError("IO_STALL", `[ModuleIo] ${label} 无响应：本体回调未触发（已按失败处理，不当作成功）`)), stallMs);
+			if (typeof timer?.unref === "function") timer.unref();
 		}
-		game.checkFile(
-			abs(rel),
-			code => resolve(code === 1 ? "file" : code === 0 ? "dir" : null),
-			() => resolve(null)
-		);
+		const ok = value => finish(resolve, value === undefined ? null : value);
+		const err = error => finish(reject, error instanceof IoError ? error : new IoError("IO_FAILED", `[ModuleIo] ${label} 失败: ${error?.message ?? error}`, error));
+		try {
+			run(ok, err);
+		} catch (thrown) {
+			err(thrown);
+		}
 	});
+}
 
 /**
  * 创建文件系统端口
+ * @param {Object} [options]
+ * @param {Object} [options.game] - 注入本体 game（测试替身）
+ * @param {Object} [options.lib] - 注入本体 lib（测试替身）
+ * @param {Object|null} [options.fs] - 强制指定 Node fs（缺省取 lib.node.fs）
+ * @param {number} [options.stallMs] - 卡死兜底时长，0 关闭
  * @returns {Object} io
  */
-export function createNonameIo() {
-	/** 递归复制（rename 不可用时的发布回落路径） */
+export function createNonameIo(options = {}) {
+	const game = options.game ?? nonameGame;
+	const lib = options.lib ?? nonameLib;
+	const fs = "fs" in options ? options.fs : (lib?.node?.fs ?? null);
+	const stallMs = options.stallMs ?? DEFAULT_STALL_MS;
+	const abs = rel => `${extRoot()}/${safeRel(rel)}`;
+
+	// ---------------------------------------------------------- 桌面端（Node fs）
+
+	const desktopListDir = rel =>
+		settle(
+			(ok, err) => {
+				const target = abs(rel);
+				fs.readdir(target, (error, names) => {
+					if (error) {
+						if (error.code === "ENOENT" || error.code === "ENOTDIR") return ok({ dirs: [], files: [] });
+						return err(error);
+					}
+					const dirs = [];
+					const files = [];
+					// 与本体 getFileList 一致：跳过 . 与 _ 开头的条目（.removing-/.replacing- 让位目录因此不会被当版本目录）
+					const visible = names.filter(name => name[0] !== "." && name[0] !== "_");
+					const next = index => {
+						if (index >= visible.length) return ok({ dirs, files });
+						fs.stat(`${target}/${visible[index]}`, (statError, stat) => {
+							if (statError) return err(statError);
+							(stat.isDirectory() ? dirs : files).push(visible[index]);
+							next(index + 1);
+						});
+					};
+					if (!visible.length) return ok({ dirs, files });
+					next(0);
+				});
+			},
+			{ label: `listDir ${rel}`, stallMs }
+		);
+
+	const desktopMkdir = dir =>
+		settle(
+			(ok, err) => {
+				if (!dir || dir === extRoot()) return ok(null);
+				fs.mkdir(dir, { recursive: true }, error => {
+					if (error && error.code !== "EEXIST") return err(error);
+					ok(null);
+				});
+			},
+			{ label: `mkdir ${dir}`, stallMs }
+		);
+
+	const desktopWrite = (rel, data, encoding) =>
+		settle(
+			(ok, err) => {
+				const target = abs(rel);
+				fs.mkdir(dirOf(target), { recursive: true }, mkdirError => {
+					// 目录创建失败必须真的抛出：绝不让 game.ensureDirectory 那种"静默挂起"重现
+					if (mkdirError && mkdirError.code !== "EEXIST") return err(mkdirError);
+					fs.writeFile(target, data, encoding === "utf8" ? "utf8" : undefined, writeError => (writeError ? err(writeError) : ok(null)));
+				});
+			},
+			{ label: `write ${rel}`, stallMs }
+		);
+
+	const desktopRemoveTree = rel =>
+		settle(
+			(ok, err) => {
+				const target = abs(rel);
+				if (typeof fs.rm === "function") {
+					fs.rm(target, { recursive: true, force: true }, error => (error ? err(error) : ok(null)));
+					return;
+				}
+				fs.rmdir(target, { recursive: true }, error => (error && error.code !== "ENOENT" ? err(error) : ok(null)));
+			},
+			{ label: `removeTree ${rel}`, stallMs }
+		);
+
+	// ------------------------------------------------------ 非桌面端（game 回调）
+
+	const legacyKind = rel =>
+		settle(
+			(ok, err) => {
+				if (typeof game?.checkFile !== "function") return ok(null);
+				game.checkFile(abs(rel), code => ok(code === 1 ? "file" : code === 0 ? "dir" : null), err);
+			},
+			{ label: `check ${rel}`, stallMs }
+		);
+
+	/** 先 createDir（本体实现有真实 errorCallback），把 game.writeFile 内部 ensureDirectory 的失败面挪到可观测处 */
+	const legacyPrepareDir = rel =>
+		settle(
+			(ok, err) => {
+				const dir = dirOf(abs(rel));
+				if (typeof game?.createDir !== "function") return ok(null);
+				game.createDir(dir, () => ok(null), err);
+			},
+			{ label: `createDir ${dirOf(rel)}`, stallMs }
+		);
+
+	const legacyWrite = (rel, data) =>
+		settle(
+			(ok, err) => {
+				// 本体 game.writeFile 的 callback 在写失败时收到 Error 对象（并非抛出），两种都要转成 reject
+				game.writeFile(data, dirOf(abs(rel)), nameOf(rel), result => {
+					if (result instanceof Error) return err(result);
+					ok(null);
+				});
+			},
+			{ label: `write ${rel}`, stallMs }
+		);
+
+	const legacyRemoveFile = rel =>
+		settle(
+			(ok, err) => game.removeFile(abs(rel), error => (error instanceof Error ? err(error) : ok(null))),
+			{ label: `removeFile ${rel}`, stallMs }
+		);
+
+	// ---------------------------------------------------------- 统一端口实现
+
+	async function kind(rel) {
+		if (fs) {
+			return settle(
+				(ok, err) => {
+					fs.stat(abs(rel), (error, stat) => {
+						if (!error) return ok(stat.isDirectory() ? "dir" : stat.isFile() ? "file" : "other");
+						if (error.code === "ENOENT" || error.code === "ENOTDIR") return ok(null);
+						err(error);
+					});
+				},
+				{ label: `stat ${rel}`, stallMs }
+			);
+		}
+		return legacyKind(rel);
+	}
+
+	async function readBinary(rel) {
+		if ((await kind(rel)) !== "file") return null;
+		if (fs) {
+			const buffer = await settle((ok, err) => fs.readFile(abs(rel), (error, data) => (error ? err(error) : ok(data))), {
+				label: `read ${rel}`,
+				stallMs,
+			});
+			if (buffer instanceof ArrayBuffer) return buffer;
+			if (ArrayBuffer.isView(buffer)) return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+			return new Uint8Array(buffer).buffer;
+		}
+		const data = await settle((ok, err) => game.readFile(abs(rel), ok, err), { label: `read ${rel}`, stallMs });
+		if (data instanceof ArrayBuffer) return data;
+		if (ArrayBuffer.isView(data)) return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
+		return new Uint8Array(data).buffer;
+	}
+
+	async function writeBinary(rel, data) {
+		const bytes = data instanceof ArrayBuffer ? new Uint8Array(data) : data;
+		if (fs) return desktopWrite(rel, bytes);
+		await legacyPrepareDir(rel);
+		return legacyWrite(rel, bytes);
+	}
+
+	async function listDir(rel) {
+		if (fs) return desktopListDir(rel);
+		if ((await kind(rel)) !== "dir") return { dirs: [], files: [] };
+		const [dirs = [], files = []] = await settle((ok, err) => game.getFileList(abs(rel), (folders, found) => ok([folders, found]), err), {
+			label: `listDir ${rel}`,
+			stallMs,
+		});
+		return { dirs, files };
+	}
+
+	async function removeTree(rel) {
+		const current = await kind(rel);
+		if (current === null) return;
+		if (fs) return desktopRemoveTree(rel);
+		if (current === "file") return legacyRemoveFile(rel);
+		const { dirs, files } = await listDir(rel);
+		for (const file of files) {
+			await legacyRemoveFile(`${rel}/${file}`);
+		}
+		for (const dir of dirs) {
+			await removeTree(`${rel}/${dir}`);
+		}
+		await settle(
+			(ok, err) => {
+				if (typeof game?.removeDir !== "function") return ok(null);
+				game.removeDir(abs(rel), () => ok(null), err);
+			},
+			{ label: `removeDir ${rel}`, stallMs }
+		);
+	}
+
 	async function copyTree(srcRel, destRel) {
 		const { dirs, files } = await listDir(srcRel);
 		for (const file of files) {
@@ -60,88 +287,59 @@ export function createNonameIo() {
 		}
 	}
 
-	async function removeTree(rel) {
-		const kind = await checkKind(rel);
-		if (kind === "file") {
-			await game.promises.removeFile(abs(rel));
-			return;
-		}
-		if (kind !== "dir") return;
-		const { dirs, files } = await listDir(rel);
-		for (const file of files) {
-			await game.promises.removeFile(abs(`${rel}/${file}`));
-		}
-		for (const dir of dirs) {
-			await removeTree(`${rel}/${dir}`);
-		}
-		try {
-			await game.promises.removeDir(abs(rel));
-		} catch {
-			// 浏览器/cordova 无递归删目录能力时，空目录残留不影响模块根解析（Manifest 版本目录才是寻址依据）
-		}
-	}
-
-	const listDir = async rel => {
-		const kind = await checkKind(rel);
-		if (kind !== "dir") return { dirs: [], files: [] };
-		const [folders, files] = await game.promises.getFileList(abs(rel));
-		return { dirs: folders || [], files: files || [] };
-	};
-
-	const readBinary = async rel => {
-		const kind = await checkKind(rel);
-		if (kind !== "file") return null;
-		const data = await game.promises.readFile(abs(rel));
-		if (data instanceof ArrayBuffer) return data;
-		if (ArrayBuffer.isView(data)) return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
-		return new Uint8Array(data).buffer;
-	};
-
-	const writeBinary = async (rel, data) => {
-		const bytes = data instanceof ArrayBuffer ? new Uint8Array(data) : data;
-		await game.promises.writeFile(bytes, dirOf(rel), nameOf(rel));
-	};
-
 	const io = {
-		kind: checkKind,
-		exists: async rel => (await checkKind(rel)) !== null,
+		/** 端口能力探测：桌面端 rename 同卷原子，其它平台为 copy+remove（非原子） */
+		capabilities: { atomicRename: !!(fs && typeof fs.rename === "function"), desktop: !!fs },
+		kind,
 		readText: async rel => {
-			const kind = await checkKind(rel);
-			return kind === "file" ? await game.promises.readFileAsText(abs(rel)) : null;
+			if (fs) {
+				if ((await kind(rel)) !== "file") return null;
+				return settle((ok, err) => fs.readFile(abs(rel), "utf8", (error, text) => (error ? err(error) : ok(text))), { label: `read ${rel}`, stallMs });
+			}
+			if ((await kind(rel)) !== "file") return null;
+			return settle((ok, err) => game.readFileAsText(abs(rel), ok, err), { label: `read ${rel}`, stallMs });
 		},
 		writeText: async (rel, text) => {
-			await game.promises.writeFile(String(text), dirOf(rel), nameOf(rel));
+			if (fs) return desktopWrite(rel, String(text), "utf8");
+			await legacyPrepareDir(rel);
+			return legacyWrite(rel, String(text));
 		},
 		readBinary,
 		writeBinary,
 		listDir,
 		removeFile: async rel => {
-			if ((await checkKind(rel)) === "file") await game.promises.removeFile(abs(rel));
+			if ((await kind(rel)) !== "file") return;
+			if (fs) {
+				return settle((ok, err) => fs.unlink(abs(rel), error => (error && error.code !== "ENOENT" ? err(error) : ok(null))), {
+					label: `unlink ${rel}`,
+					stallMs,
+				});
+			}
+			return legacyRemoveFile(rel);
 		},
 		removeTree,
 		copyTree,
-		/** 目录/文件改名：桌面端 fs.rename（同卷原子）；不可用时 copy+remove */
+		/**
+		 * 改名到位：桌面端同卷 rename（原子）；跨卷 EXDEV 或无 fs 时 copy+remove（**非原子**，
+		 * 中途失败可能留下部分副本，调用方必须清理并返回结构化错误）。
+		 */
 		movePath: async (srcRel, destRel) => {
-			const fs = lib.node?.fs;
-			if (typeof fs?.rename === "function") {
-				await new Promise((resolve, reject) => {
-					const from = abs(srcRel);
-					const to = abs(destRel);
-					fs.mkdir?.(dirOf(destRel), { recursive: true }, () => {
-						fs.rename(from, to, error => (error ? reject(error) : resolve()));
-					});
-				});
-				return;
+			const sourceKind = await kind(srcRel);
+			if (sourceKind === null) throw new IoError("IO_FAILED", `[ModuleIo] move 源不存在: ${srcRel}`);
+			if (fs && typeof fs.rename === "function") {
+				const from = abs(srcRel);
+				const to = abs(destRel);
+				try {
+					await desktopMkdir(dirOf(to));
+					await settle((ok, err) => fs.rename(from, to, error => (error ? err(error) : ok(null))), { label: `rename ${srcRel}`, stallMs });
+					return;
+				} catch (error) {
+					if (error?.code !== "EXDEV" && error?.cause?.code !== "EXDEV") throw error;
+					// 跨卷：回落为非原子的 copy+remove
+				}
 			}
-			if ((await checkKind(srcRel)) === "dir") {
-				await copyTree(srcRel, destRel);
-				await removeTree(srcRel);
-			} else {
-				const buffer = await readBinary(srcRel);
-				if (buffer === null) throw new Error(`[ModuleIo] move 源不存在: ${srcRel}`);
-				await writeBinary(destRel, buffer);
-				await io.removeFile(srcRel);
-			}
+			await copyTree(srcRel, destRel);
+			await removeTree(srcRel);
 		},
 	};
 
@@ -149,11 +347,18 @@ export function createNonameIo() {
 }
 
 /** 本体自带 JSZip 的就绪（与 app.importPlugin 同一加载路径，避免第二套解压方案） */
-function jsZipReady() {
-	return new Promise(resolve => {
-		if (window.JSZip) return resolve(window.JSZip);
-		lib.init.js(`${lib.assetURL}game`, "jszip", () => resolve(window.JSZip));
-	});
+function defaultLoadJsZip({ lib = nonameLib, stallMs = DEFAULT_STALL_MS } = {}) {
+	return settle(
+		(ok, err) => {
+			if (typeof window !== "undefined" && window.JSZip) return ok(window.JSZip);
+			if (typeof lib?.init?.js !== "function") return err(new Error("无法加载 JSZip（lib.init.js 不可用）"));
+			lib.init.js(`${lib.assetURL ?? ""}game`, "jszip", () => {
+				if (window.JSZip) return ok(window.JSZip);
+				err(new Error("JSZip 加载后仍不可用"));
+			});
+		},
+		{ label: "加载 JSZip", stallMs }
+	);
 }
 
 /**
@@ -176,28 +381,33 @@ export function normalizeZipEntry(entryName) {
 
 /**
  * 创建 ZIP 解压端口
- * @returns {{extract: (buffer: ArrayBuffer, targetRelDir: string, onEntry?: (done: number, total: number) => void) => Promise<string[]>}}
+ * @param {Object} [options]
+ * @param {Object} [options.io] - 落地用的文件系统端口（缺省新建）
+ * @param {Function} [options.loadJsZip] - JSZip 装载函数
+ * @returns {{extract: (buffer: ArrayBuffer, targetRelDir: string, onEntry?: Function) => Promise<string[]>}}
  */
-export function createZipExtractor() {
+export function createZipExtractor(options = {}) {
+	const io = options.io ?? createNonameIo(options);
+	const loadJsZip = options.loadJsZip ?? (async () => defaultLoadJsZip(options));
+
 	return {
 		/**
 		 * 解压到扩展根下的目标目录，返回落地的相对路径列表。
 		 * JSZip 2.x 用法与 app.importPlugin 保持一致（new JSZip(data) + files[i].asNodeBuffer/asArrayBuffer）。
 		 */
 		async extract(buffer, targetRelDir, onEntry) {
-			const JSZip = await jsZipReady();
+			const JSZip = await loadJsZip();
 			if (!JSZip) throw new Error("[ModuleIo] JSZip 不可用，无法解压模块包");
 			const zip = new JSZip(buffer);
-			const io = createNonameIo();
 			const entries = Object.keys(zip.files || {})
 				.filter(raw => !/\/$/.test(raw) && !zip.files[raw].dir)
 				.map(raw => ({ raw, rel: normalizeZipEntry(raw) }));
-			const isNode = !!lib.node?.fs;
+			const isNode = !!io.capabilities?.desktop;
 			let done = 0;
 
 			for (const { raw, rel } of entries) {
 				const file = zip.files[raw];
-				const data = isNode ? file.asNodeBuffer() : file.asArrayBuffer();
+				const data = isNode && typeof file.asNodeBuffer === "function" ? file.asNodeBuffer() : file.asArrayBuffer();
 				await io.writeBinary(`${targetRelDir}/${rel}`, data);
 				done++;
 				if (onEntry) onEntry(done, entries.length);
