@@ -244,7 +244,7 @@ function createDesktopStore(initial = {}) {
 	/** @type {Map<string, Uint8Array>} */
 	const store = new Map();
 	for (const [rel, text] of Object.entries(initial)) store.set(rel, encoder.encode(String(text)));
-	const key = path => String(path).replace(/^extension\/[^/]+\//, "");
+	const key = path => String(path).replace(/^.*?extension\/[^/]+\//, "").replace(/^\/+/, "");
 	const dirNames = new Set();
 	const fs = {
 		failOnce: new Set(),
@@ -1532,6 +1532,34 @@ assert.equal(checkCoreRequirement("~1.5.0", "1.9.0").ok, false, "不认识的写
 	assert.equal(game.readText("modules/a.json/inside.txt"), "X");
 	assert.equal(game.readText("modules/a.json.tmp"), "NEW");
 	assert.deepEqual(game.movingLeftovers(), []);
+}
+
+{
+	// 桌面端裸 fs 的路径必须以本体归一化的绝对根（window.__dirname）为基准。
+	// 裸 fs 的相对路径基准是 process.cwd()，而本体文件 API 用的是 __dirname；
+	// 两者不一致时（本机 Electron/dev 环境实测如此）表现为"文件找不到但不报错"
+	// → readInstalled 返回空台账 → 模块管理窗口把所有已装模块显示成"未安装"。
+	const previousDirname = globalThis.window.__dirname;
+	globalThis.window.__dirname = "C:/fake/app";
+	try {
+		const fs = createDesktopStore({ "modules/installed.json": "LEDGER" });
+		const seen = [];
+		for (const name of ["stat", "mkdir", "readFile", "writeFile", "unlink", "rm", "readdir"]) {
+			const original = fs[name];
+			fs[name] = (path, ...rest) => {
+				seen.push(String(path));
+				return original(path, ...rest);
+			};
+		}
+		const io = createNonameIo({ fs, stallMs: 500 });
+		assert.equal(await io.readText("modules/installed.json"), "LEDGER", "绝对路径下仍要能正常读到内容");
+		assert.ok(seen.length > 0, "应当发生过真实的 fs 调用");
+		const relative = seen.filter(path => !String(path).startsWith("C:/fake/app/extension/十周年UI-Stars/"));
+		assert.deepEqual(relative, [], `裸 fs 必须收到以本体 __dirname 为基准的绝对路径，这些是相对的：${relative.join(", ")}`);
+	} finally {
+		if (previousDirname === undefined) delete globalThis.window.__dirname;
+		else globalThis.window.__dirname = previousDirname;
+	}
 }
 
 // ------------------------------------------------------------------ ZIP 条目越界防护（zip-slip）

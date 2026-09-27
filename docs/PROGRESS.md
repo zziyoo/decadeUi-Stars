@@ -254,11 +254,10 @@ P5（任务书§42 + §17/§18/§19/§11/§24/§20）已完成：首版 `6c76534
    - `uninstall` 后注册表里该 id 的**内置记录一并消失**（内置清单只在启动时注册），P6 若要显示"可安装"状态需从 module-index 反查，或届时再恢复内置影子记录。
    - §19 三条边界（使用中 / 被依赖 / core）**不受 force 影响**，是刻意设计：卸载正在使用的模块等于允许运行时抽掉自己脚下的地板。P6 的 UI 必须引导"先切换样式再卸载"。
 
-9. **【P6 实测发现，未解决】模块管理窗口显示"已独立安装 0"（预期 6）**：游戏内 `readInstalled()` **成功返回但台账为空**——`moduleIo` 桌面分支的 `fs.stat(extension/十周年UI-Stars/modules/installed.json)` 没找到文件（ENOENT → `kind()` 返回 null → 被当成"还没有台账"，所以既没有报错也没有记录）。怀疑点：本体在本机这套 dev/Electron 运行环境里的 fs 相对路径锚点与扩展假设的 `__dirname`（假定为 `resources/app`）不一致。**待你自己跑探针确认锚点**：
-   - `await new Promise(r => game.checkFile("extension/十周年UI-Stars/modules/installed.json", c => r(c), e => r(String(e))))` → 期望 `1`；若为 `-1`，说明本体锚点不同，应把 `moduleIo` 桌面分支改成与本体同一锚点。
-   - `await decadeUI.packageInstaller.isAvailable()` → 看 `atomicRename`/`desktop` 是否都为 true（判断走的是 Node fs 还是 game 回调分支）。
-   - `await decadeUI.packageInstaller.readInstalled()` → 正常应返回 6 个模块；返回空 `modules:{}` 即复现本问题。
-   > 影响面：只影响"显示已安装状态/卸载入口"（纯读）；安装、卸载的写入路径是否同样受影响尚未验证——**在查清锚点前，不要用窗口执行安装/更新**。
+9. **【P6 实测发现，已修待复核】游戏内 `installed.json` 被读成空台账（窗口显示"已独立安装 0"）**：根因是 P5 的 `moduleIo` 桌面分支把**扩展根相对路径**直接交给裸 `fs`，而裸 fs 的相对路径基准是 `process.cwd()`；本体文件 API 用的却是它自己归一化过的 `window.__dirname`（`noname/init/node.js`：`electron.asar/renderer` → `resourcesPath/app`，否则 `resolve()/resources/app`）。本机 Electron/dev 环境下两者不一致 → `fs.stat` ENOENT → `kind()` 按设计把 ENOENT 当"不存在" → `readInstalled()` 返回成功但台账为空（所以既不报错也不记录，六行全成"未安装"）。**修法**：`moduleIo` 新增 `fsRoot()/fsAbs()`，桌面分支一律用 `window.__dirname` 绝对基准（拿不到时才回落相对形式，Node 测试桩行为不变），`game.*` 回调分支仍用相对路径。新增回归测试（设 `window.__dirname` 后断言裸 fs 收到的全是绝对路径）RED→GREEN。
+   **影响面**：不只读——写入同样会落到 cwd 下的错误位置（比报错更隐蔽），修复前**不要用窗口执行安装/更新**。
+   - 复核探针（单行）：`({ dirname: window.__dirname, cwd: process.cwd?.(), found: lib.node.fs.existsSync(window.__dirname + "/extension/十周年UI-Stars/modules/installed.json") })` → 期望 `dirname` 为应用根、`found: true`；这同时解释了修复前失败的原因（cwd ≠ dirname）。
+   - 游戏内复核：打开窗口应为"已独立安装 6"，六个样式行显示"已安装"，十周年行"当前使用"且卸载置灰。
 
 10. **【P6 已修，待你复核】本体 `div` 默认绝对定位导致窗口布局挤压**：本体 `layout/default/layout.css` 有 `div { display: inline-block; position: absolute; }`，窗口里未显式声明 `position` 的 div 全部脱离文档流、各自收缩并重叠（用户实测：文字竖挤成一堆）。已为所有该留在流里的类显式 `position: static`（装饰件与进度条保持绝对定位）。**这类坑对后续任何自绘 UI（P6 后续界面、P8 Feature 面板）都成立：在无名杀里自绘 div 必须显式声明 position。**
 

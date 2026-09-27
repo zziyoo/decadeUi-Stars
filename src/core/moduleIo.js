@@ -120,13 +120,27 @@ export function createNonameIo(options = {}) {
 	const fs = "fs" in options ? options.fs : (lib?.node?.fs ?? null);
 	const stallMs = options.stallMs ?? DEFAULT_STALL_MS;
 	const abs = rel => `${extRoot()}/${safeRel(rel)}`;
+	/**
+	 * 裸 fs 的绝对基准。本体在 node 初始化时把 window.__dirname 归一成"应用根"
+	 * （noname/init/node.js：electron.asar/renderer → resourcesPath/app，否则 resolve()/resources/app），
+	 * 本体文件 API 全用它；而裸 fs 的相对路径基准是 process.cwd()，两者可能不一致
+	 * （本机 Electron/dev 环境实测不一致：文件明明在，stat 却 ENOENT，而 kind() 会把 ENOENT 当"不存在"
+	 * → installed.json 读成空台账、模块管理窗口把所有已装模块显示成"未安装"）。
+	 * 拿不到 window.__dirname 时回落相对形式（Node 测试桩、非 Electron 平台）。
+	 */
+	const fsRoot = () => {
+		const base = typeof window !== "undefined" && typeof window.__dirname === "string" ? toPosix(window.__dirname).replace(/\/+$/, "") : "";
+		return base ? `${base}/${extRoot()}` : extRoot();
+	};
+	/** 只有桌面（Node fs）分支用绝对路径；game.* 回调分支仍用相对路径（本体自己拼 __dirname） */
+	const fsAbs = rel => `${fsRoot()}/${safeRel(rel)}`;
 
 	// ---------------------------------------------------------- 桌面端（Node fs）
 
 	const desktopListDir = rel =>
 		settle(
 			(ok, err) => {
-				const target = abs(rel);
+				const target = fsAbs(rel);
 				fs.readdir(target, (error, names) => {
 					if (error) {
 						if (error.code === "ENOENT" || error.code === "ENOTDIR") return ok({ dirs: [], files: [] });
@@ -154,7 +168,7 @@ export function createNonameIo(options = {}) {
 	const desktopMkdir = dir =>
 		settle(
 			(ok, err) => {
-				if (!dir || dir === extRoot()) return ok(null);
+				if (!dir || dir === fsRoot()) return ok(null);
 				fs.mkdir(dir, { recursive: true }, error => {
 					if (error && error.code !== "EEXIST") return err(error);
 					ok(null);
@@ -166,7 +180,7 @@ export function createNonameIo(options = {}) {
 	const desktopWrite = (rel, data, encoding) =>
 		settle(
 			(ok, err) => {
-				const target = abs(rel);
+				const target = fsAbs(rel);
 				fs.mkdir(dirOf(target), { recursive: true }, mkdirError => {
 					// 目录创建失败必须真的抛出：绝不让 game.ensureDirectory 那种"静默挂起"重现
 					if (mkdirError && mkdirError.code !== "EEXIST") return err(mkdirError);
@@ -179,7 +193,7 @@ export function createNonameIo(options = {}) {
 	const desktopRemoveTree = rel =>
 		settle(
 			(ok, err) => {
-				const target = abs(rel);
+				const target = fsAbs(rel);
 				if (typeof fs.rm === "function") {
 					fs.rm(target, { recursive: true, force: true }, error => (error ? err(error) : ok(null)));
 					return;
@@ -235,7 +249,7 @@ export function createNonameIo(options = {}) {
 		if (fs) {
 			return settle(
 				(ok, err) => {
-					fs.stat(abs(rel), (error, stat) => {
+					fs.stat(fsAbs(rel), (error, stat) => {
 						if (!error) return ok(stat.isDirectory() ? "dir" : stat.isFile() ? "file" : "other");
 						if (error.code === "ENOENT" || error.code === "ENOTDIR") return ok(null);
 						err(error);
@@ -250,7 +264,7 @@ export function createNonameIo(options = {}) {
 	async function readBinary(rel) {
 		if ((await kind(rel)) !== "file") return null;
 		if (fs) {
-			const buffer = await settle((ok, err) => fs.readFile(abs(rel), (error, data) => (error ? err(error) : ok(data))), {
+			const buffer = await settle((ok, err) => fs.readFile(fsAbs(rel), (error, data) => (error ? err(error) : ok(data))), {
 				label: `read ${rel}`,
 				stallMs,
 			});
@@ -316,7 +330,7 @@ export function createNonameIo(options = {}) {
 	async function removeFile(rel) {
 		if ((await kind(rel)) !== "file") return;
 		if (fs) {
-			return settle((ok, err) => fs.unlink(abs(rel), error => (error && error.code !== "ENOENT" ? err(error) : ok(null))), {
+			return settle((ok, err) => fs.unlink(fsAbs(rel), error => (error && error.code !== "ENOENT" ? err(error) : ok(null))), {
 				label: `unlink ${rel}`,
 				stallMs,
 			});
@@ -462,7 +476,7 @@ export function createNonameIo(options = {}) {
 		readText: async rel => {
 			if (fs) {
 				if ((await kind(rel)) !== "file") return null;
-				return settle((ok, err) => fs.readFile(abs(rel), "utf8", (error, text) => (error ? err(error) : ok(text))), { label: `read ${rel}`, stallMs });
+				return settle((ok, err) => fs.readFile(fsAbs(rel), "utf8", (error, text) => (error ? err(error) : ok(text))), { label: `read ${rel}`, stallMs });
 			}
 			if ((await kind(rel)) !== "file") return null;
 			return settle((ok, err) => game.readFileAsText(abs(rel), ok, err), { label: `read ${rel}`, stallMs });
@@ -496,8 +510,8 @@ export function createNonameIo(options = {}) {
 			// 自我搬运：不挡的话非原子分支会在"写回同一路径"之后把源删掉
 			if (safeRel(srcRel) === safeRel(destRel)) return;
 			if (fs && typeof fs.rename === "function") {
-				const from = abs(srcRel);
-				const to = abs(destRel);
+				const from = fsAbs(srcRel);
+				const to = fsAbs(destRel);
 				try {
 					await desktopMkdir(dirOf(to));
 					await settle((ok, err) => fs.rename(from, to, error => (error ? err(error) : ok(null))), { label: `rename ${srcRel}`, stallMs });
