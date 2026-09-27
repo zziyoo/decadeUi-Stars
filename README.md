@@ -2439,3 +2439,14 @@ P0 审计
   - 明确不做（记录）：其余 45 个非样式配置键字面量、样式比较逻辑转能力判断（`hasCapability`）——按任务书§14 分阶段原则留待 P3/P4。
 - 验证：154 个 JS `node --check` 全过；p1/p2 冒烟测试全过；vite build 成功。
 - 阶段推进：**P2 完成，待验收后进入 P3（制作 decade Style Pack）**。
+
+## v1.3（2026-09-27）
+
+- **P2 验收阻塞问题修复**（不改既有功能行为，除修复本身）：
+  - **extension.js 首次初始化顺序修复**：恢复"扩展目录名锚点 → 读取 info.json → 取得 name → 注入 decadeUIName/decadeUIPath"的正确顺序；此前 info.json 读取行被错误改写为引用尚未注入的 `window.decadeUIPath`，导致首次启动必然失败。
+  - **ResourceLoader 正式成为模块资源路径抽象**：`getAsset(moduleId, path)` 的 moduleId 成为正式寻址参数（缺失报错）；新增 `getModuleBase(moduleId)` 作为 **P3 唯一切换层**（P2 全模块映射到扩展根，P3 切 `modules/<id>/<version>/` 只改此函数）；loadJS/loadCSS/loadImage/loadAudio 继续复用 src/core/loader.js，无第二套去重机制。
+  - **业务层首批迁移**：decadeModule 的 CSS/JS 加载改为模块寻址（核心资源走 "core"，样式资源走样式模块 ID）；DynamicPlayer 的 Worker 脚本 URL 迁入 ResourceLoader。
+  - **修复 3 处模块求值期回归**（component.js / ui/constants.js / didYouKnow.js）：静态 import 链上的模块求值早于 window 全局注入，模块顶层禁止引用 `decadeUIName/decadeUIPath`，必须使用目录锚点字面量或 `lib.assetURL`。
+  - **测试基建**：新增 noname 解析钩子与浏览器全局桩（tests/helpers、tests/fixtures）；p2 冒烟测试覆盖 extension.js 首次初始化全流程回归、ResourceLoader 各 moduleId 寻址等值与 P3 切换点、loader.js 复用校验、StyleRuntime.getAsset 委托。
+  - **统计勘误**：全量语法校验实际覆盖 **201 个 JS**（src 161 + ui 39 + extension.js 1），此前"154"漏计 ui/ 的 39 个。
+- 是否移动资源：**没有**。是否进入 P3：**没有**。
