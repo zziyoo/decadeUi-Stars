@@ -10,6 +10,7 @@ import { createModuleManager } from "./moduleManager.js";
 import { createStyleRuntime } from "./styleRuntime.js";
 import { createResourceLoader } from "./resourceLoader.js";
 import { createPackageInstaller } from "./packageInstaller.js";
+import { createNonameIo, createZipExtractor } from "./moduleIo.js";
 import { normalizeManifest } from "./manifest.js";
 
 /** @type {Object|null} 模块系统单例 */
@@ -37,7 +38,16 @@ export function getModuleSystem() {
 		getConfig: key => lib.config[key],
 		setConfig: (key, value) => game.saveConfig(key, value),
 	});
-	const packageInstaller = createPackageInstaller();
+	const packageInstaller = createPackageInstaller({
+		registry,
+		moduleManager,
+		// P5 端口落地：文件系统与 ZIP 解压全部复用本体既有能力（见 moduleIo.js）
+		io: createNonameIo(),
+		extractZip: createZipExtractor(),
+		getCoreVersion: () => lib.extensionPack?.[decadeUIName]?.version || null,
+		// 任务书§19：卸载前置检查——当前使用中的样式与 Core 不允许被卸走
+		isInUse: id => id === "core" || styleRuntime.id === id,
+	});
 
 	instance = { registry, moduleManager, styleRuntime, resourceLoader, packageInstaller };
 	return instance;

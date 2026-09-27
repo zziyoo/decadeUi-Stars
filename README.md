@@ -2368,12 +2368,14 @@ Online 1.1 → 1.2
 # 六十七、当前任务指针
 
 ```text
-当前阶段：P0
-当前任务：模块化架构审计
-状态：未开始
+当前阶段：P5（下载器/安装器）
+当前任务：代码完成，待游戏内实测验收
+状态：纯代码验证通过；四包拆分（yjcm/online/baby/codename）仍为未提交在制品
 
-下一阶段：P1
-目标：ModuleManager + StyleRuntime + ResourceLoader基础设施
+下一阶段：P6（模块市场/管理界面）
+
+注：本指针自 v1.1 起长期失更，历次阶段结论以
+「六十八、变更记录」与 docs/PROGRESS.md 为准。
 ```
 
 以后每次继续本项目时，优先查看：
@@ -2450,3 +2452,16 @@ P0 审计
   - **测试基建**：新增 noname 解析钩子与浏览器全局桩（tests/helpers、tests/fixtures）；p2 冒烟测试覆盖 extension.js 首次初始化全流程回归、ResourceLoader 各 moduleId 寻址等值与 P3 切换点、loader.js 复用校验、StyleRuntime.getAsset 委托。
   - **统计勘误**：全量语法校验实际覆盖 **201 个 JS**（src 161 + ui 39 + extension.js 1），此前"154"漏计 ui/ 的 39 个。
 - 是否移动资源：**没有**。是否进入 P3：**没有**。
+
+## v1.4（2026-09-27）
+
+- **P3-2 / P3-3 / P4 完成并推送**（decade 皮肤 JS、shizhounian 资产去重、mobile 样式包）；**yjcm/online/baby/codename 四包批量拆分已在磁盘完成但仍未提交**（工作区在制品，见交接文档§四末）。
+- **P5 真正实现下载器（任务书 §42）完成**，四项流程按 §17/§18/§19/§11 落地：
+  - `src/core/downloader.js`（新增）：HTTP 下载、字节进度、失败重试（线性退避，默认 3 次上限）、取消（AbortSignal）、超时、SHA256；错误分类 `CANCELLED/TIMEOUT/NETWORK/HTTP/SHA_MISMATCH/SHA_UNAVAILABLE/INVALID_URL`。**不假设联网成功**：断网/404/超时全部以结构化结果返回，不抛异常、不触碰已安装内容。传输层可注入。
+  - `src/core/packageInstaller.js`（P1 骨架 → 正式实现）：`install/update/uninstall/fetchIndex/listInstalled/localVersions/isAvailable`。安装＝依赖解析 → 下载 → 临时目录落地 → **以落盘内容算 SHA256** → 解压 → 结构与 Manifest 校验（含 §24 entry 存在性与 Core 版本检查）→ 改名发布到 `modules/<id>/<version>/` → 原子更新 `modules/installed.json` → 以 `source:"installed"` 注册（**直接对接 P3 的 getModuleBase，不建第二套寻址**）。更新先建新版本再切指针、**旧版本目录保留**（§18）；卸载按 §19 顺序做"使用中/被依赖/是否独立安装"三重前置检查，**绝不删单体资源**。任何一步失败清理临时产物并回滚让位目录（§17末/§20）。
+  - `src/core/moduleIo.js`（新增）：安装器端口的运行时实现，复用本体 `game.promises.*` / `game.checkFile` / `lib.node.fs.rename` 与自带 JSZip（加载方式同 `app.importPlugin`），**未新建第二套文件/解压系统**（§56 禁止1）；含 zip-slip 路径越界防护。
+  - 配套：`registry.unregister()`（版本切换）、`manifest.js` 新增 `compareVersions/checkCoreRequirement`、`moduleSystem.js` 注入端口、`decadeUI.packageInstaller` 公开 API 不变（§57）。
+  - **顺带修复 P3-1 遗留回归**：包分支以 `includes("/window/")` 过滤手机布局，而包内已把 `window/` 目录扁平化为 `<name>-window.css` → 条件恒不成立，六个包在手机布局下各多加载 2 个 window CSS。改为按包内命名匹配，恢复与单体等价的行为。
+- 验证（**全部为静态 / Node 环境验证，未进游戏实测**）：210 个 JS `node --check` 全过；`tests/p5-installer.test.mjs` 新增并通过（覆盖下载六类失败、安装五类校验失败零落地、依赖缺失/循环、更新保旧版、发布失败回滚、状态写失败撤销、台账损坏拒改、卸载四分支、zip-slip 六类）；P1/P2/P3 回归全过；verify-pack 881 可达/0 未知缺失；vite build 成功。
+- 是否改变旧行为：**仅上述 window CSS 回归修复一处**（属恢复原行为）；其余为新增能力，P1/P2/P3/P4 的既有加载路径未改。
+- 阶段推进：**P5 完成，待游戏内实测验收（清单见交接文档§八）后进入 P6（模块管理界面）**。

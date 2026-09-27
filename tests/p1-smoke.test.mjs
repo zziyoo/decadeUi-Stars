@@ -94,11 +94,11 @@ assert.equal(styleRuntime.skin, "shizhounian");
 assert.deepEqual(Object.keys(STYLE_TO_SKIN), Object.keys(STYLE_TO_MODULE));
 assert.deepEqual(Object.values(STYLE_TO_MODULE).sort(), ["baby", "codename", "decade", "mobile", "online", "yjcm"]);
 
-// ---------- PackageInstaller（P1骨架） ----------
+// ---------- PackageInstaller（P1 清单校验能力 + P5 端口缺失时的结构化拒绝） ----------
 const installer = createPackageInstaller();
 assert.equal(installer.verifyManifest({ schema: 1, id: "x", name: "X", version: "1.0.0", type: "style", core: ">=1.0.0" }).ok, true);
 const unsupported = await installer.install();
 assert.equal(unsupported.ok, false);
-assert.equal(unsupported.code, "P1_UNSUPPORTED");
+assert.equal(unsupported.code, "NO_IO");
 
 console.log("P1 smoke tests: all passed ✓");

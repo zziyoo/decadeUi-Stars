@@ -45,6 +45,15 @@ export function createModuleRegistry() {
 			return modules.has(id);
 		},
 
+		/**
+		 * 注销模块记录（P5 安装器切换模块版本时使用：内置注册 → 已安装注册）
+		 * @param {string} id - 模块ID
+		 * @returns {boolean} 是否存在并被移除
+		 */
+		unregister(id) {
+			return modules.delete(id);
+		},
+
 		/** 列出全部记录，可按类型过滤 */
 		list(filter = {}) {
 			const all = [...modules.values()];

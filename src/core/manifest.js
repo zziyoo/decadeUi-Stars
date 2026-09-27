@@ -69,6 +69,61 @@ export function validateManifest(manifest) {
 }
 
 /**
+ * 比较两个语义化版本（仅数字段与预发布后缀，缺省段按 0 处理）
+ * @param {string} a
+ * @param {string} b
+ * @returns {number} a>b → 1，a<b → -1，相等 → 0
+ */
+export function compareVersions(a, b) {
+	const split = version => {
+		const raw = String(version);
+		const separator = raw.indexOf("-");
+		const main = separator === -1 ? raw : raw.slice(0, separator);
+		const pre = separator === -1 ? "" : raw.slice(separator + 1);
+		const numbers = main.split(".").map(part => Number(part) || 0);
+		while (numbers.length < 3) numbers.push(0);
+		return { numbers, pre };
+	};
+	const left = split(a);
+	const right = split(b);
+	for (let i = 0; i < 3; i++) {
+		if (left.numbers[i] !== right.numbers[i]) return left.numbers[i] > right.numbers[i] ? 1 : -1;
+	}
+	if (left.pre === right.pre) return 0;
+	// 无预发布标记的版本高于带标记者（SemVer§11）
+	if (!left.pre) return 1;
+	if (!right.pre) return -1;
+	return left.pre > right.pre ? 1 : -1;
+}
+
+/**
+ * 校验 Manifest 的 core 版本要求（任务书§17"检查Core版本"、§11"版本不满足"）
+ * 仅支持任务书§6示例使用的 `>=x.y.z` 与精确 `=x.y.z`；其他写法判为不满足，不猜语义。
+ *
+ * @param {string} requirement - manifest.core（如 ">=1.4.2"）
+ * @param {string|null} coreVersion - 当前 Core 版本；null 表示未知
+ * @returns {{ok: boolean, unknown: boolean, message: string}}
+ */
+export function checkCoreRequirement(requirement, coreVersion) {
+	if (!requirement) return { ok: true, unknown: false, message: "" };
+	const matched = /^(>=|=|>)\s*(\d+(?:\.\d+){0,2}(?:-[\w.-]+)?)$/.exec(String(requirement).trim());
+	if (!matched) {
+		return { ok: false, unknown: false, message: `无法识别的 core 版本要求: ${requirement}` };
+	}
+	if (!coreVersion) {
+		return { ok: true, unknown: true, message: `Core 版本未知，跳过 ${requirement} 检查` };
+	}
+	const [, operator, target] = matched;
+	const cmp = compareVersions(coreVersion, target);
+	const satisfied = operator === ">" ? cmp > 0 : operator === "=" ? cmp === 0 : cmp >= 0;
+	return {
+		ok: satisfied,
+		unknown: false,
+		message: satisfied ? "" : `需要 Core ${requirement}，当前 ${coreVersion}`,
+	};
+}
+
+/**
  * 归一化Manifest：补全默认字段（不修改原对象）
  * @param {Object} raw - 原始manifest
  * @returns {Object} 补全后的manifest
