@@ -9,6 +9,11 @@
 		"core"
 	],
 	"entry": {
+		"js": [
+			"ui/character/skins/shizhounian.js",
+			"ui/skill/skins/shizhounian.js",
+			"ui/lbtn/skins/shizhounian.js"
+		],
 		"css": [
 			"player.css",
 			"styles/character.css",
