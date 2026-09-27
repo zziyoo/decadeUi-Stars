@@ -7,7 +7,7 @@ import { createBaseLbtnPlugin } from "./base.js";
 
 export function createXinshaLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 	const base = createBaseLbtnPlugin(lib, game, ui, get, ai, _status, app);
-	const assetPath = "extension/十周年UI-Stars/ui/assets/lbtn/";
+	const assetPath = `${decadeUIPath}ui/assets/lbtn/`;
 
 	return {
 		...base,
@@ -255,7 +255,7 @@ export function createXinshaLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 
 			btn.style.cssText = style;
 			btn.onclick = () => {
-				game.playAudio("../extension/十周年UI-Stars/audio/card_click.mp3");
+				game.playAudio(`../extension/${decadeUIName}/audio/card_click.mp3`);
 				self.sortHandCards();
 			};
 
@@ -289,7 +289,7 @@ export function createXinshaLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 			btn.style.cssText = style;
 
 			btn.onclick = () => {
-				game.playAudio("../extension/十周年UI-Stars/audio/card_click.mp3");
+				game.playAudio(`../extension/${decadeUIName}/audio/card_click.mp3`);
 				self.toggleSelectAllCards(updateImage);
 			};
 

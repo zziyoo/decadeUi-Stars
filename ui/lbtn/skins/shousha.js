@@ -20,7 +20,7 @@ import { initChatSystem } from "../chatSystem.js";
  */
 export function createShoushaLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 	const base = createBaseLbtnPlugin(lib, game, ui, get, ai, _status, app);
-	const assetPath = "extension/十周年UI-Stars/ui/assets/lbtn/";
+	const assetPath = `${decadeUIPath}ui/assets/lbtn/`;
 
 	/**
 	 * 手牌排序
@@ -727,7 +727,7 @@ export function createShoushaLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 				confirm.node.ok.link = "ok";
 				confirm.node.ok.classList.add("primary");
 				confirm.node.cancel.classList.add("primary2");
-				confirm.node.cancel.innerHTML = `<img draggable='false' src='${lib.assetURL}extension/十周年UI-Stars/ui/assets/lbtn/uibutton/QX.png'>`;
+				confirm.node.cancel.innerHTML = `<img draggable='false' src='${decadeUIPath}ui/assets/lbtn/uibutton/QX.png'>`;
 				confirm.custom = (link, target) => {
 					if (link === "ok") ui.click.ok(target);
 					else if (link === "cancel") ui.click.cancel(target);
@@ -766,8 +766,8 @@ export function createShoushaLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 							const item = document.createElement("div");
 							item.link = skill;
 							item.classList.add("recasting-btn");
-							item.innerHTML = `<img draggable='false' src='${lib.assetURL}extension/十周年UI-Stars/ui/assets/lbtn/uibutton/CZ.png'>`;
-							item.style.backgroundImage = `url('${lib.assetURL}extension/十周年UI-Stars/ui/assets/lbtn/uibutton/game_btn_bg2.png')`;
+							item.innerHTML = `<img draggable='false' src='${decadeUIPath}ui/assets/lbtn/uibutton/CZ.png'>`;
+							item.style.backgroundImage = `url('${decadeUIPath}ui/assets/lbtn/uibutton/game_btn_bg2.png')`;
 							item.style.transform = "scale(0.75)";
 							item.style.setProperty("padding", "25px 10px", "important");
 							item.style.setProperty("margin", "0 -12px", "important");

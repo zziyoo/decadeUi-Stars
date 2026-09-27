@@ -273,7 +273,7 @@ export function closeEmojiDialog() {
  * 注册game上的聊天相关方法
  */
 export function initChatSystem(lib, game, ui, get) {
-	const assetPath = "extension/十周年UI-Stars/ui/assets/";
+	const assetPath = `${decadeUIPath}ui/assets/`;
 	const chatAssetPath = `${assetPath}chat/`;
 
 	initChatRecord();

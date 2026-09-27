@@ -12,7 +12,7 @@ import { lib, game, _status } from "noname";
  * @param {string} name - 音效文件名
  */
 const playExtAudio = name => {
-	game.playAudio("..", "extension", "十周年UI-Stars", `audio/${name}`);
+	game.playAudio("..", "extension", decadeUIName, `audio/${name}`);
 };
 
 /**

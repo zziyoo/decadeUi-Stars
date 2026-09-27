@@ -7,7 +7,7 @@ import { createBaseSkillPlugin } from "./base.js";
 import { getAvailableSkills, updateSkillUsability, isGSkillCacheSame, shouldSkipEquipSkill } from "./gskillMixin.js";
 import { skillButtonTooltip } from "../../../src/ui/skillButtonTooltip.js";
 
-const ASSETS_PATH = "extension/十周年UI-Stars/ui/assets/skill/baby";
+const ASSETS_PATH = `${decadeUIPath}ui/assets/skill/baby`;
 
 export function createBabySkillPlugin(lib, game, ui, get, ai, _status, app) {
 	const base = createBaseSkillPlugin(lib, game, ui, get, ai, _status, app);
@@ -184,7 +184,7 @@ export function createBabySkillPlugin(lib, game, ui, get, ai, _status, app) {
 
 					node.addEventListener("click", () => {
 						if (lib.config["extension_十周年UI-Stars_bettersound"]) {
-							game.playAudio("..", "extension", "十周年UI-Stars", "audio/SkillBtn");
+							game.playAudio("..", "extension", decadeUIName, "audio/SkillBtn");
 						}
 					});
 					app.listen(node, plugin.clickSkill);
@@ -271,7 +271,7 @@ export function createBabySkillPlugin(lib, game, ui, get, ai, _status, app) {
 
 				node.addEventListener("click", () => {
 					if (lib.config["extension_十周年UI-Stars_bettersound"]) {
-						game.playAudio("..", "extension", "十周年UI-Stars", "audio/SkillBtn");
+						game.playAudio("..", "extension", decadeUIName, "audio/SkillBtn");
 					}
 				});
 				app.listen(node, plugin.clickSkill);

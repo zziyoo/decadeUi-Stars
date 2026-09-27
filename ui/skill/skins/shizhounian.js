@@ -229,7 +229,7 @@ export function createShizhounianSkillPlugin(lib, game, ui, get, ai, _status, ap
 
 					node.addEventListener(lib.config.touchscreen ? "touchend" : "click", () => {
 						if (lib.config["extension_十周年UI-Stars_bettersound"]) {
-							game.playAudio("..", "extension", "十周年UI-Stars", "audio/SkillBtn");
+							game.playAudio("..", "extension", decadeUIName, "audio/SkillBtn");
 						}
 					});
 					app.listen(node, plugin.clickSkill);
@@ -279,7 +279,7 @@ export function createShizhounianSkillPlugin(lib, game, ui, get, ai, _status, ap
 
 					node.addEventListener(lib.config.touchscreen ? "touchend" : "click", () => {
 						if (lib.config["extension_十周年UI-Stars_bettersound"]) {
-							game.playAudio("..", "extension", "十周年UI-Stars", "audio/SkillBtn");
+							game.playAudio("..", "extension", decadeUIName, "audio/SkillBtn");
 						}
 					});
 					app.listen(node, plugin.clickSkill);
@@ -345,7 +345,7 @@ export function createShizhounianSkillPlugin(lib, game, ui, get, ai, _status, ap
 
 						node.addEventListener(lib.config.touchscreen ? "touchend" : "click", () => {
 							if (lib.config["extension_十周年UI-Stars_bettersound"]) {
-								game.playAudio("..", "extension", "十周年UI-Stars", "audio/SkillBtn");
+								game.playAudio("..", "extension", decadeUIName, "audio/SkillBtn");
 							}
 						});
 						app.listen(node, plugin.clickSkill);

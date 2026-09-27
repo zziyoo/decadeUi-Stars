@@ -3,6 +3,7 @@
  * @description 处理外观相关配置项的onclick和update回调
  * @module config/handlers/appearance-handlers
  */
+import { readRawStyleValue, getStyleConfigKey } from "./../../core/styleRuntime.js";
 import { lib, game, ui, _status } from "noname";
 import { UI_ANIMATION } from "../../constants.js";
 
@@ -21,7 +22,7 @@ export function onExtensionToggleClick() {
 export function onExtensionToggleUpdate() {
 	const key = "extension_十周年UI-Stars_closedExtensions";
 	const closed = Array.isArray(lib.config[key]) ? lib.config[key] : [];
-	const menu = lib.extensionMenu?.["extension_十周年UI-Stars"]?.extensionToggle;
+	const menu = lib.extensionMenu?.[`extension_${decadeUIName}`]?.extensionToggle;
 	if (menu) {
 		menu.name = closed.length > 0 ? `<ins>一键恢复 ${closed.length} 个扩展</ins>` : "<ins>一键关闭其他扩展</ins>";
 	}
@@ -32,8 +33,8 @@ export function onExtensionToggleUpdate() {
  * @param {string} control - 选择的样式值
  */
 export function onNewDecadeStyleClick(control) {
-	const origin = lib.config["extension_十周年UI-Stars_newDecadeStyle"];
-	game.saveConfig("extension_十周年UI-Stars_newDecadeStyle", control);
+	const origin = readRawStyleValue();
+	game.saveConfig(getStyleConfigKey(), control);
 	if (origin !== control) {
 		setTimeout(() => game.reload(), UI_ANIMATION.RELOAD_DELAY);
 	}
@@ -45,7 +46,7 @@ export function onNewDecadeStyleClick(control) {
  */
 export function onNewDecadeStyleUpdate() {
 	if (!window.decadeUI) return;
-	const style = lib.config["extension_十周年UI-Stars_newDecadeStyle"];
+	const style = readRawStyleValue();
 	ui.arena.dataset.newDecadeStyle = style;
 	const decadeLayoutStyles = ["on", "othersOff", "onlineUI", "babysha", "codename"];
 	ui.arena.dataset.decadeLayout = decadeLayoutStyles.includes(style) ? "on" : "off";

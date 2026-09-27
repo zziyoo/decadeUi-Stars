@@ -181,7 +181,7 @@ export function createCodenameSkillPlugin(lib, game, ui, get, ai, _status, app) 
 
 					node.addEventListener("click", () => {
 						if (lib.config["extension_十周年UI-Stars_bettersound"]) {
-							game.playAudio("..", "extension", "十周年UI-Stars", "audio/SkillBtn");
+							game.playAudio("..", "extension", decadeUIName, "audio/SkillBtn");
 						}
 					});
 					app.listen(node, plugin.clickSkill);
@@ -267,7 +267,7 @@ export function createCodenameSkillPlugin(lib, game, ui, get, ai, _status, app) 
 
 				node.addEventListener("click", () => {
 					if (lib.config["extension_十周年UI-Stars_bettersound"]) {
-						game.playAudio("..", "extension", "十周年UI-Stars", "audio/SkillBtn");
+						game.playAudio("..", "extension", decadeUIName, "audio/SkillBtn");
 					}
 				});
 				app.listen(node, plugin.clickSkill);

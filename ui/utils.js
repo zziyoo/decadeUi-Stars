@@ -24,7 +24,7 @@ export const randomInt = (min, max) => get.rand(min, max);
  * @returns {string}
  */
 export function numberToImages(number, basePath) {
-	const path = basePath || "extension/十周年UI-Stars/ui/assets/character/shousha/num/";
+	const path = basePath || `${decadeUIPath}ui/assets/character/shousha/num/`;
 	const str = number.toString();
 	let html = "";
 
@@ -125,7 +125,7 @@ export function generateRandomData(player) {
  * @returns {string}
  */
 export function getGroupBackgroundImage(group, skinPath) {
-	const path = skinPath || "extension/十周年UI-Stars/ui/assets/character/shousha/character/";
+	const path = skinPath || `${decadeUIPath}ui/assets/character/shousha/character/`;
 	const validGroups = ["wei", "shu", "wu", "qun", "ye", "jin", "devil", "daqin", "western", "shen", "key", "Han", "qin"];
 
 	if (!group || group === "unknown") {

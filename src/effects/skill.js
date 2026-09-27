@@ -93,7 +93,7 @@ async function getCharacterImagePath(name) {
 	}
 
 	// 优先扩展lihui立绘目录
-	const lihuiPath = `${lib.assetURL}extension/十周年UI-Stars/image/character/lihui/${realName}.jpg`;
+	const lihuiPath = `${decadeUIPath}image/character/lihui/${realName}.jpg`;
 	if (await checkImageExists(lihuiPath)) {
 		return lihuiPath;
 	}

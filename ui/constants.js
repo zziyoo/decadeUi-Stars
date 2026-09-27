@@ -8,9 +8,9 @@ export { STYLE_TO_SKIN, DEFAULT_SKIN } from "../src/core/styleRuntime.js";
 
 /** 手杀风格常量 */
 export const SHOUSHA_CONSTANTS = {
-	IMAGE_PATH: "extension/十周年UI-Stars/ui/assets/character/shousha/",
-	IMAGE_PATH_PREFIX: "extension/十周年UI-Stars/ui/assets/character/shousha/dengjie/",
-	AUDIO_PATH: "../extension/十周年UI-Stars/ui/assets/lbtn/shousha/",
+	IMAGE_PATH: `${decadeUIPath}ui/assets/character/shousha/`,
+	IMAGE_PATH_PREFIX: `${decadeUIPath}ui/assets/character/shousha/dengjie/`,
+	AUDIO_PATH: `../extension/${decadeUIName}/ui/assets/lbtn/shousha/`,
 
 	NICKNAMES: [
 		"氪金抽66",

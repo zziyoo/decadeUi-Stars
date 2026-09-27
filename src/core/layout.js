@@ -1,13 +1,14 @@
 /**
  * @fileoverview 布局模块，负责手牌和弃牌区的布局计算与更新
  */
+import { readRawStyleValue } from "./styleRuntime.js";
 import { lib, game, ui, get, ai, _status } from "noname";
 
 /**
  * 获取当前样式配置
  * @returns {string} 样式名称
  */
-const getStyle = () => decadeUI?.config?.newDecadeStyle ?? lib.config["extension_十周年UI-Stars_newDecadeStyle"];
+const getStyle = () => decadeUI?.config?.newDecadeStyle ?? readRawStyleValue();
 
 /**
  * 获取弃牌缩放比例

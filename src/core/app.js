@@ -1,6 +1,7 @@
 /**
  * @fileoverview App全局对象模块，提供事件系统、插件管理和工具函数
  */
+import { getExternalPluginFileName } from "./styleRuntime.js";
 import { lib, game, ui, get, ai, _status } from "noname";
 
 /**
@@ -278,8 +279,8 @@ export function initApp() {
 					);
 				};
 
-				const styleFileMap = { on: "main1.js", othersOff: "main3.js" };
-				const fileName = styleFileMap[lib.config["extension_十周年UI-Stars_newDecadeStyle"]] ?? "main2.js";
+				// P2：main1/2/3.js 样式映射已迁出Core（styleRuntime.getExternalPluginFileName，约定本身不变）
+				const fileName = getExternalPluginFileName();
 				folders.forEach(dir => readAndEval(dir, fileName));
 			});
 		},

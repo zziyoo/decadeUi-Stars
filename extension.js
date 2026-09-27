@@ -12,7 +12,7 @@ export const type = "extension";
  * @returns {Promise<import("noname").ExtensionInfo>} 扩展配置对象
  */
 export default async function () {
-	const infoUrl = `${lib.assetURL}extension/十周年UI-Stars/info.json`;
+	const infoUrl = `${decadeUIPath}info.json`;
 	const { name, ...otherInfo } = await lib.init.promises.json(infoUrl);
 
 	const extensionName = name;

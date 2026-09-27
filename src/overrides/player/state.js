@@ -4,6 +4,7 @@
  * @module overrides/player/state
  */
 
+import { readRawStyleValue } from "./../../core/styleRuntime.js";
 import { lib, game, ui, get, ai, _status } from "noname";
 import { getBasePlayerMethods } from "./base.js";
 
@@ -279,7 +280,7 @@ function updateHandcardCount(player) {
 	const count = player.countCards("h");
 
 	if (player === game.me) {
-		const style = lib.config["extension_十周年UI-Stars_newDecadeStyle"];
+		const style = readRawStyleValue();
 		const showLimit = ["onlineUI", "babysha", "codename"].includes(style);
 
 		player.node.count.innerHTML = showLimit ? `${count}/${player.getHandcardLimit()}` : count;

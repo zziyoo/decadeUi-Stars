@@ -4,6 +4,7 @@
  * @module skills/animate
  */
 
+import { readRawStyleValue } from "./../core/styleRuntime.js";
 import { lib, game, ui } from "noname";
 
 /**
@@ -23,7 +24,7 @@ export const animateSkill = {
 		async content(event, trigger, player) {
 			game.removeGlobalSkill("mx_start");
 
-			const style = lib.config["extension_十周年UI-Stars_newDecadeStyle"];
+			const style = readRawStyleValue();
 			const isShousha = style === "off";
 			const effectName = isShousha ? "effect_youxikaishi_shousha" : "effect_youxikaishi";
 			const audio = isShousha ? "audio/game_start_shousha.mp3" : "audio/game_start.mp3";
@@ -50,7 +51,7 @@ export const animateSkill = {
 		silent: true,
 		forced: true,
 		filter(event, player) {
-			return lib.config["extension_十周年UI-Stars_newDecadeStyle"] === "off" && lib.config["extension_十周年UI-Stars_borderLevel"] === "random";
+			return readRawStyleValue() === "off" && lib.config["extension_十周年UI-Stars_borderLevel"] === "random";
 		},
 		async content(event, trigger, player) {
 			game.removeGlobalSkill("mx_borderLevel");

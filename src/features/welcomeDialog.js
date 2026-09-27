@@ -37,7 +37,7 @@ function loadStyles() {
 	const link = document.createElement("link");
 	link.id = "decade-welcome-styles";
 	link.rel = "stylesheet";
-	link.href = `${lib.assetURL}extension/十周年UI-Stars/src/features/welcomeDialog.css`;
+	link.href = `${decadeUIPath}src/features/welcomeDialog.css`;
 	document.head.appendChild(link);
 }
 
@@ -78,7 +78,7 @@ export function createWelcomeDialog() {
 	ui.create.div(".decade-welcome-pattern", dialog);
 
 	const avatar = document.createElement("img");
-	avatar.src = `${lib.assetURL}extension/十周年UI-Stars/image/ui/avatar/avatar_ziyoo.jpg`;
+	avatar.src = `${decadeUIPath}image/ui/avatar/avatar_ziyoo.jpg`;
 	avatar.className = "author-avatar";
 
 	let isShowingUpdate = false;
@@ -146,7 +146,7 @@ export function createWelcomeDialog() {
 	defaultContent = text.innerHTML;
 
 	const diandianAvatar = document.createElement("img");
-	diandianAvatar.src = `${lib.assetURL}extension/十周年UI-Stars/image/ui/avatar/avatar_diandian.jpg`;
+	diandianAvatar.src = `${decadeUIPath}image/ui/avatar/avatar_diandian.jpg`;
 	diandianAvatar.className = "author-avatar";
 	diandianAvatar.style.left = "30px";
 	diandianAvatar.style.right = "auto";

@@ -37,7 +37,7 @@ export function getBasePlayerMethods() {
  */
 export function playShowCardAudio() {
 	if (!lib.config["extension_十周年UI-Stars_bettersound"]) return;
-	game.playAudio("..", "extension", "十周年UI-Stars", "audio/GameShowCard.mp3");
+	game.playAudio("..", "extension", decadeUIName, "audio/GameShowCard.mp3");
 }
 
 /**

@@ -1,6 +1,7 @@
 ﻿/**
  * @fileoverview 钩子初始化模块，注册各种UI钩子函数
  */
+import { readRawStyleValue } from "./styleRuntime.js";
 import { lib, game, ui, get, ai, _status } from "noname";
 
 /**
@@ -52,13 +53,13 @@ export function initHooks() {
 	// 结束出牌按钮文本
 	lib.hooks["checkEnd"].push(function decadeUI_UIconfirm() {
 		if (_status.event?.name !== "chooseToUse" || _status.event.type !== "phase" || ui.confirm?.lastChild.link !== "cancel") return;
-		const UIconfig = lib.config["extension_十周年UI-Stars_newDecadeStyle"];
+		const UIconfig = readRawStyleValue();
 		let innerHTML = UIconfig !== "othersOff" || UIconfig === "on" ? "回合结束" : "结束出牌";
 		if (UIconfig === "onlineUI") innerHTML = "取消";
 		else if (_status.event.skill || (ui.selected?.cards ?? []).length > 0) {
-			innerHTML = UIconfig === "off" ? `<img draggable='false' src=${lib.assetURL}extension/十周年UI-Stars/ui/assets/lbtn/uibutton/QX.png>` : "取消";
+			innerHTML = UIconfig === "off" ? `<img draggable='false' src=${decadeUIPath}ui/assets/lbtn/uibutton/QX.png>` : "取消";
 		} else if (UIconfig === "off") {
-			innerHTML = `<img draggable='false' src=${lib.assetURL}extension/十周年UI-Stars/ui/assets/lbtn/uibutton/jscp.png>`;
+			innerHTML = `<img draggable='false' src=${decadeUIPath}ui/assets/lbtn/uibutton/jscp.png>`;
 		}
 		ui.confirm.lastChild.innerHTML = innerHTML;
 		const UIcustom = ui.confirm.custom;

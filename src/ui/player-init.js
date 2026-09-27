@@ -3,6 +3,7 @@
  * 提供玩家角色初始化相关功能，包括动态皮肤、手牌可见、角标等
  */
 
+import { readRawStyleValue } from "./../core/styleRuntime.js";
 import { lib, game, ui, get, ai, _status } from "noname";
 import { element } from "../utils/element.js";
 import { updatePlayerOutcropAvatar } from "./outcropAvatar.js";
@@ -37,7 +38,7 @@ export function createPlayerInit(base) {
 		}
 
 		// othersOff样式下检查武将原画
-		if (lib.config["extension_十周年UI-Stars_newDecadeStyle"] === "othersOff") {
+		if (readRawStyleValue() === "othersOff") {
 			this.checkAndAddExperienceSuffix(character);
 			if (character2) this.checkAndAddExperienceSuffix(character2, true);
 		}
@@ -119,7 +120,7 @@ export function createPlayerInit(base) {
 			const showCards = player.node.showCards;
 			/** @type {number} */
 			const offset = 10;
-			const isBabysha = lib.config["extension_十周年UI-Stars_newDecadeStyle"] === "babysha";
+			const isBabysha = readRawStyleValue() === "babysha";
 			if ((isBabysha && rect.left < winWidth / 2) || (!isBabysha && rect.left >= winWidth / 2)) {
 				showCards.style.left = "";
 				showCards.style.right = player.offsetWidth + offset + "px";

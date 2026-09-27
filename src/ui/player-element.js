@@ -3,6 +3,7 @@
  * 提供玩家DOM元素的创建和初始化功能
  */
 
+import { readRawStyleValue } from "./../core/styleRuntime.js";
 import { lib, game, ui, get, ai, _status } from "noname";
 import { element } from "../utils/element.js";
 
@@ -52,7 +53,7 @@ function setupIdentityDisplay(realIdentity, player) {
 					return;
 				}
 
-				const currentStyle = lib.config["extension_十周年UI-Stars_newDecadeStyle"];
+				const currentStyle = readRawStyleValue();
 				if (currentStyle === "codename" && value === "猜") {
 					this.innerText = "";
 					this.style.visibility = "";
@@ -121,7 +122,7 @@ function setupIdentityDisplay(realIdentity, player) {
 				this.innerText = value;
 				this.style.visibility = "hidden";
 
-				const style = lib.config["extension_十周年UI-Stars_newDecadeStyle"];
+				const style = readRawStyleValue();
 				/** @type {Record<string, string>} */
 				const srcMap = {
 					onlineUI: "image/styles/online/identity2_",
@@ -333,7 +334,7 @@ export function createPlayerElement(position, noclick) {
 	 */
 	node.gainSkill.gain = function (skill) {
 		if (!this.skills.includes(skill) && lib.translate[skill]) {
-			if (lib.config["extension_十周年UI-Stars_newDecadeStyle"] === "off" && lib.config["extension_十周年UI-Stars_gainSkillsVisible"] !== "off") {
+			if (readRawStyleValue() === "off" && lib.config["extension_十周年UI-Stars_gainSkillsVisible"] !== "off") {
 				const info = lib.skill[skill];
 				if (!info || info.charlotte || info.sub || (info.mark && !info.limited) || info.nopop || info.popup === false || info.equipSkill) return;
 				if (info.onremove && game.me !== this.player.storage[skill]) return;

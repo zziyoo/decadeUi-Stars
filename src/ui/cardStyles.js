@@ -40,7 +40,7 @@ const updateStyle = (styleEl, css) => {
  */
 const getBorderCSS = (borderName, selector, imageWidth) => {
 	if (!borderName || borderName === "off") return "";
-	const url = `${lib.assetURL}extension/十周年UI-Stars/image/ui/card/${borderName}.png`;
+	const url = `${decadeUIPath}image/ui/card/${borderName}.png`;
 	return `${selector} { width: 108px; height: 150px; border: 1px solid; border-radius: 10px; border-image-source: url('${url}'); border-image-slice: 17; border-image-width: ${imageWidth}px; }`;
 };
 
@@ -114,7 +114,7 @@ export function applyCardBorder(card, player, isMe = false) {
 	const border = getBorderByPlayer(player, isMe);
 
 	if (border) {
-		const borderUrl = `${lib.assetURL}extension/十周年UI-Stars/image/ui/card/${border}.png`;
+		const borderUrl = `${decadeUIPath}image/ui/card/${border}.png`;
 		Object.assign(card.style, {
 			width: "108px",
 			height: "150px",
@@ -128,7 +128,7 @@ export function applyCardBorder(card, player, isMe = false) {
 
 	const bg = getBgByPlayer(player, isMe);
 	if (bg && !card.dataset.identityCard && (card.classList.contains("infohidden") || card.classList.contains("infoflip") || !card.childElementCount)) {
-		const bgUrl = `${lib.assetURL}extension/十周年UI-Stars/image/ui/card/${bg}.png`;
+		const bgUrl = `${decadeUIPath}image/ui/card/${bg}.png`;
 		card.style.setProperty("background", `url('${bgUrl}')`, "important");
 		card.style.setProperty("background-size", "100% 100%", "important");
 		if (card.classList.contains("infohidden") || card.classList.contains("infoflip")) {
@@ -149,7 +149,7 @@ export function updateCardStyles() {
 
 	borderStyleEl = updateStyle(borderStyleEl, getBorderCSS(borderConfig, selector, 20));
 
-	const bgCSS = cardBg ? `${selector}:empty, ${selector}.infohidden { background: url('${lib.assetURL}extension/十周年UI-Stars/image/ui/card/${cardBg}.png'); background-size: 100% 100% !important; }` : "";
+	const bgCSS = cardBg ? `${selector}:empty, ${selector}.infohidden { background: url('${decadeUIPath}image/ui/card/${cardBg}.png'); background-size: 100% 100% !important; }` : "";
 	bgStyleEl = updateStyle(bgStyleEl, bgCSS);
 }
 
@@ -223,7 +223,7 @@ function processDialogCards(dialog) {
 		if (card.innerHTML) card.innerHTML = "";
 
 		if (bgName) {
-			const bgUrl = `${lib.assetURL}extension/十周年UI-Stars/image/ui/card/${bgName}.png`;
+			const bgUrl = `${decadeUIPath}image/ui/card/${bgName}.png`;
 			card.style.setProperty("background-image", `url('${bgUrl}')`, "important");
 			card.style.setProperty("background-size", "100% 100%", "important");
 		} else {

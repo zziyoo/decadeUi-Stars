@@ -5,8 +5,8 @@
 import { _status } from "noname";
 import { createBaseCharacterPlugin } from "./base.js";
 
-const IMAGE_PATH = "extension/十周年UI-Stars/ui/assets/character/baby/";
-const AUDIO_PATH = "../extension/十周年UI-Stars/ui/assets/lbtn/shousha/caidan.mp3";
+const IMAGE_PATH = `${decadeUIPath}ui/assets/character/baby/`;
+const AUDIO_PATH = `../extension/${decadeUIName}/ui/assets/lbtn/shousha/caidan.mp3`;
 
 const GUANJIE_TRANSLATION = {
 	1: ["骁卒", ["步卒", "伍长", "什长", "队率", "屯长", "部曲"]],

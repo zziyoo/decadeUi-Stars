@@ -162,7 +162,7 @@ function applyStyles(div, div2, isStyleOn) {
 	} else {
 		div.style.cssText =
 			"pointer-events:none;width:56%;height:35px;font-size:18px;z-index:20;background-size:100% 100%;background-repeat:no-repeat;left:50%;top:15%;transform:translateX(-50%);";
-		div.style.backgroundImage = `url(${lib.assetURL}extension/十周年UI-Stars/ui/assets/lbtn/uibutton/goutuo.png)`;
+		div.style.backgroundImage = `url(${decadeUIPath}ui/assets/lbtn/uibutton/goutuo.png)`;
 		div2.style.cssText = "pointer-events:none;width:85.5%;height:35px;left:8%;line-height:35px;";
 	}
 }

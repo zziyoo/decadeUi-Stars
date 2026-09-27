@@ -34,6 +34,44 @@ export const STYLE_TO_MODULE = {
 /** 默认皮肤 */
 export const DEFAULT_SKIN = "shizhounian";
 
+// ---------------- 模块级便捷函数（游戏运行时专用；不依赖实例化） ----------------
+// 依赖 window.lib / window.decadeUIName（分别由本体与 extension.js 注入，均先于本扩展代码执行）。
+// 设为模块级而非实例方法的原因：38处历史读取点分布在 src/ui 等无法取得实例引用的层，
+// 以一行 import + 一行调用完成收口（任务书§14"分阶段迁移"第一步：先收口配置键，再逐步换成语义API）。
+
+/**
+ * 样式配置键：extension_{扩展名}_newDecadeStyle
+ * 扩展名运行时取自 window.decadeUIName（extension.js 从 info.json 注入），
+ * 全代码库中 newDecadeStyle 配置键只允许在此处拼接。
+ * @returns {string}
+ */
+export function getStyleConfigKey() {
+	const name = (typeof window !== "undefined" && window.decadeUIName) || "十周年UI-Stars";
+	return `extension_${name}_newDecadeStyle`;
+}
+
+/**
+ * 原始读取样式配置值：与直接读 lib.config[getStyleConfigKey()] 完全等价，
+ * 不做合法性校验、不做默认值归一化（保证历史调用点语义零变化）。
+ * @returns {*} 配置原始值；未设置或运行环境不可用时为 undefined
+ */
+export function readRawStyleValue() {
+	const config = typeof window !== "undefined" && window.lib ? window.lib.config : undefined;
+	return config ? config[getStyleConfigKey()] : undefined;
+}
+
+/**
+ * 第三方插件入口文件名（app.loadPlugins 的 main1/2/3.js 约定——存量兼容API，约定本身不可更改）。
+ * 原映射写死于 src/core/app.js，P2 迁出 Core：on→main1.js、othersOff→main3.js、其余→main2.js。
+ * @returns {string}
+ */
+export function getExternalPluginFileName() {
+	const value = readRawStyleValue();
+	if (value === "on") return "main1.js";
+	if (value === "othersOff") return "main3.js";
+	return "main2.js";
+}
+
 /**
  * 创建 StyleRuntime 实例
  * @param {Object} deps
@@ -59,6 +97,11 @@ export function createStyleRuntime({ moduleManager, resourceLoader, getConfig, s
 		getConfigValue() {
 			const value = getConfig(styleKey());
 			return STYLE_CONFIG_VALUES.includes(value) ? value : DEFAULT_STYLE_VALUE;
+		},
+
+		/** 原始配置值（不归一化；与模块级 readRawStyleValue() 等价，实例内走注入的 getConfig，Node 可测） */
+		getRawConfigValue() {
+			return getConfig(styleKey());
 		},
 
 		/** 当前样式信息 {value, id, skin} */

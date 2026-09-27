@@ -5,6 +5,7 @@
  * 提供扩展接口支持自定义前缀注册。
  */
 
+import { getStyleConfigKey } from "./../core/styleRuntime.js";
 import { lib, get, _status } from "noname";
 
 /**
@@ -182,7 +183,7 @@ const PREFIX_CONFIGS = {
 	"26|界": "jie",
 };
 
-const CONFIG_KEY = "extension_十周年UI-Stars_newDecadeStyle";
+const CONFIG_KEY = getStyleConfigKey();
 
 /**
  * 获取标记元素的CSS类名

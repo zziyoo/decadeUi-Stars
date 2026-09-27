@@ -259,7 +259,7 @@ export function playerDieAfter() {
 	if ((player._trueMe || player) !== game.me && player !== game.me && style === "off") {
 		player.node.dieidentity.innerHTML = `
 			<div style="width:21px; height:81px; left:22.5px; top:-12px; position:absolute;
-				background-image: url(${lib.assetURL}extension/十周年UI-Stars/image/ui/misc/likai.png);
+				background-image: url(${decadeUIPath}image/ui/misc/likai.png);
 				background-size: 100% 100%;">
 			</div>
 		`;

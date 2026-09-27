@@ -4,7 +4,7 @@
 import { lib, game, ui, get, ai, _status } from "noname";
 import { createScriptElement, createLinkElement } from "./loader.js";
 import { prefixMarkModule } from "../ui/prefixMark.js";
-import { STYLE_CONFIG_VALUES, STYLE_TO_SKIN, DEFAULT_SKIN } from "./styleRuntime.js";
+import { STYLE_CONFIG_VALUES, STYLE_TO_SKIN, DEFAULT_SKIN, readRawStyleValue } from "./styleRuntime.js";
 
 /** @type {Array<string>} 排除的游戏模式 */
 const EXCLUDED_MODES = ["chess", "tafang", "hs_hearthstone"];
@@ -20,7 +20,7 @@ const EXCLUDED_MODES = ["chess", "tafang", "hs_hearthstone"];
  * @returns {*} 配置值
  */
 function getConfigValue(key, defaultValue) {
-	const configKey = `extension_十周年UI-Stars_${key}`;
+	const configKey = `extension_${decadeUIName}_${key}`;
 	const value = lib.config[configKey];
 	return value !== undefined ? value : defaultValue;
 }
@@ -74,7 +74,9 @@ export function initDecadeModule() {
 		const cssFiles = ["src/styles/extension.css", "src/styles/decadeLayout.css", "src/styles/card.css", "src/styles/meihua.css"];
 		cssFiles.forEach(path => this.css(`${decadeUIPath}${path}`));
 
-		const style = getConfigValue("newDecadeStyle", "on");
+		// P2：样式配置值经 styleRuntime 收口读取（原始语义不变：undefined 时取默认 "on"）
+		const _rawStyle = readRawStyleValue();
+		const style = _rawStyle !== undefined ? _rawStyle : "on";
 		const styleIndex = STYLE_CONFIG_VALUES.indexOf(style);
 		this.css(`${decadeUIPath}src/styles/player${styleIndex !== -1 ? styleIndex + 1 : 2}.css`);
 		this.css(`${decadeUIPath}src/styles/equip.css`);

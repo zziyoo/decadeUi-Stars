@@ -24,7 +24,7 @@ const shuffle = arr => {
 const loadTips = async () => {
 	if (loaded) return;
 	try {
-		const path = `${lib.assetURL}extension/十周年UI-Stars/src/features/didYouKnow.txt`;
+		const path = `${decadeUIPath}src/features/didYouKnow.txt`;
 		const response = await fetch(path);
 		const text = await response.text();
 		const lines = text

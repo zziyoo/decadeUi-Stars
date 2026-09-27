@@ -14,7 +14,7 @@ const getImagePath = imageName => {
 	const style = lib.config["extension_十周年UI-Stars_JDTSYangshi"];
 	/** @type {Record<string, string>} */
 	const extMap = { 2: "png", 3: "webp", 4: "jpeg" };
-	return `extension/十周年UI-Stars/ui/assets/lbtn/tips/${imageName}.${extMap[style] || "jpg"}`;
+	return `${decadeUIPath}ui/assets/lbtn/tips/${imageName}.${extMap[style] || "jpg"}`;
 };
 
 /**

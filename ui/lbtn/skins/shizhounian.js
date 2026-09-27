@@ -7,7 +7,7 @@ import { createBaseLbtnPlugin } from "./base.js";
 
 export function createShizhounianLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 	const base = createBaseLbtnPlugin(lib, game, ui, get, ai, _status, app);
-	const assetPath = "extension/十周年UI-Stars/ui/assets/lbtn/";
+	const assetPath = `${decadeUIPath}ui/assets/lbtn/`;
 
 	return {
 		...base,

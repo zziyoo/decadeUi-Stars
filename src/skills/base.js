@@ -4,6 +4,7 @@
  * @module skills/base
  */
 
+import { readRawStyleValue } from "./../core/styleRuntime.js";
 import { lib, game, ui, get, _status } from "noname";
 
 /**
@@ -43,7 +44,7 @@ export const baseSkill = {
 		trigger: { player: "changeHp" },
 		filter(event) {
 			const parent = event.getParent?.("recover", true);
-			return !!parent && event.changedHp > 0 && event.changedHp <= 9 && lib.config["extension_十周年UI-Stars_newDecadeStyle"] !== "off";
+			return !!parent && event.changedHp > 0 && event.changedHp <= 9 && readRawStyleValue() !== "off";
 		},
 		async content(event, trigger, player) {
 			decadeUI.animation?.playRecoverNumber?.(player, trigger.changedHp);
@@ -75,7 +76,7 @@ export const baseSkill = {
 		forced: true,
 		trigger: { player: "damage" },
 		filter(event) {
-			return event.num > 1 && event.num <= 9 && !event.unreal && lib.config["extension_十周年UI-Stars_newDecadeStyle"];
+			return event.num > 1 && event.num <= 9 && !event.unreal && readRawStyleValue();
 		},
 		async content(event, trigger, player) {
 			decadeUI.animation?.playDamageNumber?.(player, trigger.num);

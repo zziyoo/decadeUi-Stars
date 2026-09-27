@@ -1,6 +1,7 @@
 /**
  * @fileoverview 扩展主入口 - 游戏初始化时执行
  */
+import { readRawStyleValue } from "./core/styleRuntime.js";
 import { lib, game, ui, get, ai, _status } from "noname";
 
 // 核心模块
@@ -163,7 +164,7 @@ export async function content(config) {
 	decadeUI.config = {
 		...config,
 		dynamicSkin: lib.config["extension_十周年UI-Stars_dynamicSkin"] ?? false,
-		newDecadeStyle: lib.config["extension_十周年UI-Stars_newDecadeStyle"] ?? "on",
+		newDecadeStyle: readRawStyleValue() ?? "on",
 		dynamicSkinOutcrop: lib.config["extension_十周年UI-Stars_dynamicSkinOutcrop"] ?? false,
 		rightLayout: lib.config["extension_十周年UI-Stars_rightLayout"] === "on",
 	};

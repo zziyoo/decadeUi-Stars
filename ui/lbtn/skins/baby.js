@@ -7,7 +7,7 @@ import { createBaseLbtnPlugin } from "./base.js";
 
 export function createBabyLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 	const base = createBaseLbtnPlugin(lib, game, ui, get, ai, _status, app);
-	const assetPath = "extension/十周年UI-Stars/ui/assets/lbtn/";
+	const assetPath = `${decadeUIPath}ui/assets/lbtn/`;
 
 	return {
 		...base,
@@ -159,7 +159,7 @@ export function createBabyLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 			btn.style.cssText = `display:none;position:absolute;background-color:transparent;width:85px;height:50px;bottom:26%;left:22px;z-index:4;right:auto;${isRight ? "right:calc(100% - 295px);z-index:3;" : "right:calc(100% - 1175px);z-index:3;"}`;
 
 			btn.onclick = () => {
-				game.playAudio("../extension/十周年UI-Stars/audio/card_click.mp3");
+				game.playAudio(`../extension/${decadeUIName}/audio/card_click.mp3`);
 				self.toggleSelectAllCards(updateImage);
 			};
 

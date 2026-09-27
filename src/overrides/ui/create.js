@@ -193,7 +193,7 @@ export function uiCreateIdentityCard(identity, position, info, noclick) {
 		uiintro.add(`${get.translation(identity + 2)}的身份牌`);
 	};
 
-	const fileName = "extension/十周年UI-Stars/image/ui/identity-card/mougong_" + identity + ".jpg";
+	const fileName = `${decadeUIPath}image/ui/identity-card/mougong_` + identity + ".jpg";
 
 	new Promise((resolve, reject) => {
 		const image = new Image();

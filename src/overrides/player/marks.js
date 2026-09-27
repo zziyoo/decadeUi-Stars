@@ -4,6 +4,7 @@
  * @module overrides/player/marks
  */
 
+import { readRawStyleValue } from "./../../core/styleRuntime.js";
 import { lib, game, ui, get, ai, _status } from "noname";
 import { getBasePlayerMethods } from "./base.js";
 
@@ -36,7 +37,7 @@ const STARCANXI_MAIN_FACTIONS = new Set(["starcanxi_qun", "starcanxi_shu", "star
 function shouldSkipMark(item) {
 	if (!item) return false;
 
-	const style = window.decadeUI?.config?.newDecadeStyle ?? lib.config["extension_十周年UI-Stars_newDecadeStyle"];
+	const style = window.decadeUI?.config?.newDecadeStyle ?? readRawStyleValue();
 	const markStyle = window.decadeUI?.config?.playerMarkStyle ?? lib.config["extension_十周年UI-Stars_playerMarkStyle"];
 
 	if (style === "Off") return false;
@@ -104,7 +105,7 @@ export function playerUnmarkSkill(name, info, card, nobroadcast) {
  * @this {Object} 玩家对象
  */
 export function playerMark(item, info, skill) {
-	const style = lib.config["extension_十周年UI-Stars_newDecadeStyle"];
+	const style = readRawStyleValue();
 	const markStyle = window.decadeUI?.config?.playerMarkStyle ?? lib.config["extension_十周年UI-Stars_playerMarkStyle"];
 
 	if (item && style !== "Off" && markStyle === "decade") {

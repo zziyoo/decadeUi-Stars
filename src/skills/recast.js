@@ -1,6 +1,7 @@
 /**
  * 重铸交互模块 - 实现可重铸卡牌的"使用/重铸"合并交互
  */
+import { readRawStyleValue } from "./../core/styleRuntime.js";
 import { lib, game, ui, get, _status } from "noname";
 export function canRecastCard(card, player) {
 	if (!card || !player) return false;
@@ -91,7 +92,7 @@ export const recastAnimateSkill = {
 		silent: true,
 		priority: Infinity + 1,
 		filter(event, player) {
-			if (lib.config["extension_十周年UI-Stars_newDecadeStyle"] === "off") return false;
+			if (readRawStyleValue() === "off") return false;
 			if (lib.config["extension_十周年UI-Stars_enableRecastInteraction"] === false) return false;
 
 			if (event.name === "useCard") {
@@ -233,7 +234,7 @@ export function setupRecastableCards() {
 // 初始化重铸模块
 export function initRecast() {
 	if (lib.config["extension_十周年UI-Stars_enableRecastInteraction"] === false) return;
-	if (lib.config["extension_十周年UI-Stars_newDecadeStyle"] === "off") return;
+	if (readRawStyleValue() === "off") return;
 
 	Object.assign(lib.skill, recastAnimateSkill, recastBaseSkill);
 	game.addGlobalSkill("_decadeUI_recastable_recast");

@@ -73,7 +73,7 @@ export function onHandTipHeightUpdate() {
 	}
 
 	// 更新菜单显示值
-	const menu = lib.extensionMenu?.["extension_十周年UI-Stars"]?.handTipHeight;
+	const menu = lib.extensionMenu?.[`extension_${decadeUIName}`]?.handTipHeight;
 	if (menu) {
 		const isInput = menu.tagName === "INPUT";
 		if (isInput) {
@@ -118,7 +118,7 @@ export function onCardScaleBlur() {
  */
 export function onCardScaleUpdate() {
 	const value = lib.config["extension_十周年UI-Stars_cardScale"] ?? "0.18";
-	const menu = lib.extensionMenu?.["extension_十周年UI-Stars"]?.cardScale;
+	const menu = lib.extensionMenu?.[`extension_${decadeUIName}`]?.cardScale;
 	if (menu) {
 		const isInput = menu.tagName === "INPUT";
 		if (isInput) {
@@ -162,7 +162,7 @@ export function onDiscardScaleBlur() {
  */
 export function onDiscardScaleUpdate() {
 	const value = lib.config["extension_十周年UI-Stars_discardScale"] ?? "0.14";
-	const menu = lib.extensionMenu?.["extension_十周年UI-Stars"]?.discardScale;
+	const menu = lib.extensionMenu?.[`extension_${decadeUIName}`]?.discardScale;
 	if (menu) {
 		const isInput = menu.tagName === "INPUT";
 		if (isInput) {
@@ -205,7 +205,7 @@ export function onHandFoldMinBlur() {
  */
 export function onHandFoldMinUpdate() {
 	const value = lib.config["extension_十周年UI-Stars_handFoldMin"] ?? "9";
-	const menu = lib.extensionMenu?.["extension_十周年UI-Stars"]?.handFoldMin;
+	const menu = lib.extensionMenu?.[`extension_${decadeUIName}`]?.handFoldMin;
 	if (menu) {
 		const isInput = menu.tagName === "INPUT";
 		if (isInput) {

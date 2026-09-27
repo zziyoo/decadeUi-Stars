@@ -282,7 +282,7 @@ export function createXinshaSkillPlugin(lib, game, ui, get, ai, _status, app) {
 
 					node.addEventListener(lib.config.touchscreen ? "touchend" : "click", () => {
 						if (lib.config["extension_十周年UI-Stars_bettersound"]) {
-							game.playAudio("..", "extension", "十周年UI-Stars", "audio/SkillBtn");
+							game.playAudio("..", "extension", decadeUIName, "audio/SkillBtn");
 						}
 					});
 					app.listen(node, plugin.clickSkill);
@@ -354,7 +354,7 @@ export function createXinshaSkillPlugin(lib, game, ui, get, ai, _status, app) {
 
 					node.addEventListener(lib.config.touchscreen ? "touchend" : "click", () => {
 						if (lib.config["extension_十周年UI-Stars_bettersound"]) {
-							game.playAudio("..", "extension", "十周年UI-Stars", "audio/SkillBtn");
+							game.playAudio("..", "extension", decadeUIName, "audio/SkillBtn");
 						}
 					});
 					app.listen(node, plugin.clickSkill);
@@ -431,7 +431,7 @@ export function createXinshaSkillPlugin(lib, game, ui, get, ai, _status, app) {
 
 						node.addEventListener(lib.config.touchscreen ? "touchend" : "click", () => {
 							if (lib.config["extension_十周年UI-Stars_bettersound"]) {
-								game.playAudio("..", "extension", "十周年UI-Stars", "audio/SkillBtn");
+								game.playAudio("..", "extension", decadeUIName, "audio/SkillBtn");
 							}
 						});
 						app.listen(node, plugin.clickSkill);

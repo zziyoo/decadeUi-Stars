@@ -4,6 +4,7 @@
  * @fileoverview 动画系统初始化模块，注册技能动画和卡牌触发器
  */
 
+import { readRawStyleValue } from "./../core/styleRuntime.js";
 import { lib, game, ui, get, ai, _status } from "noname";
 import { skillDefines, cardDefines, chupaiAnimations } from "./configs/skillAnimations.js";
 import { cardTriggers } from "./configs/cardTriggers.js";
@@ -20,7 +21,7 @@ export function initSkillAnimations(animation) {
 	};
 
 	animation.playRecoverNumber = (player, num) => {
-		if (!player || !num || num < 1 || num > 9 || lib.config["extension_十周年UI-Stars_newDecadeStyle"] === "off") return;
+		if (!player || !num || num < 1 || num > 9 || readRawStyleValue() === "off") return;
 		animation.playSpine({ name: "globaltexiao/huifushuzi/shuzi2", action: String(num) }, { speed: 0.6, scale: 0.5, parent: player, y: 20 });
 	};
 
@@ -33,8 +34,8 @@ export function initSkillAnimations(animation) {
 	};
 
 	animation.playDamageNumber = (player, num) => {
-		if (!player || !num || num <= 1 || num > 9 || !lib.config["extension_十周年UI-Stars_newDecadeStyle"]) return;
-		const isNewStyle = lib.config["extension_十周年UI-Stars_newDecadeStyle"] !== "off";
+		if (!player || !num || num <= 1 || num > 9 || !readRawStyleValue()) return;
+		const isNewStyle = readRawStyleValue() !== "off";
 		const animName = isNewStyle ? "globaltexiao/shanghaishuzi/SZN_shuzi" : "globaltexiao/shanghaishuzi/shuzi";
 		const options = { speed: 0.6, scale: 0.4, parent: player };
 		if (isNewStyle) options.y = 20;

@@ -7,7 +7,7 @@ import { createBaseSkillPlugin } from "./base.js";
 import { getAvailableSkills, isGSkillCacheSame, shouldSkipEquipSkill } from "./gskillMixin.js";
 import { skillButtonTooltip } from "../../../src/ui/skillButtonTooltip.js";
 
-const ASSETS_PATH = "extension/十周年UI-Stars/ui/assets/skill/shousha";
+const ASSETS_PATH = `${decadeUIPath}ui/assets/skill/shousha`;
 
 /**
  * 创建手杀风格技能插件
@@ -234,7 +234,7 @@ export function createShoushaSkillPlugin(lib, game, ui, get, ai, _status, app) {
 
 					node.addEventListener(lib.config.touchscreen ? "touchend" : "click", () => {
 						if (lib.config["extension_十周年UI-Stars_bettersound"]) {
-							game.playAudio("..", "extension", "十周年UI-Stars", "audio/SkillBtn");
+							game.playAudio("..", "extension", decadeUIName, "audio/SkillBtn");
 						}
 					});
 					app.listen(node, plugin.clickSkill);
@@ -428,7 +428,7 @@ export function createShoushaSkillPlugin(lib, game, ui, get, ai, _status, app) {
 
 						node.addEventListener("click", () => {
 							if (lib.config["extension_十周年UI-Stars_bettersound"]) {
-								game.playAudio("..", "extension", "十周年UI-Stars", "audio/SkillBtn");
+								game.playAudio("..", "extension", decadeUIName, "audio/SkillBtn");
 							}
 						});
 						app.listen(node, plugin.clickSkill);

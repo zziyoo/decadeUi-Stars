@@ -4,6 +4,7 @@
  * @module overrides/player/hooks
  */
 
+import { readRawStyleValue } from "./../../core/styleRuntime.js";
 import { lib, game, ui, get, ai, _status } from "noname";
 
 /**
@@ -94,7 +95,7 @@ function handleSkillAnimate(player, name) {
 
 	player.querySelector(".tipskill")?.remove();
 
-	const style = cfg["extension_十周年UI-Stars_newDecadeStyle"];
+	const style = readRawStyleValue();
 	if (SKIP_SKILL_NAMES.includes(name) || style === "othersOff" || style === "on") {
 		return;
 	}
@@ -153,7 +154,7 @@ function createSkillTip(player, skillName) {
 	`.replace(/\s+/g, " ");
 
 	// 思考中底图
-	img.src = lib.assetURL + "extension/十周年UI-Stars/ui/assets/lbtn/shoushatip/skilltip.png";
+	img.src = decadeUIPath + "ui/assets/lbtn/shoushatip/skilltip.png";
 	img.style.cssText = `
 		display: block;
 		position: absolute;

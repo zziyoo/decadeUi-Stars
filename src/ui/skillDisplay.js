@@ -3,6 +3,7 @@
  * 在玩家头像旁显示技能列表，支持点击查看技能描述
  */
 
+import { readRawStyleValue } from "./../core/styleRuntime.js";
 import { lib, game, ui, get, ai, _status } from "noname";
 import { isDoubleCharacterMode } from "./characterBackground.js";
 
@@ -11,7 +12,7 @@ import { isDoubleCharacterMode } from "./characterBackground.js";
  * @param {string} name - 音效名称
  */
 const playExtAudio = name => {
-	game.playAudio("..", "extension", "十周年UI-Stars", `audio/${name}`);
+	game.playAudio("..", "extension", decadeUIName, `audio/${name}`);
 };
 
 /**
@@ -160,7 +161,7 @@ export function initSkillDisplay() {
 			const icon = getSkillIcon(skill, player);
 			if (icon) {
 				const iconImg = document.createElement("img");
-				iconImg.src = `extension/十周年UI-Stars/ui/assets/skill/baby/${icon}`;
+				iconImg.src = `${decadeUIPath}ui/assets/skill/baby/${icon}`;
 				Object.assign(iconImg.style, { position: "absolute", top: "3px", right: "-15px", width: "16px", height: "16px", zIndex: "103" });
 				skillEl.appendChild(iconImg);
 			}
@@ -276,7 +277,7 @@ export function clearAllSkillDisplay() {
  * 仅在babysha样式且玩家数不超过5人时启用
  */
 export function setupSkillDisplay() {
-	if (lib.config["extension_十周年UI-Stars_newDecadeStyle"] === "babysha" && game.players.length <= 5) {
+	if (readRawStyleValue() === "babysha" && game.players.length <= 5) {
 		initSkillDisplay();
 	}
 	lib.clearAllSkillDisplay = clearAllSkillDisplay;

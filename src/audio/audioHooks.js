@@ -62,7 +62,7 @@ const findPlayer = name => game.players?.find(p => hasName(p, name));
  */
 const playAudio = file => {
 	const audioPath = file.includes("/") ? `audio/${file}` : `audio/caidan/${file}`;
-	game.playAudio("..", "extension", "十周年UI-Stars", audioPath);
+	game.playAudio("..", "extension", decadeUIName, audioPath);
 };
 
 /**

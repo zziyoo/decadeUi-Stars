@@ -1,6 +1,7 @@
 /**
  * @fileoverview 武将详情样式管理器 - 动态加载样式模块
  */
+import { readRawStyleValue } from "./../../../src/core/styleRuntime.js";
 import { lib, game, ui, get, ai, _status } from "noname";
 import { STYLE_TO_SKIN, DEFAULT_SKIN } from "../../constants.js";
 
@@ -9,7 +10,7 @@ import { STYLE_TO_SKIN, DEFAULT_SKIN } from "../../constants.js";
  * @returns {string}
  */
 export function getCurrentSkin() {
-	return STYLE_TO_SKIN[lib.config?.["extension_十周年UI-Stars_newDecadeStyle"]] || DEFAULT_SKIN;
+	return STYLE_TO_SKIN[readRawStyleValue()] || DEFAULT_SKIN;
 }
 
 /**

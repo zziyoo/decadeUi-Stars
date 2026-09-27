@@ -4,6 +4,7 @@
  * @module overrides/player/card-movement
  */
 
+import { readRawStyleValue } from "./../../core/styleRuntime.js";
 import { lib, game, ui, get, ai, _status } from "noname";
 import { applyCardBorder } from "../../ui/cardStyles.js";
 
@@ -730,9 +731,9 @@ export function playerAddVirtualJudge(VCard, cards) {
 				cardx.node.judgeMark.node.judge.innerText = "";
 				cardx.node.judgeMark.node.judge.style.fontSize = "";
 
-				const isDecadeStyle = lib.config["extension_十周年UI-Stars_newDecadeStyle"] === "on" || lib.config["extension_十周年UI-Stars_newDecadeStyle"] === "othersOff";
+				const isDecadeStyle = readRawStyleValue() === "on" || readRawStyleValue() === "othersOff";
 				const ext = isDecadeStyle && ["bingliang", "lebu", "shandian"].includes(imageName) ? "1.png" : ".png";
-				const basePath = `${lib.assetURL}extension/十周年UI-Stars/image/ui/judge-mark/`;
+				const basePath = `${decadeUIPath}image/ui/judge-mark/`;
 
 				const tryImg = new Image();
 				tryImg.onload = function () {
@@ -750,7 +751,7 @@ export function playerAddVirtualJudge(VCard, cards) {
 				cardx.node.judgeMark.node.judge.parentElement.children[0].style.background = "none";
 				cardx.node.judgeMark.node.judge.parentElement.children[0].style.display = "none";
 			} else {
-				cardx.node.judgeMark.node.judge.style.backgroundImage = `url("${lib.assetURL}extension/十周年UI-Stars/image/ui/judge-mark/tongyong.png")`;
+				cardx.node.judgeMark.node.judge.style.backgroundImage = `url("${decadeUIPath}image/ui/judge-mark/tongyong.png")`;
 			}
 
 			ui.updatej(player);

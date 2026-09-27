@@ -140,7 +140,7 @@ export const playerMarkStyle = {
  * @returns {Object} loading框选项映射
  */
 function generateLoadingStyleItems() {
-	const basePath = `${lib.assetURL}extension/十周年UI-Stars/image/ui/dialog`;
+	const basePath = `${decadeUIPath}image/ui/dialog`;
 	const createPreview = filename => `<div style="width:60px;height:40px;position:relative;background-image: url(${basePath}/${filename});background-size: 100% 100%;"></div>`;
 
 	return {

@@ -18,7 +18,7 @@ function loadStyles() {
 	const link = document.createElement("link");
 	link.id = "decade-config-window-styles";
 	link.rel = "stylesheet";
-	link.href = `${lib.assetURL}extension/十周年UI-Stars/src/config/config-window.css`;
+	link.href = `${decadeUIPath}src/config/config-window.css`;
 	document.head.appendChild(link);
 }
 
@@ -39,7 +39,7 @@ function createConfigWindow() {
 	title.innerHTML = "十周年UI配置中心";
 
 	const avatar = document.createElement("img");
-	avatar.src = `${lib.assetURL}extension/十周年UI-Stars/image/ui/avatar/avatar_ziyoo.jpg`;
+	avatar.src = `${decadeUIPath}image/ui/avatar/avatar_ziyoo.jpg`;
 	avatar.className = "decade-config-avatar";
 	avatar.onclick = () => {
 		overlay.remove();
@@ -111,7 +111,7 @@ function loadConfigs(container, tabId) {
 			return;
 		}
 
-		const configKey = `extension_十周年UI-Stars_${configItem.key}`;
+		const configKey = `extension_${decadeUIName}_${configItem.key}`;
 		const configDef = config[configItem.key];
 		if (!configDef) return;
 

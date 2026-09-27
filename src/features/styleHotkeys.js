@@ -4,6 +4,7 @@
  * @fileoverview 电脑端快捷切换样式
  */
 
+import { readRawStyleValue, getStyleConfigKey } from "./../core/styleRuntime.js";
 import { lib, game, ui, get, ai, _status } from "noname";
 
 /** @type {string[]} Alt+1~6 对应的样式 */
@@ -22,9 +23,9 @@ function handleStyleHotkey(event) {
 	event.preventDefault();
 
 	const newStyle = STYLES[keyNum - 1];
-	if (lib.config["extension_十周年UI-Stars_newDecadeStyle"] === newStyle) return;
+	if (readRawStyleValue() === newStyle) return;
 
-	game.saveConfig("extension_十周年UI-Stars_newDecadeStyle", newStyle);
+	game.saveConfig(getStyleConfigKey(), newStyle);
 	setTimeout(() => game.reload(), 100);
 }
 

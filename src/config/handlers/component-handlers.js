@@ -62,7 +62,7 @@ export function onJindutiaoSetUpdate() {
 	}
 
 	// 更新菜单显示值
-	const menu = lib.extensionMenu?.["extension_十周年UI-Stars"]?.jindutiaoSet;
+	const menu = lib.extensionMenu?.[`extension_${decadeUIName}`]?.jindutiaoSet;
 	if (menu) {
 		const isInput = menu.tagName === "INPUT";
 		if (isInput) {
