@@ -4,7 +4,7 @@
 	"license": "GPL-3.0-only",
 	"type": "module",
 	"scripts": {
-		"build": "vite build",
+		"build": "vite build && node scripts/build-decade-pack.mjs dist",
 		"build:watch": "vite build --watch --mode development"
 	},
 	"devDependencies": {

@@ -33,7 +33,7 @@
 	top: 0%;
 	left: calc(100% - 119px);
 	background-size: 100% 100%;
-	background-image: url("../../assets/lbtn/CD/HOME.png");
+	background-image: url("../../../../ui/assets/lbtn/CD/HOME.png");
 	z-index: 68;
 	position: relative;
 	transition: all 1s;
@@ -57,31 +57,31 @@
 .SZ {
 	bottom: calc(100% - 373px);
 	left: calc(100% - 112.5px);
-	background-image: url("../../assets/lbtn/CD/SZ.png");
+	background-image: url("../../../../ui/assets/lbtn/CD/SZ.png");
 }
 
 .LK {
 	bottom: calc(100% - 248px);
 	left: calc(100% - 112.5px);
-	background-image: url("../../assets/lbtn/CD/LK.png");
+	background-image: url("../../../../ui/assets/lbtn/CD/LK.png");
 }
 
 .BJ {
 	bottom: calc(100% - 310px);
 	left: calc(100% - 112.5px);
-	background-image: url("../../assets/lbtn/CD/BJ.png");
+	background-image: url("../../../../ui/assets/lbtn/CD/BJ.png");
 }
 
 .TX {
 	bottom: calc(100% - 187px);
 	left: calc(100% - 112.5px);
-	background-image: url("../../assets/lbtn/CD/TX.png");
+	background-image: url("../../../../ui/assets/lbtn/CD/TX.png");
 }
 
 .TG {
 	bottom: calc(100% - 126px);
 	left: calc(100% - 112.5px);
-	background-image: url("../../assets/lbtn/CD/TG.png");
+	background-image: url("../../../../ui/assets/lbtn/CD/TG.png");
 }
 
 /* 功能按钮 */
@@ -94,7 +94,7 @@
 	position: absolute;
 	bottom: 7.5%;
 	left: 0;
-	background-image: url("../../assets/lbtn/uibutton/jilu_new.png");
+	background-image: url("../../../../ui/assets/lbtn/uibutton/jilu_new.png");
 	background-size: 100% 100%;
 	border-radius: 1px;
 	z-index: 4;
@@ -109,7 +109,7 @@
 	bottom: -1%;
 	position: absolute;
 	left: 0;
-	background-image: url("../../assets/lbtn/uibutton/huanfu_new.png");
+	background-image: url("../../../../ui/assets/lbtn/uibutton/huanfu_new.png");
 	background-size: 100% 100%;
 	border-radius: 1px;
 	z-index: 3;
@@ -124,7 +124,7 @@
 	position: absolute;
 	bottom: 15%;
 	left: 0px;
-	background-image: url("../../assets/lbtn/uibutton/meigui_new.png");
+	background-image: url("../../../../ui/assets/lbtn/uibutton/meigui_new.png");
 	background-size: 100% 100%;
 	z-index: 3;
 }
@@ -138,7 +138,7 @@
 	position: absolute;
 	bottom: 23%;
 	left: 0px;
-	background-image: url("../../assets/lbtn/uibutton/xiaolian_new.png");
+	background-image: url("../../../../ui/assets/lbtn/uibutton/xiaolian_new.png");
 	background-size: 100% 100%;
 	z-index: 3;
 }
@@ -158,7 +158,7 @@
 }
 
 .control > div {
-	background-image: url("../../assets/lbtn/uibutton/btnn2.png");
+	background-image: url("../../../../ui/assets/lbtn/uibutton/btnn2.png");
 	background-size: 100% 100%;
 	line-height: var(--h);
 	padding: 6.4px 25px !important;
@@ -198,7 +198,7 @@
 	margin-top: 0px !important;
 	margin-bottom: -15px !important;
 	background-size: 100% 100%;
-	background-image: url("../../assets/lbtn/uibutton/btnn.png");
+	background-image: url("../../../../ui/assets/lbtn/uibutton/btnn.png");
 	overflow: visible;
 	transition: none;
 }
@@ -218,7 +218,7 @@
 	margin-top: 0px !important;
 	margin-bottom: -15px !important;
 	background-size: 100% 100%;
-	background-image: url("../../assets/lbtn/uibutton/btnn2.png");
+	background-image: url("../../../../ui/assets/lbtn/uibutton/btnn2.png");
 }
 
 .control > div.disabled:not([data-type="endButton"]) {
@@ -246,7 +246,7 @@
 	--h: calc(var(--w) * 92 / 400);
 	width: var(--w);
 	height: var(--h);
-	background-image: url("../../assets/lbtn/uibutton/count1.png");
+	background-image: url("../../../../ui/assets/lbtn/uibutton/count1.png");
 	background-size: 100% 100%;
 	position: relative;
 	z-index: -1;
@@ -279,7 +279,7 @@
 	--h: calc(var(--w) * 173 / 127);
 	width: var(--w);
 	height: var(--h);
-	background-image: url("../../assets/lbtn/uibutton/cardback3.png");
+	background-image: url("../../../../ui/assets/lbtn/uibutton/cardback3.png");
 	background-size: 100% 100%;
 	background-color: transparent;
 	position: relative;
@@ -328,7 +328,7 @@
 	--h: calc(var(--w) * 149 / 598);
 	width: var(--w);
 	height: var(--h);
-	background-image: url("../../assets/lbtn/CD/tuoguan2.png");
+	background-image: url("../../../../ui/assets/lbtn/CD/tuoguan2.png");
 	background-size: 100% 100%;
 	-webkit-text-fill-color: transparent;
 	text-shadow: none !important;
@@ -337,7 +337,7 @@
 /* 背景选择器 */
 .bgdialog {
 	position: absolute;
-	background: url("../../assets/lbtn/OL_line/bg/bgdialog.png");
+	background: url("../../../../ui/assets/lbtn/OL_line/bg/bgdialog.png");
 	background-size: 100% 100%;
 	width: 70%;
 	height: 90%;
@@ -388,14 +388,14 @@
 	height: 40px;
 	top: 5%;
 	right: 8%;
-	background-image: url("../../assets/lbtn/OL_line/uibutton/back.png");
+	background-image: url("../../../../ui/assets/lbtn/OL_line/uibutton/back.png");
 	background-size: 100% 100%;
 	z-index: 100;
 	position: absolute;
 }
 
 .bgxuanzhong {
-	background: url("../../assets/lbtn/OL_line/bg/gou.png");
+	background: url("../../../../ui/assets/lbtn/OL_line/bg/gou.png");
 	background-size: 100% 100%;
 	width: 45%;
 	height: 60%;

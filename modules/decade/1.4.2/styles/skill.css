@@ -52,7 +52,7 @@
 	height: var(--h);
 	line-height: var(--h);
 	text-align: center;
-	background-image: url("../../assets/skill/shizhounian/skill.png");
+	background-image: url("../../../../ui/assets/skill/shizhounian/skill.png");
 	padding: 3px 7px;
 	background-size: 100% 100%;
 	margin: 2px 0px;
@@ -125,7 +125,7 @@
 		0.3px 0px 1.8px #332c18,
 		0.3px 0px 1.8px #332c18,
 		0.3px 0px 1.8px #332c18;
-	background-image: url("../../assets/skill/shizhounian/btnn1.png");
+	background-image: url("../../../../ui/assets/skill/shizhounian/btnn1.png");
 	background-size: 100% 100%;
 }
 
@@ -192,12 +192,12 @@
 		0.3px 0px 1.8px #332c18,
 		0.3px 0px 1.8px #332c18;
 	font-size: 22px;
-	background-image: url("../../assets/skill/shizhounian/btnn4.png");
+	background-image: url("../../../../ui/assets/skill/shizhounian/btnn4.png");
 	background-size: 100% 100%;
 }
 
 .skill-control > .enable > .skillitem.select {
-	background-image: url("../../assets/skill/shizhounian/btnn3.png");
+	background-image: url("../../../../ui/assets/skill/shizhounian/btnn3.png");
 }
 
 .skill-control > .enable > .skillitem:not(.usable):not(.select) {
@@ -211,7 +211,7 @@
 }
 
 .skill-control > .enable > .xiandingji.select {
-	background-image: url("../../assets/skill/shizhounian/btnn4.png");
+	background-image: url("../../../../ui/assets/skill/shizhounian/btnn4.png");
 }
 
 /* 技能选中特效 */
@@ -268,7 +268,7 @@
 }
 
 .skillMarkItem.xiandingji {
-	background-image: url("../../assets/skill/shizhounian/xiandingji.png");
+	background-image: url("../../../../ui/assets/skill/shizhounian/xiandingji.png");
 	background-size: 100% 100%;
 	text-shadow: none;
 	--w: 30px;
@@ -286,7 +286,7 @@
 }
 
 .skillMarkItem.juexingji {
-	background-image: url("../../assets/skill/shizhounian/juexingji.png");
+	background-image: url("../../../../ui/assets/skill/shizhounian/juexingji.png");
 	background-size: 100% 100%;
 	text-shadow: none;
 	--w: 30px;
@@ -305,16 +305,16 @@
 	background-repeat: no-repeat;
 	transform-style: preserve-3d;
 	transform: rotateY(360deg);
-	background-image: url("../../assets/skill/shizhounian/mark_yang.png");
+	background-image: url("../../../../ui/assets/skill/shizhounian/mark_yang.png");
 }
 
 .skillMarkItem.zhuanhuanji.yang {
-	background-image: url("../../assets/skill/shizhounian/mark_yang.png");
+	background-image: url("../../../../ui/assets/skill/shizhounian/mark_yang.png");
 	animation: fanzhuan 1.5s;
 }
 
 .skillMarkItem.zhuanhuanji.yin {
-	background-image: url("../../assets/skill/shizhounian/mark_ying.png");
+	background-image: url("../../../../ui/assets/skill/shizhounian/mark_ying.png");
 	animation: fanzhuan 1.5s;
 }
 
@@ -333,7 +333,7 @@
 }
 
 .skillMarkItem.duty {
-	background-image: url("../../assets/skill/shizhounian/mark_duty.png");
+	background-image: url("../../../../ui/assets/skill/shizhounian/mark_duty.png");
 	background-size: contain;
 	background-repeat: no-repeat;
 }
@@ -380,7 +380,7 @@
 
 .skill-controlzuoshou > .trigger > .skillitem {
 	text-align: center;
-	background-image: url("../../assets/skill/shizhounian/skill.png");
+	background-image: url("../../../../ui/assets/skill/shizhounian/skill.png");
 	padding: 3px 7px;
 	background-size: 100% 100%;
 	font-family: "yuanli";
@@ -400,18 +400,18 @@
 	justify-content: center;
 	font-family: "yuanli";
 	font-size: 20px;
-	background-image: url("../../assets/skill/shizhounian/btno1.png");
+	background-image: url("../../../../ui/assets/skill/shizhounian/btno1.png");
 	background-size: 100% 100%;
 }
 
 .skill-controlzuoshou > .enable > .skillitem.select {
-	background-image: url("../../assets/skill/shizhounian/btno3.png");
+	background-image: url("../../../../ui/assets/skill/shizhounian/btno3.png");
 }
 
 .skill-controlzuoshou > .enable > .skillitem:not(.usable):not(.select) {
 	filter: grayscale(100%);
 	-webkit-filter: grayscale(100%);
-	background-image: url("../../assets/skill/shizhounian/btnn2.png");
+	background-image: url("../../../../ui/assets/skill/shizhounian/btnn2.png");
 }
 
 /* 左手模式选中特效 */
@@ -425,7 +425,7 @@
 
 /* 法箓标记 */
 .skillMarkItem.xinfu-falu-spade {
-	background-image: url("../../assets/skill/yijiang/falu_spade.png");
+	background-image: url("../../../../ui/assets/skill/yijiang/falu_spade.png");
 	background-size: 100% 100%;
 	text-shadow: none;
 	--w: 25px;
@@ -436,7 +436,7 @@
 }
 
 .skillMarkItem.xinfu-falu-heart {
-	background-image: url("../../assets/skill/yijiang/falu_heart.png");
+	background-image: url("../../../../ui/assets/skill/yijiang/falu_heart.png");
 	background-size: 100% 100%;
 	text-shadow: none;
 	--w: 25px;
@@ -447,7 +447,7 @@
 }
 
 .skillMarkItem.xinfu-falu-club {
-	background-image: url("../../assets/skill/yijiang/falu_club.png");
+	background-image: url("../../../../ui/assets/skill/yijiang/falu_club.png");
 	background-size: 100% 100%;
 	text-shadow: none;
 	--w: 25px;
@@ -458,7 +458,7 @@
 }
 
 .skillMarkItem.xinfu-falu-diamond {
-	background-image: url("../../assets/skill/yijiang/falu_diamond.png");
+	background-image: url("../../../../ui/assets/skill/yijiang/falu_diamond.png");
 	background-size: 100% 100%;
 	text-shadow: none;
 	--w: 25px;
@@ -470,7 +470,7 @@
 
 /* 残蚀标记 */
 .skillMarkItem.starcanxi-qun {
-	background-image: url("../../assets/skill/yijiang/starcanxi_qun.png");
+	background-image: url("../../../../ui/assets/skill/yijiang/starcanxi_qun.png");
 	background-size: 100% 100%;
 	text-shadow: none;
 	--w: 25px;
@@ -481,7 +481,7 @@
 }
 
 .skillMarkItem.starcanxi-shu {
-	background-image: url("../../assets/skill/yijiang/starcanxi_shu.png");
+	background-image: url("../../../../ui/assets/skill/yijiang/starcanxi_shu.png");
 	background-size: 100% 100%;
 	text-shadow: none;
 	--w: 25px;
@@ -492,7 +492,7 @@
 }
 
 .skillMarkItem.starcanxi-wei {
-	background-image: url("../../assets/skill/yijiang/starcanxi_wei.png");
+	background-image: url("../../../../ui/assets/skill/yijiang/starcanxi_wei.png");
 	background-size: 100% 100%;
 	text-shadow: none;
 	--w: 25px;
@@ -503,7 +503,7 @@
 }
 
 .skillMarkItem.starcanxi-wu {
-	background-image: url("../../assets/skill/yijiang/starcanxi_wu.png");
+	background-image: url("../../../../ui/assets/skill/yijiang/starcanxi_wu.png");
 	background-size: 100% 100%;
 	text-shadow: none;
 	--w: 25px;
@@ -514,7 +514,7 @@
 }
 
 .skillMarkItem.starcanxi-jin {
-	background-image: url("../../assets/skill/yijiang/starcanxi_jin.png");
+	background-image: url("../../../../ui/assets/skill/yijiang/starcanxi_jin.png");
 	background-size: 100% 100%;
 	text-shadow: none;
 	--w: 25px;
@@ -525,7 +525,7 @@
 }
 
 .skillMarkItem.starcanxi-shen {
-	background-image: url("../../assets/skill/yijiang/starcanxi_shen.png");
+	background-image: url("../../../../ui/assets/skill/yijiang/starcanxi_shen.png");
 	background-size: 100% 100%;
 	text-shadow: none;
 	--w: 25px;

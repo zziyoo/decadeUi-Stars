@@ -21,9 +21,10 @@ const CORE_CSS = [
  * 六个官方样式（任务书§29-§31）
  * value = 配置键 newDecadeStyle 的取值；player = 对应 src/styles/playerN.css 序号；
  * skin = 皮肤模块名（ui/{character,skill,lbtn}/skins/{skin}.js）。映射依据见 P0 审计报告§9。
+ * pack = true 表示该样式已拆分为独立包（modules/<id>/<version>/，entry.css 为包内路径）。
  */
 const STYLES = [
-	{ id: "decade", name: "十周年", value: "on", skin: "shizhounian", player: 1, capabilities: ["player-frame", "lbtn"] },
+	{ id: "decade", name: "十周年", value: "on", skin: "shizhounian", player: 1, pack: true, capabilities: ["player-frame", "lbtn"] },
 	{ id: "mobile", name: "移动版", value: "off", skin: "shousha", player: 2, capabilities: ["player-frame", "lbtn"] },
 	{ id: "yjcm", name: "一将成名", value: "othersOff", skin: "xinsha", player: 3, capabilities: ["player-frame", "lbtn", "border-style"] },
 	{ id: "online", name: "Online", value: "onlineUI", skin: "online", player: 4, capabilities: ["player-frame", "lbtn", "online-chat", "online-gift"] },
@@ -51,6 +52,17 @@ export function registerBuiltInModules(registry, { version = "0.0.0" } = {}) {
 	);
 
 	for (const style of STYLES) {
+		// 已拆分包的样式：entry.css 为包内路径（P3）；未拆分样式：单体路径
+		const styleCss = style.pack
+			? ["player.css", "styles/character.css", "styles/lbtn.css", "styles/skill.css", "styles/lbtn-window.css", "styles/skill-window.css"]
+			: [
+					`src/styles/player${style.player}.css`,
+					`ui/styles/character/${style.skin}.css`,
+					`ui/styles/lbtn/${style.skin}.css`,
+					`ui/styles/skill/${style.skin}.css`,
+					`ui/styles/lbtn/window/${style.skin}.css`,
+					`ui/styles/skill/window/${style.skin}.css`,
+				];
 		registry.register(
 			normalizeManifest({
 				id: style.id,
@@ -61,14 +73,7 @@ export function registerBuiltInModules(registry, { version = "0.0.0" } = {}) {
 				dependencies: ["core"],
 				entry: {
 					js: [`ui/character/skins/${style.skin}.js`, `ui/skill/skins/${style.skin}.js`, `ui/lbtn/skins/${style.skin}.js`],
-					css: [
-						`src/styles/player${style.player}.css`,
-						`ui/styles/character/${style.skin}.css`,
-						`ui/styles/lbtn/${style.skin}.css`,
-						`ui/styles/skill/${style.skin}.css`,
-						`ui/styles/lbtn/window/${style.skin}.css`,
-						`ui/styles/skill/window/${style.skin}.css`,
-					],
+					css: styleCss,
 				},
 				capabilities: [...style.capabilities],
 				author: "子右",

@@ -10,6 +10,7 @@ import { createModuleManager } from "./moduleManager.js";
 import { createStyleRuntime } from "./styleRuntime.js";
 import { createResourceLoader } from "./resourceLoader.js";
 import { createPackageInstaller } from "./packageInstaller.js";
+import { normalizeManifest } from "./manifest.js";
 
 /** @type {Object|null} 模块系统单例 */
 let instance = null;
@@ -40,4 +41,43 @@ export function getModuleSystem() {
 
 	instance = { registry, moduleManager, styleRuntime, resourceLoader, packageInstaller };
 	return instance;
+}
+
+/**
+ * 探测并注册已安装的独立样式包（P3）
+ *
+ * 读取 modules/installed.json 清单，对每个条目探测其 manifest.json 并以
+ * meta.source="installed" 注册（同版本覆盖内置注册）→ getModuleBase 解析至
+ * modules/<id>/<version>/。清单或清单文件缺失（404）时静默跳过，
+ * 全部回落单体目录（P2 兼容）。
+ *
+ * @returns {Promise<void>}
+ */
+export async function registerInstalledModules() {
+	const { moduleManager } = getModuleSystem();
+	const base = (typeof window !== "undefined" && window.decadeUIPath) || "";
+	let installed;
+	try {
+		const res = await fetch(`${base}modules/installed.json`);
+		if (!res.ok) return;
+		installed = await res.json();
+	} catch {
+		return;
+	}
+	const entries = installed?.modules || {};
+	for (const [id, info] of Object.entries(entries)) {
+		try {
+			const res = await fetch(`${base}modules/${id}/${info.version}/manifest.json`);
+			if (!res.ok) {
+				console.warn(`[十周年UI-Stars] 已安装模块的清单缺失，回退单体目录: modules/${id}/${info.version}`);
+				continue;
+			}
+			const result = moduleManager.register(normalizeManifest(await res.json()), { source: "installed" });
+			if (!result.ok) {
+				console.warn(`[十周年UI-Stars] 模块清单校验失败: ${id}`, result.errors);
+			}
+		} catch (e) {
+			console.warn(`[十周年UI-Stars] 注册模块失败: ${id}`, e);
+		}
+	}
 }

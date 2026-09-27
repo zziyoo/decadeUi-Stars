@@ -6,7 +6,7 @@ import { initEruda, initNodeFS } from "./core/debug.js";
 import { initDecadeModule, EXCLUDED_MODES } from "./core/decadeModule.js";
 import { setupConnectMode, setupLayoutVisualMenu } from "./core/connectMode.js";
 import { initApp } from "./core/app.js";
-import { getModuleSystem } from "./core/moduleSystem.js";
+import { getModuleSystem, registerInstalledModules } from "./core/moduleSystem.js";
 import { applyMoveAnimFix } from "./overrides/moveAnimFix.js";
 import { initPrecontentUI } from "./ui/progress-bar.js";
 import { initCardAlternateNameVisible } from "./ui/cardAlternateName.js";
@@ -27,6 +27,9 @@ export async function precontent() {
 
 	// P1：装配模块系统单例（任务书§35；content 阶段挂载到 decadeUI 公开API，任务书§57）
 	getModuleSystem();
+
+	// P3：探测并注册已安装的独立样式包（须先于 initDecadeModule 的样式CSS加载）
+	await registerInstalledModules();
 
 	window.decadeModule = await initDecadeModule();
 
