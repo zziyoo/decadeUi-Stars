@@ -6,6 +6,18 @@
 		},
 		"mobile": {
 			"version": "1.4.2"
+		},
+		"yjcm": {
+			"version": "1.4.2"
+		},
+		"online": {
+			"version": "1.4.2"
+		},
+		"baby": {
+			"version": "1.4.2"
+		},
+		"codename": {
+			"version": "1.4.2"
 		}
 	}
 }

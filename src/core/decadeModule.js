@@ -11,7 +11,7 @@ import { getModuleSystem } from "./moduleSystem.js";
 const EXCLUDED_MODES = ["chess", "tafang", "hs_hearthstone"];
 
 /** 已拆分为独立样式包的样式ID（其单体CSS副本已删除，未安装时跳过加载） */
-const MIGRATED_STYLE_IDS = new Set(["decade", "mobile"]);
+const MIGRATED_STYLE_IDS = new Set(["decade", "mobile", "yjcm", "online", "baby", "codename"]);
 
 // P1：样式映射唯一数据源已收口至 styleRuntime.js（任务书§13）。
 // P2：本模块的JS/CSS加载经 resourceLoader.getAsset(moduleId, path) 寻址——
@@ -128,9 +128,10 @@ export function initDecadeModule() {
 			this.css(CORE, "ui/styles/base.css");
 
 			if (packCss) {
-				// 包内 UI 样式（character/lbtn/skill + window 桌面变体），保持原级联顺序
+				// 包内 UI 样式（character/lbtn/skill + window 桌面变体），保持原级联顺序。
+				// 包把单体的 `window/` 子目录扁平化为 `<name>-window.css`，故此处按包内命名跳过
 				for (const p of packCss.slice(1)) {
-					if (p.includes("/window/") && isPhoneLayout) continue;
+					if (isPhoneLayout && p.endsWith("-window.css")) continue;
 					this.css(styleId, p);
 				}
 			} else if (!MIGRATED_STYLE_IDS.has(styleId)) {

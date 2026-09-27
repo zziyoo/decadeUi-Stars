@@ -1,0 +1,40 @@
+{
+	"schema": 1,
+	"id": "online",
+	"name": "Online样式",
+	"version": "1.4.2",
+	"type": "style",
+	"core": ">=1.4.2",
+	"dependencies": [
+		"core"
+	],
+	"entry": {
+		"js": [
+			"ui/character/skins/online.js",
+			"ui/skill/skins/online.js",
+			"ui/lbtn/skins/online.js"
+		],
+		"css": [
+			"player.css",
+			"styles/character.css",
+			"styles/lbtn.css",
+			"styles/skill.css",
+			"styles/lbtn-window.css",
+			"styles/skill-window.css"
+		]
+	},
+	"deadRefs": [
+		"image/ui/effects/XZ.jpg",
+		"image/ui/effects/KXZ.jpg",
+		"image/styles/decade/border_campOL1.png"
+	],
+	"capabilities": [
+		"player-frame",
+		"lbtn"
+	],
+	"platform": [
+		"desktop",
+		"mobile"
+	],
+	"author": "子右"
+}

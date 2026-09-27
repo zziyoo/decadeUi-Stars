@@ -26,10 +26,10 @@ const CORE_CSS = [
 const STYLES = [
 	{ id: "decade", name: "十周年", value: "on", skin: "shizhounian", player: 1, pack: true, capabilities: ["player-frame", "lbtn"] },
 	{ id: "mobile", name: "移动版", value: "off", skin: "shousha", player: 2, pack: true, capabilities: ["player-frame", "lbtn"] },
-	{ id: "yjcm", name: "一将成名", value: "othersOff", skin: "xinsha", player: 3, capabilities: ["player-frame", "lbtn", "border-style"] },
-	{ id: "online", name: "Online", value: "onlineUI", skin: "online", player: 4, capabilities: ["player-frame", "lbtn", "online-chat", "online-gift"] },
-	{ id: "baby", name: "欢乐三国杀", value: "babysha", skin: "baby", player: 5, capabilities: ["player-frame", "lbtn"] },
-	{ id: "codename", name: "名将杀", value: "codename", skin: "codename", player: 6, capabilities: ["player-frame", "lbtn"] },
+	{ id: "yjcm", name: "一将成名", value: "othersOff", skin: "xinsha", player: 3, pack: true, capabilities: ["player-frame", "lbtn", "border-style"] },
+	{ id: "online", name: "Online", value: "onlineUI", skin: "online", player: 4, pack: true, capabilities: ["player-frame", "lbtn", "online-chat", "online-gift"] },
+	{ id: "baby", name: "欢乐三国杀", value: "babysha", skin: "baby", player: 5, pack: true, capabilities: ["player-frame", "lbtn"] },
+	{ id: "codename", name: "名将杀", value: "codename", skin: "codename", player: 6, pack: true, capabilities: ["player-frame", "lbtn"] },
 ];
 
 /**

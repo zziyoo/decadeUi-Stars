@@ -1,0 +1,38 @@
+{
+	"schema": 1,
+	"id": "baby",
+	"name": "欢乐三国杀样式",
+	"version": "1.4.2",
+	"type": "style",
+	"core": ">=1.4.2",
+	"dependencies": [
+		"core"
+	],
+	"entry": {
+		"js": [
+			"ui/character/skins/baby.js",
+			"ui/skill/skins/baby.js",
+			"ui/lbtn/skins/baby.js"
+		],
+		"css": [
+			"player.css",
+			"styles/character.css",
+			"styles/lbtn.css",
+			"styles/skill.css",
+			"styles/lbtn-window.css",
+			"styles/skill-window.css"
+		]
+	},
+	"deadRefs": [
+		"assets/skill/baby/xiandingjihs.png"
+	],
+	"capabilities": [
+		"player-frame",
+		"lbtn"
+	],
+	"platform": [
+		"desktop",
+		"mobile"
+	],
+	"author": "子右"
+}

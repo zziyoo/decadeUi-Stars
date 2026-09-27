@@ -1,0 +1,39 @@
+{
+	"schema": 1,
+	"id": "codename",
+	"name": "名将杀样式",
+	"version": "1.4.2",
+	"type": "style",
+	"core": ">=1.4.2",
+	"dependencies": [
+		"core"
+	],
+	"entry": {
+		"js": [
+			"ui/character/skins/codename.js",
+			"ui/skill/skins/codename.js",
+			"ui/lbtn/skins/codename.js"
+		],
+		"css": [
+			"player.css",
+			"styles/character.css",
+			"styles/lbtn.css",
+			"styles/skill.css",
+			"styles/lbtn-window.css",
+			"styles/skill-window.css"
+		]
+	},
+	"deadRefs": [
+		"image/styles/codename/border_camp0.png",
+		"ui/assets/character/shizhounian/dialog3.png"
+	],
+	"capabilities": [
+		"player-frame",
+		"lbtn"
+	],
+	"platform": [
+		"desktop",
+		"mobile"
+	],
+	"author": "子右"
+}
