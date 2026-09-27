@@ -7,10 +7,12 @@
 export { STYLE_TO_SKIN, DEFAULT_SKIN } from "../src/core/styleRuntime.js";
 
 /** 手杀风格常量 */
+// 注意：本文件位于 extension.js 的静态 import 链上，模块求值早于 window.decadeUIName/Path 注入，
+// 因此路径常量必须使用目录锚点字面量（与原版一致），禁止在模块顶层引用 decadeUIName/decadeUIPath。
 export const SHOUSHA_CONSTANTS = {
-	IMAGE_PATH: `${decadeUIPath}ui/assets/character/shousha/`,
-	IMAGE_PATH_PREFIX: `${decadeUIPath}ui/assets/character/shousha/dengjie/`,
-	AUDIO_PATH: `../extension/${decadeUIName}/ui/assets/lbtn/shousha/`,
+	IMAGE_PATH: "extension/十周年UI-Stars/ui/assets/character/shousha/",
+	IMAGE_PATH_PREFIX: "extension/十周年UI-Stars/ui/assets/character/shousha/dengjie/",
+	AUDIO_PATH: "../extension/十周年UI-Stars/ui/assets/lbtn/shousha/",
 
 	NICKNAMES: [
 		"氪金抽66",

@@ -4,14 +4,15 @@
 import { lib, game, ui, get, ai, _status } from "noname";
 import { createScriptElement, createLinkElement } from "./loader.js";
 import { prefixMarkModule } from "../ui/prefixMark.js";
-import { STYLE_CONFIG_VALUES, STYLE_TO_SKIN, DEFAULT_SKIN, readRawStyleValue } from "./styleRuntime.js";
+import { STYLE_CONFIG_VALUES, STYLE_TO_SKIN, STYLE_TO_MODULE, DEFAULT_SKIN, readRawStyleValue } from "./styleRuntime.js";
+import { getModuleSystem } from "./moduleSystem.js";
 
 /** @type {Array<string>} 排除的游戏模式 */
 const EXCLUDED_MODES = ["chess", "tafang", "hs_hearthstone"];
 
 // P1：样式映射唯一数据源已收口至 styleRuntime.js（任务书§13）。
-// 原本地 STYLE_OPTIONS/STYLE_TO_SKIN 删除；原 STYLE_TO_INDEX 为死代码且与实际
-// playerN.css 序号逻辑相反（实际序号 = STYLE_CONFIG_VALUES.indexOf(style)+1），一并移除。
+// P2：本模块的JS/CSS加载经 resourceLoader.getAsset(moduleId, path) 寻址——
+//     核心资源用 "core"，样式资源用当前样式模块ID（P2阶段均解析到扩展根，P3切换模块根只改 getModuleBase）。
 
 /**
  * 获取配置项值
@@ -31,29 +32,35 @@ function getConfigValue(key, defaultValue) {
  */
 export function initDecadeModule() {
 	if (!ui.css.layout) return {};
+	// 本体游戏资源（layout/long2），不属于扩展模块资源，不经 ResourceLoader
 	if (!ui.css.layout.href?.includes("long2")) {
 		ui.css.layout.href = `${lib.assetURL}layout/long2/layout.css`;
 	}
 
+	const { resourceLoader } = getModuleSystem();
+
 	const module = {
 		/**
-		 * 加载JS文件
-		 * @param {string} path - 文件路径
+		 * 加载模块JS文件
+		 * @param {string} moduleId - 模块ID（core/decade/mobile/...）
+		 * @param {string} path - 模块根下相对路径
 		 * @returns {HTMLScriptElement|null} script元素
 		 */
-		js: path => path && createScriptElement(path, false),
+		js: (moduleId, path) => path && createScriptElement(resourceLoader.getAsset(moduleId, path), false),
 		/**
-		 * 异步加载JS文件
-		 * @param {string} path - 文件路径
+		 * 异步加载模块JS文件
+		 * @param {string} moduleId - 模块ID
+		 * @param {string} path - 模块根下相对路径
 		 * @returns {HTMLScriptElement|null} script元素
 		 */
-		jsAsync: path => path && createScriptElement(path, true),
+		jsAsync: (moduleId, path) => path && createScriptElement(resourceLoader.getAsset(moduleId, path), true),
 		/**
-		 * 加载CSS文件
-		 * @param {string} path - 文件路径
+		 * 加载模块CSS文件
+		 * @param {string} moduleId - 模块ID
+		 * @param {string} path - 模块根下相对路径
 		 * @returns {HTMLLinkElement|null} link元素
 		 */
-		css: path => path && createLinkElement(path),
+		css: (moduleId, path) => path && createLinkElement(resourceLoader.getAsset(moduleId, path)),
 		/** @type {Array<Function>} 模块列表 */
 		modules: [],
 		/**
@@ -71,41 +78,44 @@ export function initDecadeModule() {
 	 * @returns {Promise<Object>} this
 	 */
 	module.init = async function () {
-		const cssFiles = ["src/styles/extension.css", "src/styles/decadeLayout.css", "src/styles/card.css", "src/styles/meihua.css"];
-		cssFiles.forEach(path => this.css(`${decadeUIPath}${path}`));
+		const CORE = "core";
 
-		// P2：样式配置值经 styleRuntime 收口读取（原始语义不变：undefined 时取默认 "on"）
+		const cssFiles = ["src/styles/extension.css", "src/styles/decadeLayout.css", "src/styles/card.css", "src/styles/meihua.css"];
+		cssFiles.forEach(path => this.css(CORE, path));
+
+		// 样式配置值经 styleRuntime 收口读取（原始语义不变：undefined 时取默认 "on"）
 		const _rawStyle = readRawStyleValue();
 		const style = _rawStyle !== undefined ? _rawStyle : "on";
 		const styleIndex = STYLE_CONFIG_VALUES.indexOf(style);
-		this.css(`${decadeUIPath}src/styles/player${styleIndex !== -1 ? styleIndex + 1 : 2}.css`);
-		this.css(`${decadeUIPath}src/styles/equip.css`);
-		this.css(`${decadeUIPath}src/styles/layout.css`);
+		this.css(CORE, `src/styles/player${styleIndex !== -1 ? styleIndex + 1 : 2}.css`);
+		this.css(CORE, "src/styles/equip.css");
+		this.css(CORE, "src/styles/layout.css");
 		document.body.setAttribute("data-style", style);
 
 		if (getConfigValue("meanPrettify", false)) {
-			ui.css.decadeMenu = this.css(`${decadeUIPath}src/styles/menu.css`);
+			ui.css.decadeMenu = this.css(CORE, "src/styles/menu.css");
 		}
 
 		// 同步等待 spine.js 加载完成
-		await this.js(`${decadeUIPath}src/libs/spine.js`);
+		await this.js(CORE, "src/libs/spine.js");
 
 		const currentMode = get.mode();
 		const isPhoneLayout = lib.config.phonelayout;
 
 		if (!EXCLUDED_MODES.includes(currentMode)) {
 			const skinName = STYLE_TO_SKIN[style] || DEFAULT_SKIN;
-			const uiPath = `${decadeUIPath}ui/`;
+			// 样式资源按样式模块ID寻址（P2解析到扩展根；P3起指向 modules/<id>/<version>/）
+			const styleId = STYLE_TO_MODULE[style] || "decade";
 
-			this.css(`${uiPath}styles/fonts.css`);
-			this.css(`${uiPath}styles/base.css`);
-			this.css(`${uiPath}styles/character/${skinName}.css`);
-			this.css(`${uiPath}styles/lbtn/${skinName}.css`);
-			this.css(`${uiPath}styles/skill/${skinName}.css`);
+			this.css(styleId, "ui/styles/fonts.css");
+			this.css(styleId, "ui/styles/base.css");
+			this.css(styleId, `ui/styles/character/${skinName}.css`);
+			this.css(styleId, `ui/styles/lbtn/${skinName}.css`);
+			this.css(styleId, `ui/styles/skill/${skinName}.css`);
 
 			if (!isPhoneLayout) {
-				this.css(`${uiPath}styles/lbtn/window/${skinName}.css`);
-				this.css(`${uiPath}styles/skill/window/${skinName}.css`);
+				this.css(styleId, `ui/styles/lbtn/window/${skinName}.css`);
+				this.css(styleId, `ui/styles/skill/window/${skinName}.css`);
 			}
 		}
 

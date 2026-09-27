@@ -12,7 +12,10 @@ export const type = "extension";
  * @returns {Promise<import("noname").ExtensionInfo>} 扩展配置对象
  */
 export default async function () {
-	const infoUrl = `${decadeUIPath}info.json`;
+	// 首次启动锚点：此时 window.decadeUIPath 尚未存在（它由本次读取 info.json 后才注入），
+	// 必须先用扩展目录名（与 info.json 的 name 保持一致）定位 info.json，
+	// 取得 name 后再设置 decadeUIName / decadeUIPath 兼容接口。禁止提前引用 decadeUIPath。
+	const infoUrl = `${lib.assetURL}extension/十周年UI-Stars/info.json`;
 	const { name, ...otherInfo } = await lib.init.promises.json(infoUrl);
 
 	const extensionName = name;

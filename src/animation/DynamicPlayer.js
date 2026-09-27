@@ -7,6 +7,7 @@
 import { _status } from "noname";
 import { AnimationPlayer } from "./AnimationPlayer.js";
 import { throttle, observeSize } from "./utils.js";
+import { getModuleSystem } from "../core/moduleSystem.js";
 
 /**
  * 播放器实例的唯一标识计数器
@@ -75,7 +76,8 @@ export class DynamicPlayer {
 	_initOffscreenRenderer(pathPrefix) {
 		for (let i = 0; i < DynamicWorkers.length; i++) {
 			if (!DynamicWorkers[i]) {
-				DynamicWorkers[i] = new Worker(decadeUIPath + "src/animation/dynamicWorker.js");
+				// P2：Worker脚本URL经ResourceLoader按模块寻址（worker内部 importScripts 相对路径不受影响）
+				DynamicWorkers[i] = new Worker(getModuleSystem().resourceLoader.getAsset("core", "src/animation/dynamicWorker.js"));
 				DynamicWorkers[i].capacity = 0;
 			} else if (DynamicWorkers[i].capacity >= 4) {
 				continue;
