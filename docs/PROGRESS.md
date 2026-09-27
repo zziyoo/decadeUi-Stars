@@ -14,7 +14,7 @@
 | Stars 仓库 | https://github.com/zziyoo/decadeUi-Stars （本仓库，**独立开发仓库，已迁入源码**） |
 | 原版扩展（玩家在用，不动） | `zziyoo/decadeUi`，本地路径 `C:\Users\32360\Desktop\无名杀-win32-x64\resources\app\extension\十周年UI` |
 | 总路线 | P0审计 → P1模块基础设施 → P2公共依赖解耦 → P3十周年Pack → P4移动版Pack → P5下载器 → P6模块管理界面 → P7全部Style → P8 Feature Pack → P9模块化构建 → P10 Release → P11自动更新 → P12回滚 → P13旧版本迁移 → P14全量测试 |
-| 当前阶段 | **P1 完成（含开发版改名），待验收；下一阶段 P2：公共依赖解耦** |
+| 当前阶段 | **P2 完成，待验收；下一阶段 P3：制作 decade Style Pack** |
 
 ## 二、环境备忘（本机关键信息）
 
@@ -37,10 +37,27 @@
 | 2026-09-27 | **迁入原版 v1.4.2 全部源码**（src/ui/image/audio/assets/docs + 构建文件 + LICENSE；原版README→docs/extension-readme.md；合并.gitignore；未迁 .github CI 与 .git） | 文件数校验一致：src=174/ui=1094/image=1596/audio=241/assets=290 |
 | 2026-09-27 | **P1 开发版改名**：十周年UI → 十周年UI-Stars（info.json/package.json/配置键前缀/路径/playAudio分段参数/extensionMenu访问） | 154 个 JS 全量 node --check 通过 |
 | 2026-09-27 | **P1 模块基础设施完成**（详见§四） | node 冒烟测试 ✓；vite build ✓（4.5s） |
+| 2026-09-27 | **P2 公共依赖改造完成**（详见§四）：38处样式配置读取收口 styleRuntime；资源路径扩展名全部动态化 | P2 冒烟测试 ✓；构建 ✓ |
 
 ## 四、进行中（当前任务指针）
 
-**当前任务：P1 模块基础设施 —— ✅ 已完成（2026-09-27），待用户验收**（任务书 §35-§36）
+**当前任务：P2 公共依赖改造 —— ✅ 已完成（2026-09-27），待用户验收**（任务书 §37-§38）
+
+### P2 完成记录
+
+| 项 | 内容 |
+|---|---|
+| 样式配置键收口 | styleRuntime 新增模块级 `getStyleConfigKey()` / `readRawStyleValue()` / `getExternalPluginFileName()` 与实例方法 `getRawConfigValue()`；全代码库 **newDecadeStyle 配置键字面量归零**（只允许在 styleRuntime.js 拼接） |
+| 38处读取点迁移 | 覆盖 animation/config/core/features/overrides/skills/ui/ui插件skins 共 25 文件，全部改为 `readRawStyleValue()`（原始语义零变化：不归一化、undefined 透传）；写入点（saveConfig）与 prefixMark CONFIG_KEY 改用 `getStyleConfigKey()` |
+| main1/2/3.js 迁出Core | app.js 的 styleFileMap 样式映射移至 `styleRuntime.getExternalPluginFileName()`（第三方插件约定本身不变） |
+| 资源路径动态化 | `${lib.assetURL}extension/十周年UI-Stars/`（36处）→ `${decadeUIPath}`；concat/反引号相对路径/`../`相对音频/playAudio分段参数/extensionMenu键/字符串路径常量（skins IMAGE_PATH 等）全部动态化；**硬编码 `extension/十周年UI-Stars/` 路径字面量归零**——扩展名从此只由 info.json 决定 |
+| 明确不做 | 其余 45 个配置键的方括号字面量（非样式键，P3+ 随模块化再收口）；样式比较逻辑（`==="off"` 等）未改成能力判断——按任务书§14"分阶段迁移"，待 P3/P4 各样式 manifest 落地后再转 hasCapability |
+
+**P2 验收标准**（任务书 §38）：旧行为完全保持 ✅（raw 语义等价替换 + 154 文件语法校验 + 构建 + 双冒烟测试）；样式映射与配置键、资源路径不再写死 Core ✅（STYLE_TO_SKIN 于 P1 收口，本轮完成配置键与路径）。
+
+---
+
+### 历史：P1 模块基础设施 —— ✅ 已完成并验收通过（任务书 §35-§36）
 
 ### P1 完成记录
 
@@ -99,9 +116,9 @@
 
 ## 六、下一步
 
-1. ~~P0 验收~~ ✅ ~~P1 实施~~ ✅（2026-09-27 完成，待用户验收）。
-2. **P2 公共依赖解耦**（任务书 §37-§38）：newDecadeStyle 38 处引用分批替换为 `decadeUI.style` API（styleRuntime）；82 处 `lib.assetURL` 硬编码收口 `resourceLoader.getAsset`；capabilities 清单从 provisional 细化；STYLE_TO_SKIN 消费路径进一步归一。
-3. P2 验收：旧版十周年所有功能正常；Style-specific 逻辑不再写死到 Core（任务书 §38）。
+1. ~~P0~~ ✅ ~~P1~~ ✅ ~~P2~~ ✅（2026-09-27，待用户验收）。
+2. **P3 制作第一个 Style Pack：decade**（任务书 §39-§40）：以 `modules/decade/<版本>/` 目录承载 player1.css + ui/styles/*shizhounian* + 3个皮肤JS + image/styles/decade + ui/assets/skill/shizhounian，StyleRuntime.getAsset 按模块根解析；删除本地 decade 后 Core 正常、十周年样式不可用、重装恢复。
+3. P3 动工前建议：先在游戏内实测一次 P1+P2 版本（dist 导入，验证 6 样式切换与核心功能）。
 
 ## 七、会话记录
 
@@ -110,3 +127,4 @@
 | 2026-09-27 | 建仓推送至 zziyoo/decadeUi-Stars；创建本文档；完成 P0 审计并产出 `docs/modularization-audit.md` |
 | 2026-09-27 | P0 验收通过（附三处表述修正）；决策 Stars 为独立开发仓库并迁入原版 v1.4.2 源码；原版不动，玩家继续用原版 |
 | 2026-09-27 | **P1 完成**：开发版改名十周年UI-Stars；模块基础设施 8 文件落地；STYLE_TO_SKIN 收口单一数据源；decadeUI 公开 API 挂载；node 冒烟测试 + 全量语法校验 + vite 构建通过 |
+| 2026-09-27 | **P2 完成**：样式配置键与 38 处读取点收口 styleRuntime；main1/2/3.js 映射迁出 Core；资源路径扩展名全部动态化（字面量归零）；P2 冒烟测试 + 构建通过 |

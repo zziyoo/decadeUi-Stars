@@ -2429,3 +2429,13 @@ P0 审计
   - PackageInstaller 为骨架（install/update/uninstall 返回 P1_UNSUPPORTED，真正实现在 P5）。
   - 验证：node 冒烟测试通过（tests/p1-smoke.test.mjs）、154 个 JS 全量语法校验通过、vite 构建成功。
 - 阶段推进：**P1 完成，待验收后进入 P2（公共依赖解耦）**。
+
+## v1.2（2026-09-27）
+
+- **P2 公共依赖改造完成**（任务书§37-§38），旧行为完全保持：
+  - **样式配置键收口**：styleRuntime 新增模块级 `getStyleConfigKey()` / `readRawStyleValue()` / `getExternalPluginFileName()`；全代码库 `newDecadeStyle` 配置键字面量归零（只允许在 styleRuntime.js 拼接）；38 处历史读取点（25 文件）迁移为 `readRawStyleValue()`，原始语义零变化（不归一化、undefined 透传）。
+  - **main1/2/3.js 映射迁出 Core**：app.js 的 styleFileMap 移至 `styleRuntime.getExternalPluginFileName()`，第三方插件约定本身不变（兼容API）。
+  - **资源路径动态化**：`${lib.assetURL}extension/十周年UI-Stars/`（36处）、concat 形式、反引号相对路径、`../` 相对音频、playAudio 分段参数、extensionMenu 键、skins 字符串路径常量——全部改为 `${decadeUIPath}` / `${decadeUIName}` 动态形式，硬编码路径字面量归零。**扩展名从此只由 info.json 的 name 决定，再次改名不再需要全库替换。**
+  - 明确不做（记录）：其余 45 个非样式配置键字面量、样式比较逻辑转能力判断（`hasCapability`）——按任务书§14 分阶段原则留待 P3/P4。
+- 验证：154 个 JS `node --check` 全过；p1/p2 冒烟测试全过；vite build 成功。
+- 阶段推进：**P2 完成，待验收后进入 P3（制作 decade Style Pack）**。
