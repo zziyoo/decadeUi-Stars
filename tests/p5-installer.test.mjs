@@ -150,14 +150,26 @@ function createLegacyGame(initial = {}) {
 	for (const [rel, text] of Object.entries(initial)) store.set(strip(rel), encoder.encode(String(text)));
 
 	const hit = (bucket, label) => (bucket.has(label) ? (bucket.delete(label), true) : false);
+	const hitPattern = (op, key) => {
+		const index = game.failMatch.findIndex(entry => entry.op === op && String(key).includes(entry.contains));
+		if (index === -1) return false;
+		const entry = game.failMatch[index];
+		entry.times = (entry.times ?? 1) - 1;
+		if (entry.times <= 0) game.failMatch.splice(index, 1);
+		return true;
+	};
 	const bytesOf = value => (value instanceof Uint8Array ? value : encoder.encode(String(value)));
 
 	const game = {
 		store,
+		key: strip,
 		failOnce: new Set(),
 		corruptOnce: new Set(),
+		/** 按模式注入（用于名字里含随机事务号的临时件）：[{op, contains, times?}] */
+		failMatch: [],
 		has: rel => store.has(strip(rel)),
 		readText: rel => (store.has(strip(rel)) ? new TextDecoder().decode(store.get(strip(rel))) : null),
+		movingLeftovers: () => [...store.keys()].filter(key => key.includes(".moving-")),
 		checkFile: (path, callback, onerror) => {
 			const key = strip(path);
 			if (hit(game.failOnce, `checkFile:${key}`)) return onerror(new Error(`注入故障: checkFile ${key}`));
@@ -173,7 +185,7 @@ function createLegacyGame(initial = {}) {
 		},
 		writeFile: (data, dir, name, callback) => {
 			const key = strip(`${dir}/${name}`);
-			if (hit(game.failOnce, `writeFile:${key}`)) return callback(new Error(`注入故障: writeFile ${key}`));
+			if (hit(game.failOnce, `writeFile:${key}`) || hitPattern("writeFile", key)) return callback(new Error(`注入故障: writeFile ${key}`));
 			const bytes = bytesOf(data);
 			if (hit(game.corruptOnce, `writeFile:${key}`)) {
 				store.set(key, bytes.slice(0, Math.max(1, Math.floor(bytes.byteLength / 2))));
@@ -185,7 +197,7 @@ function createLegacyGame(initial = {}) {
 		},
 		readFile: (path, callback, onerror) => {
 			const key = strip(path);
-			if (hit(game.failOnce, `readFile:${key}`)) return onerror(new Error(`注入故障: readFile ${key}`));
+			if (hit(game.failOnce, `readFile:${key}`) || hitPattern("readFile", key)) return onerror(new Error(`注入故障: readFile ${key}`));
 			const bytes = store.get(key);
 			if (bytes === undefined) return onerror(new Error(`ENOENT ${key}`));
 			callback(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
@@ -213,7 +225,7 @@ function createLegacyGame(initial = {}) {
 		},
 		removeFile: (path, callback) => {
 			const key = strip(path);
-			if (hit(game.failOnce, `removeFile:${key}`)) return callback(new Error(`注入故障: removeFile ${key}`));
+			if (hit(game.failOnce, `removeFile:${key}`) || hitPattern("removeFile", key)) return callback(new Error(`注入故障: removeFile ${key}`));
 			store.delete(key);
 			callback(null);
 		},
@@ -1387,6 +1399,139 @@ assert.equal(checkCoreRequirement("~1.5.0", "1.9.0").ok, false, "不认识的写
 	await io.movePath("modules/installed.json.tmp", "modules/installed.json");
 	assert.equal(fs.readText("modules/installed.json"), "NEW", "EXDEV 回落路径必须真的搬运内容");
 	assert.equal(fs.has("modules/installed.json.tmp"), false);
+}
+
+// -------------------------------------------- 非原子平台：file → 已存在文件的目标事务保护
+
+{
+	// A) 已有目标，正常成功：dest = 源内容、源消失、不留事务残骸
+	const game = createLegacyGame({ "modules/a.json.tmp": "NEW", "modules/a.json": "OLD" });
+	const io = createNonameIo({ game, fs: null, stallMs: 800 });
+	await io.movePath("modules/a.json.tmp", "modules/a.json");
+	assert.equal(game.readText("modules/a.json"), "NEW");
+	assert.equal(game.has("modules/a.json.tmp"), false);
+	assert.deepEqual(game.movingLeftovers(), [], "成功后不应留下 .moving-* 事务文件");
+}
+
+{
+	// B) 已有目标，提交写入直接失败 → 源与旧目标都保持原样
+	const game = createLegacyGame({ "modules/a.json.tmp": "NEW", "modules/a.json": "OLD" });
+	game.failOnce.add("writeFile:modules/a.json");
+	const io = createNonameIo({ game, fs: null, stallMs: 800 });
+	await assert.rejects(() => io.movePath("modules/a.json.tmp", "modules/a.json"), error => error instanceof IoError);
+	assert.equal(game.readText("modules/a.json.tmp"), "NEW", "提交失败时源必须保留");
+	assert.equal(game.readText("modules/a.json"), "OLD", "提交失败时旧目标必须原样");
+	assert.deepEqual(game.movingLeftovers(), []);
+}
+
+{
+	// C) 已有目标，提交写成半截 → 回读校验失败 → 旧目标必须回滚成原内容（旧实现会留下 NEW_HALF）
+	const game = createLegacyGame({ "modules/a.json.tmp": "NEW-LEDGER", "modules/a.json": "OLD-LEDGER" });
+	game.corruptOnce.add("writeFile:modules/a.json");
+	const io = createNonameIo({ game, fs: null, stallMs: 800 });
+	await assert.rejects(
+		() => io.movePath("modules/a.json.tmp", "modules/a.json"),
+		error => error instanceof IoError && /校验|不一致/.test(error.message)
+	);
+	assert.equal(game.readText("modules/a.json"), "OLD-LEDGER", "半截写入后旧目标必须恢复");
+	assert.equal(game.readText("modules/a.json.tmp"), "NEW-LEDGER", "源必须保留");
+	assert.deepEqual(game.movingLeftovers(), []);
+}
+
+{
+	// D) 已有目标，写成功但回读失败 → 不能假设写成功，同样回滚旧内容
+	const game = createLegacyGame({ "modules/a.json.tmp": "NEW", "modules/a.json": "OLD" });
+	const originalRead = game.readFile;
+	let destReads = 0;
+	game.readFile = (path, callback, onerror) => {
+		// 第 1 次读目标是取旧内容做备份，第 2 次是提交后的回读校验
+		if (game.key(path) === "modules/a.json" && ++destReads === 2) return onerror(new Error("注入故障: 回读失败"));
+		return originalRead(path, callback, onerror);
+	};
+	const io = createNonameIo({ game, fs: null, stallMs: 800 });
+	await assert.rejects(() => io.movePath("modules/a.json.tmp", "modules/a.json"), error => error instanceof IoError);
+	assert.equal(game.readText("modules/a.json"), "OLD", "回读失败时不得认为提交成功");
+	assert.equal(game.readText("modules/a.json.tmp"), "NEW");
+}
+
+{
+	// E) 旧目标备份失败 → 正式目标一个字节都没动，且不留残骸
+	const game = createLegacyGame({ "modules/a.json.tmp": "NEW", "modules/a.json": "OLD" });
+	game.failMatch.push({ op: "writeFile", contains: ".moving-backup-", times: 1 });
+	const io = createNonameIo({ game, fs: null, stallMs: 800 });
+	await assert.rejects(
+		() => io.movePath("modules/a.json.tmp", "modules/a.json"),
+		error => error instanceof IoError && /moving-backup-/.test(error.message)
+	);
+	assert.equal(game.readText("modules/a.json"), "OLD", "备份失败时正式目标不得被触碰");
+	assert.equal(game.readText("modules/a.json.tmp"), "NEW");
+	assert.deepEqual(game.movingLeftovers(), [], "备份失败也要清掉临时件");
+}
+
+{
+	// F) 提交写坏 + 旧目标恢复也失败 → 明确 IO_ROLLBACK_FAILED + residual，绝不静默成功
+	const game = createLegacyGame({ "modules/a.json.tmp": "NEW", "modules/a.json": "OLD" });
+	game.corruptOnce.add("writeFile:modules/a.json"); // 提交写坏
+	const originalWrite = game.writeFile;
+	let destWrites = 0;
+	game.writeFile = (data, dir, name, callback) => {
+		if (game.key(`${dir}/${name}`) === "modules/a.json" && ++destWrites === 2) return callback(new Error("注入故障: 回写旧目标失败"));
+		return originalWrite(data, dir, name, callback);
+	};
+	const io = createNonameIo({ game, fs: null, stallMs: 800 });
+	await assert.rejects(
+		() => io.movePath("modules/a.json.tmp", "modules/a.json"),
+		error =>
+			error instanceof IoError &&
+			error.ioCode === "IO_ROLLBACK_FAILED" &&
+			/恢复失败/.test(error.message) &&
+			Array.isArray(error.residual) &&
+			error.residual.join(" ").includes(".moving-backup-")
+	);
+	assert.equal(game.readText("modules/a.json.tmp"), "NEW", "回滚失败也必须保住源");
+	assert.notEqual(game.readText("modules/a.json"), "OLD", "此时目标确实没能恢复，不得谎报");
+	assert.equal(
+		game.movingLeftovers().some(key => key.includes(".moving-backup-")),
+		true,
+		"备份必须留着，作为旧内容唯一可靠的落盘恢复来源"
+	);
+}
+
+{
+	// G) 提交已校验成功但源删除失败 → 明确失败，但绝不把已提交的新目标回滚成旧内容
+	const game = createLegacyGame({ "modules/a.json.tmp": "NEW", "modules/a.json": "OLD" });
+	game.failOnce.add("removeFile:modules/a.json.tmp");
+	const io = createNonameIo({ game, fs: null, stallMs: 800 });
+	await assert.rejects(
+		() => io.movePath("modules/a.json.tmp", "modules/a.json"),
+		error => error instanceof IoError && error.ioCode === "IO_FAILED" && /源文件删除失败/.test(error.message)
+	);
+	assert.equal(game.readText("modules/a.json"), "NEW", "已提交的目标不得回滚");
+	assert.equal(game.readText("modules/a.json.tmp"), "NEW", "源残留（内容与目标一致，由上层决定如何处理）");
+	assert.deepEqual(game.movingLeftovers(), [], "提交之后仍要清理事务件");
+}
+
+{
+	// H) 自我搬运：内容不变、文件还在、不会把自己删掉
+	const game = createLegacyGame({ "modules/a.json": "KEEP" });
+	const io = createNonameIo({ game, fs: null, stallMs: 800 });
+	await io.movePath("modules/a.json", "modules/a.json");
+	assert.equal(game.readText("modules/a.json"), "KEEP");
+	assert.equal(game.has("modules/a.json"), true);
+	assert.deepEqual(game.movingLeftovers(), []);
+}
+
+{
+	// I) 目标位置是个目录 → 明确拒绝，不许把文件写到目录路径上搅乱内容
+	const game = createLegacyGame({ "modules/a.json.tmp": "NEW", "modules/a.json/inside.txt": "X" });
+	const io = createNonameIo({ game, fs: null, stallMs: 800 });
+	await assert.rejects(
+		() => io.movePath("modules/a.json.tmp", "modules/a.json"),
+		error => error instanceof IoError && /目标类型/.test(error.message)
+	);
+	assert.equal(game.readText("modules/a.json/inside.txt"), "X");
+	assert.equal(game.readText("modules/a.json.tmp"), "NEW");
+	assert.deepEqual(game.movingLeftovers(), []);
 }
 
 // ------------------------------------------------------------------ ZIP 条目越界防护（zip-slip）

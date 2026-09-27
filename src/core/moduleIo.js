@@ -18,6 +18,8 @@
  * 平台差异（本体 init/cordova.js，Node 侧无法验证）：其 writeFile 走 `getFile({create:true})` +
  * FileWriter.write()，既可能因目标已存在而失败，也可能不截断而留下尾部残字节；因此非原子搬运
  * 一律"写后回读逐字节校验"，校验不过就保留源、按失败上报。
+ * 文件搬运额外带目标事务（见 moveFileNonAtomic）：先把内容暂存校验、再备份旧目标、提交后回读校验，
+ * 失败就把旧目标恢复回原内容；恢复不了 → ioCode=IO_ROLLBACK_FAILED + residual，绝不静默成功。
  *
  * 路径约定：端口接受**扩展根相对**的 POSIX 路径（如 `modules/decade/1.5.0/manifest.json`），
  * 调用期拼 `extension/<decadeUIName>/` 前缀。禁止在模块求值期引用 decadeUIName（P2 规则）。
@@ -58,6 +60,17 @@ const sameBytes = (a, b) => {
 		if (left[index] !== right[index]) return false;
 	}
 	return true;
+};
+
+/** 事务临时件后缀：同目录并发搬运也不撞名 */
+let txnSeq = 0;
+const txnId = () => `${Date.now().toString(36)}-${(txnSeq++).toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+
+/** 旧目标恢复失败：与普通 IO 失败分开上报（ioCode + residual），调用方不得当成可忽略的错误 */
+const rollbackFailed = (message, residual, cause) => {
+	const error = new IoError("IO_ROLLBACK_FAILED", message, cause);
+	error.residual = residual;
+	return error;
 };
 
 /** 默认卡死兜底：真实回调永远优先，只有本体彻底不回调时才判失败 */
@@ -311,6 +324,137 @@ export function createNonameIo(options = {}) {
 		return legacyRemoveFile(rel);
 	}
 
+	/**
+	 * 非原子平台的**文件**搬运事务（本平台没有 rename，覆盖写可能失败或半截）。
+	 * 只处理 file → file，目录搬运不得走这里。
+	 *
+	 * 不变量：
+	 *   成功                   → dest = 源内容（逐字节校验过），源已删除
+	 *   提交未完成             → 源保留；dest 原本存在则恢复旧内容，原本不存在则不留半成品
+	 *   提交已校验但源清理失败 → 明确报 IO_FAILED，且**不回滚已提交的 dest**（源残留，内容与目标一致）
+	 *   旧目标恢复失败         → IO_ROLLBACK_FAILED + residual，并保留备份/临时件供人工恢复
+	 *
+	 * 顺序：读源 → 写临时目标并校验（此时正式目标一个字节都没动）→ 备份旧目标 →
+	 * 写正式目标并校验 → 删源 → 清理事务件。
+	 * 提交那一步就是普通 writeBinary（本平台的覆盖写），所以旧目标必须先有恢复来源（内存副本 + 落盘备份）；
+	 * 绝不递归调用本端口的 movePath 去做"原子替换"——那个语义在本平台并不存在。
+	 */
+	async function moveFileNonAtomic(srcRel, destRel) {
+		const source = await readBinary(srcRel);
+		if (source === null) throw new IoError("IO_FAILED", `[ModuleIo] move 源文件不可读: ${srcRel}`);
+
+		const destKind = await kind(destRel);
+		if (destKind !== null && destKind !== "file") {
+			throw new IoError("IO_FAILED", `[ModuleIo] move 目标类型不是文件（拒绝覆盖）: ${destRel} → ${destKind}`);
+		}
+
+		const txn = txnId();
+		const tempDest = `${destRel}.moving-${txn}`;
+		const backupDest = destKind === "file" ? `${destRel}.moving-backup-${txn}` : null;
+		/** @type {ArrayBuffer|null} 旧目标内容（内存副本，回滚时用它写回，比读备份文件少一步） */
+		let previous = null;
+
+		const cleanup = async () => {
+			const leftovers = [];
+			for (const rel of [tempDest, backupDest]) {
+				if (!rel) continue;
+				try {
+					await removeFile(rel);
+				} catch {
+					leftovers.push(rel);
+				}
+			}
+			return leftovers;
+		};
+
+		/** 提交失败后的恢复：旧目标原本存在 → 写回旧内容；原本不存在 → 清掉半成品。返回问题描述（null=已恢复） */
+		const restoreDest = async () => {
+			const problems = [];
+			if (backupDest) {
+				try {
+					// 先核对：提交那一步可能根本没写进去（例如直接被拒绝），此时旧目标完好，不必再冒一次写失败的风险
+					if (sameBytes(await readBinary(destRel), previous)) return null;
+				} catch {}
+				try {
+					await writeBinary(destRel, previous);
+					const restored = await readBinary(destRel);
+					if (!sameBytes(restored, previous)) problems.push(`${destRel} 写回后内容仍不一致`);
+				} catch (error) {
+					problems.push(`写回 ${destRel} 失败: ${error?.message ?? error}`);
+				}
+			} else {
+				try {
+					await removeFile(destRel);
+					if ((await readBinary(destRel)) !== null) problems.push(`${destRel} 的半成品仍然存在`);
+				} catch (error) {
+					problems.push(`清理 ${destRel} 半成品失败: ${error?.message ?? error}`);
+				}
+			}
+			return problems.length ? problems.join("；") : null;
+		};
+
+		// 阶段一：暂存与备份（正式目标尚未被触碰）
+		try {
+			await writeBinary(tempDest, source);
+			const staged = await readBinary(tempDest);
+			if (!sameBytes(staged, source)) {
+				throw new IoError("IO_FAILED", `[ModuleIo] move 临时目标校验失败（源与目标均未动）: ${srcRel} → ${tempDest}`);
+			}
+			if (backupDest) {
+				previous = await readBinary(destRel);
+				if (previous === null) throw new IoError("IO_FAILED", `[ModuleIo] 旧目标不可读，无法保证可恢复: ${destRel}`);
+				await writeBinary(backupDest, previous);
+				if (!sameBytes(await readBinary(backupDest), previous)) {
+					throw new IoError("IO_FAILED", `[ModuleIo] 旧目标备份校验失败（源与目标均未动）: ${destRel}`);
+				}
+			}
+		} catch (error) {
+			await cleanup();
+			throw error;
+		}
+
+		// 阶段二：提交（唯一可能损坏正式目标的一步）
+		try {
+			await writeBinary(destRel, source);
+			const landed = await readBinary(destRel);
+			if (!sameBytes(landed, source)) {
+				throw new IoError("IO_FAILED", `[ModuleIo] move 正式目标校验失败（源已保留）: ${srcRel} → ${destRel}`);
+			}
+		} catch (error) {
+			const problem = await restoreDest();
+			if (problem) {
+				// 备份与临时件故意保留：它们是旧内容唯一可靠的落盘恢复来源
+				throw rollbackFailed(
+					`[ModuleIo] move 提交失败（${error?.message ?? error}），且旧目标恢复失败：${problem}`,
+					[backupDest, tempDest, destRel].filter(Boolean),
+					error
+				);
+			}
+			await cleanup();
+			throw error;
+		}
+
+		// 阶段三：提交已确认 —— 之后只做清理，任何清理问题都不得回滚目标
+		let sourceProblem = null;
+		try {
+			await removeFile(srcRel);
+		} catch (error) {
+			sourceProblem = `${srcRel}: ${error?.message ?? error}`;
+		}
+		const leftovers = await cleanup();
+		if (sourceProblem) {
+			throw new IoError(
+				"IO_FAILED",
+				`[ModuleIo] move 已提交并校验 ${destRel}，但源文件删除失败：${sourceProblem}（源残留，未回滚目标${
+					leftovers.length ? `；另有残留 ${leftovers.join("、")}` : ""
+				}）`
+			);
+		}
+		if (leftovers.length) {
+			console.warn(`[ModuleIo] move 事务临时文件清理失败（不影响搬运结果，可手工删除）: ${leftovers.join("、")}`);
+		}
+	}
+
 	const io = {
 		/** 端口能力探测：桌面端 rename 同卷原子，其它平台为 copy+remove（非原子） */
 		capabilities: { atomicRename: !!(fs && typeof fs.rename === "function"), desktop: !!fs },
@@ -340,8 +484,8 @@ export function createNonameIo(options = {}) {
 		 *
 		 * 必须按源类型分流：copyTree 只列举目录条目，拿它搬**文件**会"一个字节都不复制、
 		 * 却把源删掉"（Android/SAF 上表现为 installed.json 永远没被替换、临时文件消失）。
-		 * 非原子分支的顺序是硬约束：读源 → 写目标 → 回读逐字节校验 → 才删源；
-		 * 任一步失败都保持"源还在、旧目标未被提前删除"，让上层（writeInstalled 的备份）有恢复来源。
+		 * 文件走 moveFileNonAtomic 的完整事务（暂存 → 校验 → 备份旧目标 → 提交 → 校验 → 删源），
+		 * 目录仍然只是 copyTree + removeTree（本次不动目录事务）。
 		 */
 		movePath: async (srcRel, destRel) => {
 			const sourceKind = await kind(srcRel);
@@ -364,14 +508,7 @@ export function createNonameIo(options = {}) {
 				}
 			}
 			if (sourceKind === "file") {
-				const buffer = await readBinary(srcRel);
-				if (buffer === null) throw new IoError("IO_FAILED", `[ModuleIo] move 源文件不可读: ${srcRel}`);
-				await writeBinary(destRel, buffer);
-				const landed = await readBinary(destRel);
-				if (!sameBytes(landed, buffer)) {
-					throw new IoError("IO_FAILED", `[ModuleIo] move 目标内容校验不一致（源已保留）: ${srcRel} → ${destRel}`);
-				}
-				await removeFile(srcRel);
+				await moveFileNonAtomic(srcRel, destRel);
 				return;
 			}
 			await copyTree(srcRel, destRel);
