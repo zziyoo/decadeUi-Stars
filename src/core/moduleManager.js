@@ -45,6 +45,28 @@ export function createModuleManager({ registry, isModuleEnabled } = {}) {
 			return registry.has(id);
 		},
 
+		/**
+		 * 查询模块安装状态（P3 ResourceLoader 模块根解析的唯一数据源）
+		 *
+		 * independent=true 仅当模块由安装器注册（meta.source="installed"，
+		 * P5 PackageInstaller 落地时写入），表示模块拥有独立安装根
+		 * modules/<id>/<manifest.version>/（core 特例为 core/）；
+		 * 内置模块（meta.source="builtin"）与未知模块恒为 independent=false
+		 * → ResourceLoader 回落当前扩展根（P2 单体目录兼容）。
+		 *
+		 * @param {string} id - 模块ID
+		 * @returns {{independent: boolean, version: string|null, type: string|null}}
+		 */
+		getInstallState(id) {
+			const record = registry.get(id);
+			if (!record) return { independent: false, version: null, type: null };
+			return {
+				independent: record.meta.source === "installed",
+				version: record.manifest.version,
+				type: record.manifest.type,
+			};
+		},
+
 		/** 获取模块manifest，不存在返回 null */
 		getManifest(id) {
 			const record = registry.get(id);

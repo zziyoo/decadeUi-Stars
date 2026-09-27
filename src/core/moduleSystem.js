@@ -27,7 +27,9 @@ export function getModuleSystem() {
 	});
 
 	const moduleManager = createModuleManager({ registry });
-	const resourceLoader = createResourceLoader();
+	// P3：resourceLoader 经 moduleManager.getInstallState 查询模块安装状态，
+	// 内置模块回落扩展根（单体兼容），独立安装模块解析 modules/<id>/<version>/
+	const resourceLoader = createResourceLoader({ moduleManager });
 	const styleRuntime = createStyleRuntime({
 		moduleManager,
 		resourceLoader,
