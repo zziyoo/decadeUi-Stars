@@ -49,7 +49,9 @@
 }
 
 .shizhounian-character-dialog.dialog2::before {
-	background-image: url("../../assets/character/shizhounian/dialog3.png");
+	/* P3-1验收修复：迁移后指针修正，与原文件解析目标一致（ui/assets/character/shizhounian/dialog3.png）。
+	   注：该文件上游仓库即不存在（原版同样404），仅 shizhounian/ 下无 dialog 系列，见 verify-pack 已知死引用清单。 */
+	background-image: url("../../../../ui/assets/character/shizhounian/dialog3.png");
 }
 
 .shizhounian-character-dialog > div {
