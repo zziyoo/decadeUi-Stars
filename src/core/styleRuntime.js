@@ -34,6 +34,9 @@ export const STYLE_TO_MODULE = {
 /** 默认皮肤 */
 export const DEFAULT_SKIN = "shizhounian";
 
+/** 这些样式的定位CSS由 decadeLayout.css 的 data-decade-layout="on" 规则驱动 */
+export const DECADE_LAYOUT_STYLE_VALUES = ["on", "othersOff", "onlineUI", "babysha", "codename"];
+
 // ---------------- 模块级便捷函数（游戏运行时专用；不依赖实例化） ----------------
 // 依赖 window.lib / window.decadeUIName（分别由本体与 extension.js 注入，均先于本扩展代码执行）。
 // 设为模块级而非实例方法的原因：38处历史读取点分布在 src/ui 等无法取得实例引用的层，

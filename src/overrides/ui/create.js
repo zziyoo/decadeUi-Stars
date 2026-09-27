@@ -6,6 +6,7 @@
 import { lib, game, ui, get, _status } from "noname";
 import { getBaseUiCreateArena, getBaseUiCreatePause, getBaseUiCreateCharacterDialog, getBaseUiCreateButton } from "./base.js";
 import { uiUpdatez } from "./update.js";
+import { readRawStyleValue, DEFAULT_STYLE_VALUE, DECADE_LAYOUT_STYLE_VALUES } from "../../core/styleRuntime.js";
 
 /**
  * 创建预按钮
@@ -274,6 +275,19 @@ export function uiCreateArena() {
 	}
 
 	decadeUI.config.update();
+
+	// P2修复：arena样式属性直接应用。此前这些属性仅由扩展菜单的update回调写入
+	//（decadeUI.config.update()遍历菜单项），但本体沙箱环境下菜单项注册不可靠
+	//（config对象可能为空），属性缺失会使定位CSS（--w/data-right-layout等）全部失效。
+	// 此处按相同语义直接从配置值写入，不再依赖菜单回调。
+	const styleValue = readRawStyleValue();
+	const style = styleValue !== undefined ? styleValue : DEFAULT_STYLE_VALUE;
+	ui.arena.dataset.newDecadeStyle = style;
+	ui.arena.dataset.decadeLayout = DECADE_LAYOUT_STYLE_VALUES.includes(style) ? "on" : "off";
+	const rightLayout = lib.config[`extension_${decadeUIName}_rightLayout`];
+	if (rightLayout === "on" || rightLayout === "off") {
+		ui.arena.dataset.rightLayout = rightLayout;
+	}
 
 	return result;
 }
