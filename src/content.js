@@ -9,6 +9,7 @@ import { bootstrapExtension } from "./core/bootstrap.js";
 import { createDecadeUIObject } from "./core/decadeUI.js";
 import { registerDecadeUIUtilityModule, enhanceDecadeUIRuntime } from "./core/utility.js";
 import { getModuleSystem } from "./core/moduleSystem.js";
+import { config as extensionConfig } from "./config.js";
 
 // 动画模块
 import { setupGameAnimation } from "./animation/gameIntegration.js";
@@ -168,6 +169,23 @@ export async function content(config) {
 		dynamicSkinOutcrop: lib.config["extension_十周年UI-Stars_dynamicSkinOutcrop"] ?? false,
 		rightLayout: lib.config["extension_十周年UI-Stars_rightLayout"] === "on",
 	};
+
+	// P2修复：补齐扩展菜单注册与配置默认值。本体 loadExtension 阶段跨层接收的
+	// object.config 可能为空（见诊断：菜单仅4项、packConfigKeys=0），导致
+	// "切换样式"等全部配置项与 update/onclick 回调缺失。content 运行时模块图
+	// 完整（实测 config:52 键），故在此从模块源重新注册，并补写未初始化的
+	// 配置默认值（等价于本体 loadExtension 的 init 播种逻辑）。
+	const extensionMenu = lib.extensionMenu?.[`extension_${decadeUIName}`];
+	if (extensionMenu) {
+		for (const key of Object.keys(extensionConfig)) {
+			if (!(key in extensionMenu)) extensionMenu[key] = extensionConfig[key];
+			const def = extensionConfig[key];
+			if (def && typeof def === "object" && "init" in def && !("clear" in def)) {
+				const cfgKey = `extension_${decadeUIName}_${key}`;
+				if (!(cfgKey in lib.config)) game.saveConfig(cfgKey, def.init);
+			}
+		}
+	}
 
 	enhanceDecadeUIRuntime(decadeUI);
 	finalizeDecadeUICore(decadeUI, decadeUI.config);
