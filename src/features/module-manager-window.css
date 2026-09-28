@@ -297,15 +297,23 @@
 	display: none;
 }
 
-/* 结果提示条 */
+/* 结果提示条
+   必须自带滚动高度上限：发布失败的原文包含两遍 Windows 绝对路径，
+   真机上这两行把对话框底部撑破后被 .decade-module-dialog 的 overflow:hidden 剪掉，
+   玩家看的是"半句话且滑不到底"。列表已经 flex:1 自己滚动，这里再给它一个可滚动的帽子。 */
 .decade-module-notice {
 	position: relative;
 	z-index: 2;
 	min-height: 20px;
+	max-height: 26%;
+	flex: 0 0 auto;
+	overflow-y: auto;
+	overscroll-behavior: contain;
 	padding: 8px 24px 14px 24px;
 	color: #fff;
 	font-size: 13px;
 	line-height: 1.5;
+	word-break: break-all;
 }
 
 .decade-module-notice.is-ok {
