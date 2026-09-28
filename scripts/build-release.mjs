@@ -1,5 +1,5 @@
 /**
- * @fileoverview P9 构建产物：分包 zip + module-index.json + 完整校验（任务书§46）
+ * @fileoverview P9/P10 构建产物：分包 zip + Full Package + module-index.json + Release 说明（任务书§46/§47）
  *
  * 为什么 zip 根必须直接是 manifest.json：安装器 `verifyPackageDir` 就是按"根位 manifest"
  * 认包的（§24），套一层 `<version>/` 目录会直接被 STRUCTURE_INVALID 拒绝。
@@ -7,8 +7,13 @@
  * GitHub Release 资产，发布地址变了不必重新生成索引——相对解析交给安装器唯一的
  * `resolveModuleUrl(url, indexUrl)`（见 src/core/packageInstaller.js）。
  *
+ * P10 追加：
+ *   - Full Package（`<扩展名>-<版本>-full.zip`）：整份部署形态（Core + 全部包）打一个 zip，
+ *     包内根目录是 `<扩展名>/`，玩家解压到 `resources/app/extension/` 即用；
+ *   - `RELEASE-NOTES.md`：Release 说明草稿 + 上传清单（每个资产的字节数与 sha256）。
+ *
  * 用法：
- *   node scripts/build-release.mjs            # 生成 dist/release/*.zip 与 module-index.json，随后完整校验
+ *   node scripts/build-release.mjs            # 生成全部产物并完整校验
  *   node scripts/build-release.mjs --verify   # 只校验已存在的产物（不写盘），供门禁复跑
  *   node scripts/build-release.mjs --list     # 只打印将要打包的包与版本
  */
@@ -22,20 +27,32 @@ import { resolveModuleUrl } from "../src/core/packageInstaller.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const MODULES_DIR = path.join(ROOT, "modules");
+const DIST_DIR = path.join(ROOT, "dist");
 const OUT_DIR = path.join(ROOT, "dist", "release");
 const INDEX_FILE = "module-index.json";
+const NOTES_FILE = "RELEASE-NOTES.md";
 const CORE_ID = "core";
 const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/;
 /** zip 条目时间戳固定为 ZIP 纪元：否则同样内容每次构建摘要都变，索引无法做差异比对 */
 const FIXED_DATE = new Date(Date.UTC(1980, 0, 1));
 /** 校验相对 url 时用的样例索引地址（真实索引地址由客户端在 fetchIndex 时给出） */
 const SAMPLE_INDEX_URL = "https://example.invalid/module-index.json";
+/** Release 页面地址（说明草稿里给玩家填模块源用） */
+const REPO_SLUG = "zziyoo/decadeUi-Stars";
+/** 整包里 release/ 不参与：那是给装包流程用的分包产物，不是运行时资源 */
+const RELEASE_SUBDIR = "release";
+/**
+ * 整包排除的仓库内部件（其余 docs/ 是原版就有的对外文档，随包发布）：
+ * 总任务书、交接台账、P0 审计报告。台账每次会话都在改，打进去会让 112MB 资产的
+ * 摘要随文档变动——Release 上的 sha 与后续重建就对不上号了。
+ */
+const FULL_PACKAGE_EXCLUDES = new Set(["README.md", "docs/PROGRESS.md", "docs/modularization-audit.md"]);
 
 const VERIFY_ONLY = process.argv.includes("--verify");
 const LIST_ONLY = process.argv.includes("--list");
 
 const die = message => {
-	console.error(`[P9产物] ${message}`);
+	console.error(`[P10产物] ${message}`);
 	process.exitCode = 1;
 	throw new Error(message);
 };
@@ -77,7 +94,7 @@ export function collectPacks(modulesDir = MODULES_DIR) {
 			manifest = JSON.parse(fs.readFileSync(manifestFile, "utf8"));
 		} catch (error) {
 			manifest = null;
-			console.warn(`[P9产物] 跳过 ${id}：manifest.json 解析失败 ${error.message}`);
+			console.warn(`[P10产物] 跳过 ${id}：manifest.json 解析失败 ${error.message}`);
 		}
 		if (!manifest) continue;
 		packs.push({ id, version, dir, manifest, file: `${id}-${version}.zip` });
@@ -119,6 +136,125 @@ export async function zipDir(srcDir, outZip, _opts = {}) {
 }
 
 /**
+ * Full Package：把 dist/ 打成一个 zip（包内根目录 `<rootName>/`），玩家解压到
+ * `resources/app/extension/` 即得一份完整可用的扩展（Core + 全部包都在里面）。
+ *
+ * 源就是 dist/ 而不是仓库根：vite 已经按部署形态备好了 info.json / extension.js /
+ * ui / image / audio / assets / modules，且天然排除 node_modules、scripts、tests 等
+ * 开发件——不另立第二份排除表（两份清单迟早会漂移）。`release/` 单独排除：那是分包
+ * 产物，不是运行时资源，否则整包会把自己套一层、且每次构建摘要都变。
+ *
+ * @param {{distDir?: string, outZip: string, rootName: string}} input
+ * @returns {Promise<{file: string, bytes: number, sha256: string, files: number}>}
+ */
+export async function zipFullPackage({ distDir = DIST_DIR, outZip, rootName }) {
+	const outAbs = path.resolve(outZip);
+	const names = distFiles(distDir);
+	if (!names.length) die(`dist 目录为空，无法产出整包：${distDir}（先跑 pnpm build）`);
+
+	const zip = new JSZip();
+	for (const rel of names) {
+		zip.file(`${rootName}/${rel}`, fs.readFileSync(path.join(distDir, rel)), { date: FIXED_DATE, createFolders: false });
+	}
+	const buffer = await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE", compressionOptions: { level: 9 } });
+	fs.mkdirSync(path.dirname(outAbs), { recursive: true });
+	fs.writeFileSync(outAbs, buffer);
+
+	const written = fs.readFileSync(outAbs);
+	return {
+		file: path.basename(outAbs),
+		bytes: written.length,
+		sha256: crypto.createHash("sha256").update(written).digest("hex"),
+		files: names.length,
+	};
+}
+
+/** dist/ 里参与整包的文件（POSIX 相对路径，已排序）：排除 release/、内部文档与本次输出自身 */
+export function distFiles(distDir = DIST_DIR, excludeAbs = null) {
+	return listFiles(distDir)
+		.filter(rel => rel !== RELEASE_SUBDIR && !rel.startsWith(`${RELEASE_SUBDIR}/`))
+		.filter(rel => !FULL_PACKAGE_EXCLUDES.has(rel))
+		.filter(rel => (excludeAbs ? path.resolve(distDir, rel) !== excludeAbs : true));
+}
+
+/**
+ * Release 说明草稿 + 上传清单（纯函数，可单测）。
+ * 资产顺序：整包 → 索引 → 各分包（与 Release 页面上的阅读顺序一致）。
+ */
+export function buildReleaseNotes({ tag, name, version, coreVersion, index, packs, full, indexAsset }) {
+	const rows = [
+		`| \`${full.file}\` | ${full.bytes} | \`${full.sha256}\` | 整份扩展（Core + 全部包），解压到 \`resources/app/extension/\` 即用 |`,
+		`| \`${indexAsset.file}\` | ${indexAsset.bytes} | \`${indexAsset.sha256}\` | 模块索引，**必须**上传，客户端按它解析下载地址 |`,
+		...packs.map(pack => `| \`${pack.zip.file}\` | ${pack.zip.bytes} | \`${pack.zip.sha256}\` | ${pack.id}@${pack.version} 分包（${pack.manifest.type}） |`),
+	];
+	return [
+		`# ${name} ${tag}`,
+		"",
+		`模块化版（Stars）${version}，基于无名杀扩展「十周年UI」。**Core 随扩展本体发布**（本仓库源码即本体），`,
+		"不在本 Release 的资产里；下面的分包供模块管理窗口按需下载安装。",
+		"",
+		"## 资产清单（上传后请逐项核对 sha256）",
+		"",
+		"| 文件 | 字节数 | sha256 | 说明 |",
+		"|---|---|---|---|",
+		...rows,
+		"",
+		"## 安装",
+		"",
+		"1. 下载整包 `" + full.file + "`，解压出的 `" + name + "/` 放进 `无名杀/resources/app/extension/`（目录名可改，`info.json` 在里面就行）；",
+		"2. 或者只装本体源码，再在游戏里用模块管理窗口逐个装分包。",
+		"",
+		"整包不含仓库内部文档（总任务书、交接台账、P0 审计报告），原版的对外文档（extension-readme、各类 API 说明）照旧随包发布。",
+		"",
+		"## 模块源地址",
+		"",
+		"在「模块管理」窗口的模块源地址里填：",
+		"",
+		"```",
+		`https://github.com/${REPO_SLUG}/releases/download/${tag}/${INDEX_FILE}`,
+		"```",
+		"",
+		`索引里的 url 是裸文件名（如 \`${packs[0]?.zip.file ?? "baby-1.4.2.zip"}\`），客户端会用索引地址解析成同目录的绝对地址——`,
+		"所以索引与全部 zip **必须挂在同一个 Release 下**（同一 tag），不要手动编辑索引。",
+		"",
+		"## 校验",
+		"",
+		"```",
+		"pnpm build && node scripts/build-release.mjs --verify",
+		"```",
+		"",
+		`Core 版本：${coreVersion}；索引 schema：${index.schema}；可安装模块 ${Object.keys(index.modules).length} 个（core 不在其中，属预期）。`,
+		"",
+	].join("\n");
+}
+
+/**
+ * 校验整包：根目录、两个入口文件、每个分包的 manifest 都在里面，且条目数与 dist/ 一致
+ * @param {{zipPath: string, rootName: string, packs: Array, distDir?: string}} input
+ * @returns {Promise<string>} 人类可读的条目
+ */
+export async function verifyFullPackage({ zipPath, rootName, packs, distDir = DIST_DIR }) {
+	if (!fs.existsSync(zipPath)) die(`整包缺失 ${posix(path.relative(ROOT, zipPath))}`);
+	const bytes = fs.readFileSync(zipPath);
+	const zip = await JSZip.loadAsync(bytes);
+	const names = Object.keys(zip.files).filter(name => !zip.files[name].dir);
+
+	for (const rel of ["info.json", "extension.js"]) {
+		if (!names.includes(`${rootName}/${rel}`)) die(`整包缺少根位文件 ${rootName}/${rel}`);
+	}
+	for (const pack of packs) {
+		const rel = `${rootName}/modules/${pack.id}/${pack.version}/manifest.json`;
+		if (!names.includes(rel)) die(`整包缺少分包清单 ${rel}`);
+	}
+	if (names.some(name => name.startsWith(`${rootName}/${RELEASE_SUBDIR}/`))) die(`整包不得把 ${RELEASE_SUBDIR}/ 打进去（那是分包产物）`);
+
+	const source = distFiles(distDir);
+	if (source.length !== names.length) die(`整包条目数 ${names.length} 与 dist 文件数 ${source.length} 不符`);
+
+	return `整包 ${path.basename(zipPath)}：${names.length} 文件 / ${bytes.length} 字节 / sha256 ${crypto.createHash("sha256").update(bytes).digest("hex").slice(0, 12)}…`;
+}
+
+/**
  * 由"包 + 已落盘 zip 的信息"生成 module-index.json 的内容（纯函数，可单测）
  * 字段名沿用 §10 与安装器/界面已经在读的名字：latest / url / sha256 / size / dependencies / core。
  * @param {{packs: Array<{id: string, version: string, manifest: Object, zip: {file: string, bytes: number, sha256: string}}>, coreVersion: string}} input
@@ -144,9 +280,15 @@ export function buildIndex({ packs, coreVersion }) {
 	return { schema: 1, core: { version: coreVersion, latest: coreVersion }, modules };
 }
 
-const readCoreVersion = () => {
+const sha256hex = buffer => crypto.createHash("sha256").update(buffer).digest("hex");
+
+/** Release tag：Stars 的内容与上游同版本发布不同（模块化改造），所以带 -stars 后缀 */
+export const releaseTag = version => `v${version}-stars`;
+
+/** 扩展名与版本只认 info.json（不设第二版本源） */
+const readExtInfo = () => {
 	const info = JSON.parse(fs.readFileSync(path.join(ROOT, "info.json"), "utf8"));
-	return info.version || "0.0.0";
+	return { name: info.name || "十周年UI-Stars", version: info.version || "0.0.0" };
 };
 
 const indexText = obj => JSON.stringify(obj, null, "\t") + "\n";
@@ -227,55 +369,105 @@ export async function verifyArtifacts({ packs, index, coreVersion, outDir = OUT_
 
 // ------------------------------------------------------------------ 命令行入口
 
+/** 给包补上"已落盘 zip"的实际字节数与摘要（--verify 时由盘上重算，不信任索引里的自述） */
+const withZipInfo = packs => packs.map(pack => {
+	const bytes = fs.readFileSync(path.join(OUT_DIR, pack.file));
+	return { ...pack, zip: { file: pack.file, bytes: bytes.length, sha256: sha256hex(bytes) } };
+});
+
+/**
+ * 完整校验（构建与 --verify 共用同一套规则）：分包 → 索引 → 整包 → 说明文件。
+ * 说明文件按"由盘上产物重算"逐字节比对，手改过就会被抓住。
+ */
+async function verifyAll({ info, packs }) {
+	const indexPath = path.join(OUT_DIR, INDEX_FILE);
+	if (!fs.existsSync(indexPath)) die(`需要产物存在：${posix(path.relative(ROOT, indexPath))}`);
+	const index = JSON.parse(fs.readFileSync(indexPath, "utf8"));
+	const zipped = withZipInfo(packs);
+
+	const notes = await verifyArtifacts({ packs: zipped, index, coreVersion: info.version });
+	const rebuilt = buildIndex({ packs: zipped, coreVersion: info.version });
+	if (indexText(rebuilt) !== fs.readFileSync(indexPath, "utf8")) die(`${INDEX_FILE} 与盘上产物重算结果不一致（重新跑一次构建）`);
+
+	const fullPath = path.join(OUT_DIR, `${info.name}-${info.version}-full.zip`);
+	const fullNote = await verifyFullPackage({ zipPath: fullPath, rootName: info.name, packs: zipped });
+
+	const indexBytes = fs.readFileSync(indexPath);
+	const fullBytes = fs.readFileSync(fullPath);
+	const expectNotes = buildReleaseNotes({
+		tag: releaseTag(info.version),
+		name: info.name,
+		version: info.version,
+		coreVersion: info.version,
+		index,
+		packs: zipped,
+		full: { file: path.basename(fullPath), bytes: fullBytes.length, sha256: sha256hex(fullBytes) },
+		indexAsset: { file: INDEX_FILE, bytes: indexBytes.length, sha256: sha256hex(indexBytes) },
+	});
+	const notesPath = path.join(OUT_DIR, NOTES_FILE);
+	if (!fs.existsSync(notesPath) || fs.readFileSync(notesPath, "utf8") !== expectNotes) {
+		die(`${NOTES_FILE} 与盘上产物重算结果不一致（重新跑一次构建，别手改它）`);
+	}
+	return [...notes, fullNote, `${NOTES_FILE} 与产物一致（含 ${zipped.length + 2} 项资产的字节数与 sha256）`];
+}
+
 async function main() {
-	const coreVersion = readCoreVersion();
+	const info = readExtInfo();
+	const coreVersion = info.version;
 	const packs = collectPacks();
 	if (!packs.length) die("modules/ 下没有找到任何可打包的模块版本目录");
 
 	if (LIST_ONLY) {
 		for (const pack of packs) console.log(`${pack.id}@${pack.version} → ${pack.file}`);
+		console.log(`${info.name}@${info.version} → ${info.name}-${info.version}-full.zip（整包）`);
 		return;
 	}
 
 	if (VERIFY_ONLY) {
-		const indexPath = path.join(OUT_DIR, INDEX_FILE);
-		if (!fs.existsSync(indexPath)) die(`--verify 需要产物存在：${posix(path.relative(ROOT, indexPath))}`);
-		const index = JSON.parse(fs.readFileSync(indexPath, "utf8"));
-		const notes = await verifyArtifacts({ packs, index, coreVersion });
-		console.log(`[P9产物] 校验通过：${packs.length} 个包`);
+		const notes = await verifyAll({ info, packs });
+		console.log(`[P10产物] 校验通过：${packs.length} 个包 + 整包 + 索引 + 说明`);
 		for (const note of notes) console.log(`  ${note}`);
-		// 索引本身也必须与"由盘上产物重算出的索引"完全一致，防止改了包忘了重新生成索引
-		const rebuilt = buildIndex({
-			packs: packs.map(pack => {
-				const bytes = fs.readFileSync(path.join(OUT_DIR, pack.file));
-				return { ...pack, zip: { file: pack.file, bytes: bytes.length, sha256: crypto.createHash("sha256").update(bytes).digest("hex") } };
-			}),
-			coreVersion,
-		});
-		if (indexText(rebuilt) !== fs.readFileSync(indexPath, "utf8")) die("module-index.json 与盘上产物重算结果不一致（重新跑一次构建）");
-		console.log("  module-index.json 与产物一致");
 		return;
 	}
 
 	fs.mkdirSync(OUT_DIR, { recursive: true });
 	const zipped = [];
 	for (const pack of packs) {
-		const info = await zipDir(pack.dir, path.join(OUT_DIR, pack.file));
-		zipped.push({ ...pack, zip: info });
-		console.log(`  ${pack.id}@${pack.version} → ${info.file}（${info.files} 文件 / ${info.bytes} 字节）`);
+		const zipInfo = await zipDir(pack.dir, path.join(OUT_DIR, pack.file));
+		zipped.push({ ...pack, zip: zipInfo });
+		console.log(`  ${pack.id}@${pack.version} → ${zipInfo.file}（${zipInfo.files} 文件 / ${zipInfo.bytes} 字节）`);
 	}
 	const index = buildIndex({ packs: zipped, coreVersion });
 	fs.writeFileSync(path.join(OUT_DIR, INDEX_FILE), indexText(index));
 	console.log(`  ${INDEX_FILE}：${Object.keys(index.modules).length} 个可安装模块（core 除外）`);
 
-	const notes = await verifyArtifacts({ packs: zipped, index, coreVersion });
-	console.log(`[P9产物] 生成并校验通过：${packs.length} 个包`);
+	// 整包与说明：整包只吃 dist/（除 release/），说明紧随其后写（它也落在 release/ 里，不进整包）
+	const full = await zipFullPackage({ outZip: path.join(OUT_DIR, `${info.name}-${info.version}-full.zip`), rootName: info.name });
+	console.log(`  整包 → ${full.file}（${full.files} 文件 / ${full.bytes} 字节）`);
+	const indexBytes = fs.readFileSync(path.join(OUT_DIR, INDEX_FILE));
+	fs.writeFileSync(
+		path.join(OUT_DIR, NOTES_FILE),
+		buildReleaseNotes({
+			tag: releaseTag(info.version),
+			name: info.name,
+			version: info.version,
+			coreVersion,
+			index,
+			packs: zipped,
+			full,
+			indexAsset: { file: INDEX_FILE, bytes: indexBytes.length, sha256: sha256hex(indexBytes) },
+		})
+	);
+	console.log(`  ${NOTES_FILE}：Release 说明 + 上传清单（${zipped.length + 2} 项资产）`);
+
+	const notes = await verifyAll({ info, packs });
+	console.log(`[P10产物] 生成并校验通过：${packs.length} 个包 + 整包 + 索引 + 说明`);
 	for (const note of notes) console.log(`  ${note}`);
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
 	main().catch(error => {
-		console.error(`[P9产物] 失败：${error?.message ?? error}`);
+		console.error(`[P10产物] 失败：${error?.message ?? error}`);
 		process.exitCode = 1;
 	});
 }
