@@ -249,6 +249,10 @@ function createDesktopStore(initial = {}) {
 	const fs = {
 		failOnce: new Set(),
 		exdev: false,
+		/** 依次注入 rename 失败码（用完即恢复正常），以及"永不回调"开关 */
+		renameFailQueue: [],
+		hangRename: false,
+		renameCalls: 0,
 		store,
 		calls: [],
 		has: rel => store.has(rel),
@@ -302,7 +306,11 @@ function createDesktopStore(initial = {}) {
 			cb(null, names);
 		},
 		rename: (from, to, cb) => {
+			fs.renameCalls++;
+			if (fs.hangRename) return;   // 永不回调：交给端口自己的 watchdog
 			if (fs.exdev) return cb(Object.assign(new Error("EXDEV: cross-device link not permitted"), { code: "EXDEV" }));
+			const queued = fs.renameFailQueue.shift();
+			if (queued) return cb(Object.assign(new Error(`${queued}: injected transient failure`), { code: queued }));
 			const fromKey = key(from);
 			const toKey = key(to);
 			if (!store.has(fromKey)) return cb(Object.assign(new Error("ENOENT"), { code: "ENOENT" }));
@@ -1399,6 +1407,57 @@ assert.equal(checkCoreRequirement("~1.5.0", "1.9.0").ok, false, "不认识的写
 	await io.movePath("modules/installed.json.tmp", "modules/installed.json");
 	assert.equal(fs.readText("modules/installed.json"), "NEW", "EXDEV 回落路径必须真的搬运内容");
 	assert.equal(fs.has("modules/installed.json.tmp"), false);
+}
+
+// -------------------------------------------- 桌面端 rename 的瞬时失败（Windows EPERM 实测）
+// 真机 R4：发布目录时 fs.rename 报 EPERM（Defender/索引器刚碰过新建目录的句柄），
+// 同一次操作重试第二次就成功——所以端口必须"有界重试"，而不是把瞬时冲突直接报成发布失败。
+
+{
+	// 5) 前两次 EPERM、第三次成功：movePath 必须落定为成功，且真的搬完了
+	const fs = createDesktopStore({ "tmp/modules/x/manifest.json": "NEW", "modules/y/": "" });
+	fs.renameFailQueue = ["EPERM", "EPERM"];
+	const io = createNonameIo({ fs, stallMs: 500 });
+	await io.movePath("tmp/modules/x/manifest.json", "modules/y/manifest.json");
+	assert.equal(fs.readText("modules/y/manifest.json"), "NEW", "重试后必须真的到位");
+	assert.equal(fs.has("tmp/modules/x/manifest.json"), false);
+	assert.equal(fs.renameCalls, 3, `应恰好尝试 3 次（2 次失败 + 1 次成功），实际 ${fs.renameCalls}`);
+}
+
+{
+	// 6) 一直 EPERM：必须有界失败，不许无限重试，也不许把源弄丢
+	const fs = createDesktopStore({ "tmp/modules/x.json": "NEW" });
+	fs.renameFailQueue = Array.from({ length: 30 }, () => "EPERM");
+	const io = createNonameIo({ fs, stallMs: 500 });
+	const error = await io.movePath("tmp/modules/x.json", "modules/x.json").then(() => null, err => err);
+	assert.ok(error, "永久 EPERM 必须报错，不能假装成功");
+	assert.equal(error?.cause?.code, "EPERM", `真码要原样带在 cause.code 上，实际 ${error?.cause?.code}`);
+	assert.equal(error?.ioCode, "IO_FAILED", "仍是端口的结构化 IO 错误，不改语义");
+	assert.ok(fs.renameCalls >= 2 && fs.renameCalls <= 8, `重试次数必须有上界，实际 ${fs.renameCalls}`);
+	assert.equal(fs.readText("tmp/modules/x.json"), "NEW", "失败时源必须还在（没被搬空）");
+}
+
+{
+	// 7) 非瞬时错误（EROFS 这类确定性失败）不得重试浪费时间
+	const fs = createDesktopStore({ "tmp/modules/x.json": "NEW" });
+	fs.renameFailQueue = ["EROFS", "EROFS", "EROFS"];
+	const io = createNonameIo({ fs, stallMs: 500 });
+	const error = await io.movePath("tmp/modules/x.json", "modules/x.json").then(() => null, err => err);
+	assert.ok(error && error?.cause?.code === "EROFS", `应原样抛出 EROFS，实际 ${error?.cause?.code}`);
+	assert.equal(fs.renameCalls, 1, `确定性错误只应尝试 1 次，实际 ${fs.renameCalls}`);
+}
+
+{
+	// 8) rename 永不回调：watchdog 落定为 IO_STALL，且**不许**因重试而把等待时间乘倍数
+	const fs = createDesktopStore({ "tmp/modules/x.json": "NEW" });
+	fs.hangRename = true;
+	const io = createNonameIo({ fs, stallMs: 120 });
+	const started = Date.now();
+	const error = await io.movePath("tmp/modules/x.json", "modules/x.json").then(() => null, err => err);
+	const waited = Date.now() - started;
+	assert.equal(error?.ioCode, "IO_STALL", `应落定为 IO_STALL，实际 ${error?.ioCode}`);
+	assert.equal(fs.renameCalls, 1, `卡死不得重试（会成倍拉长等待），实际 ${fs.renameCalls}`);
+	assert.ok(waited < 600, `等待应约等于一次 stallMs，实际 ${waited}ms`);
 }
 
 // -------------------------------------------- 非原子平台：file → 已存在文件的目标事务保护

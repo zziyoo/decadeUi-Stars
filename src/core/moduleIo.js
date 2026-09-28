@@ -38,6 +38,16 @@ export class IoError extends Error {
 
 /** 扩展根（文件系统视角，相对本体 __dirname）；调用期求值 */
 const extRoot = () => `extension/${(typeof window !== "undefined" && window.decadeUIName) || "十周年UI-Stars"}`;
+
+/**
+ * 桌面端 rename 的瞬时冲突码（真机 R4 实测：发布目录报 EPERM，再点一次就成功）。
+ * 只重试这几个；ENOENT/EROFS 这类确定性失败立即上报，IO_STALL 也不重试。
+ */
+const TRANSIENT_RENAME_CODES = new Set(["EPERM", "EACCES", "EBUSY", "ENOTEMPTY"]);
+/** 退避节奏（毫秒）：首次失败后最多再试 4 次，累计等待约 1.2 秒，仍然失败就如实报错 */
+const RENAME_BACKOFF_MS = [80, 160, 320, 640];
+
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const toPosix = path => String(path).split("\\").join("/");
 const safeRel = rel => {
 	const cleaned = toPosix(rel).replace(/^\/+/, "");
@@ -512,13 +522,24 @@ export function createNonameIo(options = {}) {
 			if (fs && typeof fs.rename === "function") {
 				const from = fsAbs(srcRel);
 				const to = fsAbs(destRel);
-				try {
-					await desktopMkdir(dirOf(to));
-					await settle((ok, err) => fs.rename(from, to, error => (error ? err(error) : ok(null))), { label: `rename ${srcRel}`, stallMs });
-					return;
-				} catch (error) {
-					if (error?.code !== "EXDEV" && error?.cause?.code !== "EXDEV") throw error;
-					// 跨卷：回落为非原子的 copy+remove
+				await desktopMkdir(dirOf(to));
+				for (let attempt = 0; ; attempt++) {
+					let failure = null;
+					try {
+						await settle((ok, err) => fs.rename(from, to, error => (error ? err(error) : ok(null))), { label: `rename ${srcRel}`, stallMs });
+						return;
+					} catch (error) {
+						failure = error;
+					}
+					// settle 会把系统错误包成 IoError（真码在 cause.code 上），两处都要看
+					const osCode = failure?.code ?? failure?.cause?.code;
+					if (osCode === "EXDEV") break;   // 跨卷：回落非原子搬运
+					// Windows 上目录改名会被"刚碰过这些文件的句柄"挡一下（Defender 实时扫描、索引器、
+					// 刚写完还没释放的句柄），报 EPERM/EACCES/EBUSY/ENOTEMPTY。真机实测同一个包
+					// 第二次点安装就成功 ⇒ 这是瞬时冲突，不是发布失败；重试有界、错误码原样带出。
+					// IO_STALL 不在其列：那是"回调根本没来"，重试只会成倍拉长等待。
+					if (!TRANSIENT_RENAME_CODES.has(osCode) || attempt >= RENAME_BACKOFF_MS.length) throw failure;
+					await sleep(RENAME_BACKOFF_MS[attempt]);
 				}
 			}
 			if (sourceKind === "file") {
