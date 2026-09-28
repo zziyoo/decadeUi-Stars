@@ -72,13 +72,16 @@
 .decade-update-list {
 	position: relative;
 	z-index: 2;
-	flex: 1 1 auto;
+	display: block;                 /* 本体 div{display:inline-block}：不写就会把两条并排 */
+	flex: 0 1 auto;                 /* 不抢空间：对话框只按内容长高 */
+	max-height: 46vh;               /* 项多时自己滚（留出余量给标题行与按钮行） */
 	overflow-y: auto;
 	overscroll-behavior: contain;
 	padding: 0 22px;
 }
 
 .decade-update-row {
+	display: block;                 /* 同上：不写会被本体设成 inline-block，与上一条并排 */
 	background: rgba(255, 255, 255, 0.14);
 	border-radius: 10px;
 	padding: 10px 12px;
@@ -100,6 +103,7 @@
 }
 
 .decade-update-core {
+	display: block;                 /* 同上：Core 那块与模块行各占一行 */
 	background: rgba(56, 189, 248, 0.22);
 	border-radius: 10px;
 	padding: 10px 12px;

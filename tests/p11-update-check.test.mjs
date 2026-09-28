@@ -280,21 +280,34 @@ const fakeApi = ({ index = null, fail = false, throwError = false, modules = [] 
 	const jsSource = fs.readFileSync(new URL("../src/features/updateNoticeWindow.js", import.meta.url), "utf8");
 
 	const used = new Set();
-	// 只扫 el("类名", …) 的第一参数：<link> 的 id（decade-update-styles）不是类名，别混进来
-	for (const match of jsSource.matchAll(/\bel\(\s*"([^"]*decade-update-[^"]*)"/g)) {
-		for (const cls of match[1].split(/\s+/)) if (cls.startsWith("decade-update-")) used.add(cls);
+	const divClasses = new Set();
+	// 只扫 el("类名", …) 的第一参数：<link> 的 id（decade-update-styles）不是类名，别混进来。
+	// 本体那条全局规则是 `div { display:inline-block; position:absolute }`——两样都得管：
+	// 漏 position 会叠印（真机踩过），漏 display 会让两个块并排（真机也踩过）。
+	for (const match of jsSource.matchAll(/\bel\(\s*"([^"]*decade-update-[^"]*)"([^)]*)\)/g)) {
+		const [, classAttr, rest] = match;
+		const tag = /,\s*"([^"]+)"\s*$/.exec(rest.trim());
+		const isDiv = !tag || tag[1] === "div";
+		for (const cls of classAttr.split(/\s+/)) {
+			if (!cls.startsWith("decade-update-")) continue;
+			used.add(cls);
+			if (isDiv) divClasses.add(cls);
+		}
 	}
 	assert.ok(used.size >= 8, `至少要扫到 8 个类名，实际 ${used.size}`);
+	assert.ok(divClasses.size >= 6, `至少要认出 6 个 div 类名，实际 ${divClasses.size}`);
 
 	const blocks = [...css.matchAll(/([^{}]+)\{([^}]*)\}/g)].map(([, selector, body]) => ({ selector, body }));
-	const hasExplicitPosition = cls =>
+	const declared = (cls, prop) =>
 		blocks.some(block => {
 			const hit = block.selector.split(",").some(part => part.trim().split(/\s+/).includes(`.${cls}`));
-			return hit && /position\s*:/.test(block.body);
+			return hit && new RegExp(`${prop}\\s*:`).test(block.body);
 		});
 
-	const missing = [...used].filter(cls => !hasExplicitPosition(cls));
-	assert.deepEqual(missing, [], `这些类没有显式 position，会被本体 div{position:absolute} 带走：${missing.join("、")}`);
+	const missingPosition = [...used].filter(cls => !declared(cls, "position"));
+	assert.deepEqual(missingPosition, [], `这些类没有显式 position，会被本体 div{position:absolute} 带走：${missingPosition.join("、")}`);
+	const missingDisplay = [...divClasses].filter(cls => !declared(cls, "display"));
+	assert.deepEqual(missingDisplay, [], `这些 div 类没有显式 display，会被本体 div{display:inline-block} 并排：${missingDisplay.join("、")}`);
 }
 
 console.log("P11 update-check tests: all passed ✓");
