@@ -84,7 +84,8 @@
 | 接线 | `src/content.js` 末尾 `setupUpdateNotice()`：延迟 1.5 秒后异步查一次；`fetchIndex` 走安装器现成的重试/超时（5 秒）。**未配置模块源 / 离线 / 索引坏 / 超时 / 抛错 一律静默返回 null**——不弹空窗、不写状态、不阻塞进游戏。配置新增可见键 `autoCheckUpdate`（`init:true`，关掉则不查）；"已忽略的版本"存 `extension_<扩展名>_ignoredUpdates`（跟随既有键前缀约定，不新增存储层） |
 | 测试 | 新增 `tests/p11-update-check.test.mjs`：13 组纯逻辑（更新/不降级/同版本/未安装不算更新/本地版本未知/null 边界/Core 落后与无 core/忽略只对同一版本生效/排序/空输入不抛/忽略读写/批量忽略）+ 6 组接线（默认查与明确关掉、未配置不发请求、离线与抛错都吞、有更新返回可展示数据、全被忽略则不弹、无更新不弹空窗）。Core 忽略与批量忽略两块先 RED 后 GREEN |
 | 真机演示源 | 现有产物索引里都是 1.4.2 ⇒ "发现更新"这条测不出来，故加 `tmp/make-update-demo.mjs`（不入库）：把 `baby` 复制成 **1.4.3**、索引里 baby 与 core 都标 1.4.3、其余保持 1.4.2，产出 `tmp/update-demo/release/`，用 `node tmp/dev-release-server.mjs 8100 --root tmp/update-demo/release` 服务（8099 仍是正式产物）。它只动 `tmp/`，不碰 `dist/release` 与 `modules/` 里的正式产物 |
-| 门禁 | 231 JS/mjs 语法 ✓；**十二套**测试 ✓；verify-pack 881/0、skin-imports 37/0 ✓；`pnpm build` ✓；`build-release --verify` exit=0 ✓（整包因新增源码变为 3592 文件 / 112,104,844 字节 / `fe14797f5834…`） |
+| 真机修复（`483095f` + `8ebf5c1`） | 真机首轮反馈"看到那条更新、但似乎没看到忽略按钮"，靠他截图定位到两件事：①**列表行叠印**——我只给一部分类写了 `position`，漏掉 `decade-update-row-name`/`row-version`/`core-note`，它们被本体 `div{position:absolute}` 带走、全堆在对话框左上角（截图里"扩展本体…"与"欢乐三国杀样式…"叠在一起）⇒ 补齐那三个类，并新增**静态不变量测试**：扫 JS 里 `el("…")` 用到的每个 `decade-update-*` 类，要求 CSS 至少有一处选择器命中且声明了 `position`（先 RED 命中这三个，补完转 GREEN）；②**与欢迎窗抢窗**——欢迎窗层级更高（99999 vs 99998），同时弹会把更新提示整个压住 ⇒ 新增 `waitForWelcome`：等欢迎窗关掉再弹，一直不关就这次不弹（下次启动还会查）；③标题行/按钮行加 `flex: 0 0 auto`，长列表不许把它们挤扁。静态复现复核（`tmp/notice-preview.html`：真实模块 + 本体 layout.css + importmap 替身）core 块与模块行不再重叠、四个按钮位置正常 |
+| 门禁 | 231 JS/mjs 语法 ✓；**十二套**测试 ✓；verify-pack 881/0、skin-imports 37/0 ✓；`pnpm build` ✓；`build-release --verify` exit=0 ✓（整包随源码增至 3592 → 3619 文件 / 112,223,548 字节 / `88e28910f74e…`） |
 | 未做 | CI 自动发布（§五 5 未迁 .github）；自动下载更新（用户决定只提示）；Core 自动替换（同前）；P12 回滚（地基已在：`update()` 保留旧版本目录 + 台账记 `previousVersion`） |
 
 ### P10 记录（GitHub Release，任务书§47，`c91a9f8`）
@@ -452,6 +453,7 @@
 | 2026-09-28 | 用户下 P9 收尾任务书（HEAD `c61882d`，其中一笔 `Update installed.json` 是他自己把真机安装痕迹提交了），本轮只做两件事：恢复台账基线、统一 `isAvailable()`／`ready()` 能力语义。实施中发现任务书 §六 的示例（探测前 `available:false` + `missingExtractor:true`）若照搬，P6 窗口会因 `if (!installBlocker)` 跳过 `ready()` 从而**永久误报"本平台不支持"**——所以 `missing*` 保持端口语义、窗口按端口缺失判定，真实能力交给 `ready()` 的原因承担；这条已在§四记录里写明，免得后人再"照示例改回去"。另把 probe 抛错从 reject 收敛为 `{ok:false, reason}`（配合失败缓存 ⇒ 瞬时失败要重载才重试，如实写进边界） |
 | 2026-09-28 | 用户批 P10 四个决定（Core 不进 Release / 要 Full Package / tag `v1.4.2-stars` / 网页手工建 Release），随后又问了整包里要不要排内部文档——他选"排内部三件"。实施中有两处值得记：①整包摘要一度在 `pnpm build` 前后差 4.5KB，先怀疑构建不确定，查下来是 vite 把**我刚改的 README/台账**重新拷进 dist 所致，而 `build-release` 自身连跑两次摘要完全一致——即"看似不确定"实为产物含文档，正是排除内部件要解决的问题；②`new URL()` 会把非 ASCII 资产名百分号编码，测试期望值一开始按明文写，被实测纠正（那是 URL 规范的正确行为，不是缺陷） |
 | 2026-09-28 | 用户"动手"后做 P11。两处按"不能想当然"处理：①先读 `moduleManager.list()` 与 `lib.extensionPack[decadeUIName].version` 才确定"本机版本从哪来"（不另找第二处）；②把"已忽略的版本"设计成**只记那个 latest 版本号**——版本一变还会再提，否则玩家一次忽略就等于永久放弃更新。当前未验部分如实标明：提示窗的实际观感、以及它和欢迎窗抢不抢注意力（延迟 1.5 秒，但真机上可能仍撞车），都要等他在游戏里看到才算数 |
+| 2026-09-28 | P11 真机首轮："看到欢乐三国杀那条更新、但似乎没看到忽略按钮"。我先用**静态复现**（`tmp/notice-preview.html`：importmap 把 `noname` 指到替身，直接加载真实模块 + 本体 `layout/default/layout.css`）测按钮几何，结论是"结构与 CSS 没问题"——**这一步排除了我的主要猜测，也暴露了复现的盲区：我只量了按钮，没量文字行**。他随后发的截图一眼定位：列表里三行文字叠印在一起（漏给 `row-name`/`row-version`/`core-note` 写 `position`，被本体 `div{position:absolute}` 带走），按钮其实一直在。教训两条：①本体那条全局 `div` 规则的漏网只能靠"逐个类核对"而不能靠抽样；②复现要按"用户看到的每一处"量，不能只量自己怀疑的那一处。已修并加静态不变量测试（先 RED 后 GREEN），另加"与欢迎窗错开"与按钮行 `flex:0 0 auto` |
 
 ## 八、项目收尾验证清单（真机 / 游戏内，收尾阶段统一执行）
 
