@@ -4,6 +4,9 @@
 		"decade": {
 			"version": "1.4.2"
 		},
+		"mobile": {
+			"version": "1.4.2"
+		},
 		"yjcm": {
 			"version": "1.4.2"
 		},
@@ -13,24 +16,11 @@
 		"baby": {
 			"version": "1.4.2"
 		},
-		"card-skin": {
+		"codename": {
 			"version": "1.4.2"
 		},
-		"codename": {
-			"version": "1.4.2",
-			"installedAt": 1790589332861,
-			"source": "local",
-			"size": 961947,
-			"sha256": "be5e8af3094fa99280c46a9aafe508d25130a15036b7841ee62a00691e0a334a",
-			"hashVerified": true
-		},
-		"mobile": {
-			"version": "1.4.2",
-			"installedAt": 1790592457030,
-			"source": "local",
-			"size": 1491339,
-			"sha256": "1fc3d0063dfd1d45583c1610ee71442209b9f8153b41245c1a1a02369f6504b9",
-			"hashVerified": true
+		"card-skin": {
+			"version": "1.4.2"
 		}
 	}
 }
