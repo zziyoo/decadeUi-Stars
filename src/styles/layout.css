@@ -6,8 +6,10 @@
 @import "component.css";
 @import "card.css";
 @import "icon.css";
-/* P8：effect.css 属 kill-effect Feature，改由 src/effects/index.js 按需加载，
-   不再由 Core 样式 @import（禁用/未安装时就不该加载它） */
+/* effect.css 同时服务击杀窗口(.effect-window)与技能特效(.skill-name)，无单一 Feature 归属，
+   故留在 Core 的 @import 链里无条件加载（位置与原版一致，不改级联）。
+   kill-effect Feature 只门控 decadeUI.effect.kill，见 src/effects/index.js */
+@import "effect.css";
 
 /** 基础样式 */
 

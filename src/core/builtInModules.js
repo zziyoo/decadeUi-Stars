@@ -34,15 +34,6 @@ const STYLES = [
 ];
 
 /**
- * Feature 的 entry 路径（P8，任务书§45）。
- * "资源是否已拆进包"只在 featureRuntime 的声明里维护一份，这里备两种位置：
- * 未拆包 → 单体路径；已拆包 → 包根相对路径（modules/<id>/<version>/）。
- */
-const FEATURE_ENTRY = {
-	"kill-effect": { monolith: ["src/styles/effect.css"], pack: ["effect.css"] },
-};
-
-/**
  * 向注册表注册全部内置模块
  * @param {Object} registry - 模块注册表
  * @param {Object} [options]
@@ -95,7 +86,6 @@ export function registerBuiltInModules(registry, { version = "0.0.0" } = {}) {
 
 	// Feature 模块（P8）：开关与 pack 状态取自 featureRuntime 的声明，避免两处各存一份
 	for (const feature of BUILT_IN_FEATURES) {
-		const entry = FEATURE_ENTRY[feature.id] || { monolith: [], pack: [] };
 		registry.register(
 			normalizeManifest({
 				id: feature.id,
@@ -104,7 +94,10 @@ export function registerBuiltInModules(registry, { version = "0.0.0" } = {}) {
 				type: "feature",
 				core: `>=${version}`,
 				dependencies: ["core"],
-				entry: { css: feature.pack ? entry.pack : entry.monolith },
+				// entry.css 留空：门控型 Feature 的样式随 Core 的 layout.css @import 无条件加载
+				// （effect.css 同时含技能特效的 .skill-name，不属 kill-effect 单独管辖）。
+				// 自带样式的拆包型 Feature 在这里按 pack 状态登记单体/包内两套路径。
+				entry: { css: [] },
 				capabilities: [...feature.capabilities],
 				author: "子右",
 			}),

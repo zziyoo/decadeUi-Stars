@@ -24,7 +24,8 @@ assert.equal(moduleManager.isInstalled("kill-effect"), true, "P8：Feature 也�
 assert.equal(moduleManager.list().length, 8);
 assert.equal(moduleManager.list({ type: "style" }).length, 6);
 assert.equal(moduleManager.list({ type: "feature" }).length, 1);
-assert.equal(moduleManager.getManifest("kill-effect").entry.css.includes("src/styles/effect.css"), true, "未拆包前 Feature 的 CSS 仍指向单体路径");
+assert.deepEqual(moduleManager.getManifest("kill-effect").entry.css, [], "kill-effect 的样式与技能特效共用 effect.css（内含 .skill-name），留在 layout.css 的 @import 链里，不在 Feature 入口登记——否则会出现登记了却不加载、或加载了却随击杀开关卸载的双重语义");
+assert.deepEqual(moduleManager.getManifest("kill-effect").capabilities, ["kill-effect"], "能力声明不得含 skill-effect：killEffect 开关不管辖技能特效（原版只在击杀技能 filter 里读它）");
 
 const decade = moduleManager.getManifest("decade");
 assert.equal(decade.type, "style");

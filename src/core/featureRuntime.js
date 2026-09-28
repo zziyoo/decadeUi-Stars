@@ -21,15 +21,16 @@
 export const BUILT_IN_FEATURES = [
 	{
 		id: "kill-effect",
-		// 只管击杀/技能特效；"幻影出牌"(cardGhost) 有自己的开关 cardGhostEffect，不随本 Feature 关停
-		name: "击杀/技能特效",
-		capabilities: ["kill-effect", "skill-effect"],
+		// 只管击杀那一路：原版 setupEffects 无条件注册 line/kill/skill，killEffect 配置
+		// 只在 skills/animate.js 的击杀技能 filter 里读——技能特效从来没有开关，别在这里造一个。
+		name: "击杀特效",
+		capabilities: ["kill-effect"],
 		// 复用既有开关（src/config/definitions/appearance.js 的 killEffect），不另立状态源
 		switchKey: "killEffect",
 		defaultEnabled: true,
 		// 门控型 Feature（用户已定）：特效资源本就随 Core 发布，不拆包，pack 恒为 false。
 		// 拆包型（card-skin 这类）才走安装器，pack 为 true 时资源根解析到 modules/<id>/<version>/。
-		// CSS/图片的实际路径只在模块 manifest.entry 里登记一份，runtime 不重复持有。
+		// entry.css 不登记：effect.css 里的 .skill-name 属技能特效，随 Core 的 @import 链无条件加载。
 		pack: false,
 	},
 ];

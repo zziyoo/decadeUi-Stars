@@ -332,8 +332,8 @@ export function playerSkill(name, type, color, avatar) {
 			}
 
 			decadeUI.delay(2500);
-			// P8：kill-effect 是 Feature，未装载时安全降级（不再假设 decadeUI.effect 一定存在）
-			if (name) decadeUI.effect?.skill?.(player, name, avatar);
+			// 技能特效不属 kill-effect Feature（原版无此开关），这里与原版保持一致的直接调用
+			if (name) decadeUI.effect.skill(player, name, avatar);
 		},
 		this,
 		type,
