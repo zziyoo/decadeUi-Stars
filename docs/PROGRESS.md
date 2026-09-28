@@ -14,7 +14,7 @@
 | Stars 仓库 | https://github.com/zziyoo/decadeUi-Stars （本仓库，**独立开发仓库，已迁入源码**） |
 | 原版扩展（玩家在用，不动） | `zziyoo/decadeUi`，本地路径 `C:\Users\32360\Desktop\无名杀-win32-x64\resources\app\extension\十周年UI` |
 | 总路线 | P0审计 → P1模块基础设施 → P2公共依赖解耦 → P3十周年Pack → P4移动版Pack → P5下载器 → P6模块管理界面 → P7全部Style → P8 Feature Pack → P9模块化构建 → P10 Release → P11自动更新 → P12回滚 → P13旧版本迁移 → P14全量测试 |
-| 当前阶段 | **P9 最终完成，可以正式进入 P10（2026-09-28 收尾两笔：`cc6ee72` 能力语义统一 + `3d316d2` 台账基线恢复）**：`pnpm build` 自动产出 `dist/release/` 七个分包 zip + `module-index.json` 并完整校验；真机侧 `ready()`/`fetchIndex`/`install("baby")`/取消零残留/产物防篡改均已通过（§八 R0/R2/R3/R5/R6），R1 在线列表也已过。本轮把"能力诚实化"做到底：`isAvailable()` 不再只看端口挂没挂（未探测 = 未知 ≠ 可用），安装路径在**下载之前**就拒掉取不到解压能力的情形（`NO_EXTRACTOR @ resolving`，零下载零落盘）。剩余待办都不阻塞：§八 **R4 修完 EPERM/提示条后重测一次界面安装**、非原子平台分支、以及§八其余收尾项。下一步 P10 GitHub Release（§47，建 Release/传资产/推 tag 由用户执行）。 |
+| 当前阶段 | **P10 GitHub Release（任务书§47）进行中——产物与说明已就绪，等用户建 Release 传资产（2026-09-28）**：`pnpm build` 现产出 9 项上传物（7 个分包 zip + `module-index.json` + 整包 `十周年UI-Stars-1.4.2-full.zip`）与 `RELEASE-NOTES.md`（说明草稿 + 上传清单），`--verify` 一并校验、退出码可门禁用。**用户决定**：Core 不进 Release（本仓库源码即本体）、要 Full Package、tag 用 `v1.4.2-stars`、由用户在网页建 Release 传资产。待办：建 Release 传 9 个资产（清单见§六 7 与 `dist/release/RELEASE-NOTES.md`）→ 装一次真机回归（§八 R4 那条）。P9 已最终完成（`cc6ee72`/`3d316d2`），P5/P6/P8 其余真机项仍并入§八收尾清单。 |
 
 ## 二、环境备忘（本机关键信息）
 
@@ -65,12 +65,28 @@
 | 2026-09-28 | **R5 取消与残留真机通过（用户跑 + 我方核残留）**：限速服务（64KB×40ms，card-skin 实测 15.4s）下跑 `update("card-skin", {index, indexUrl, force:true, signal})`，6 秒 `abort()` → `{ok:false, code:"CANCELLED", message:"下载已取消", stage:"downloading", warnings:[]}`；同轮 `fetchIndex` `{ok:true, bytes:2452, attempts:1}`、`listInstalled()` 仍 7 条。残留核法（本目录即游戏加载目录，所以我方能直接查盘）：`git status --short modules/` 零输出、`modules/card-skin/1.4.2/` 仍 1017 文件、无 `.replacing-*/.removing-*`、`tmp/modules` 只剩空目录、`installed.json` 无 `hashVerified/installedAt` ⇒ 取消落在下载阶段，发布与写台账均未触及。**P9 的 R 列五项（R0/R2/R3/R5/R6）已全部到手，只剩 R1 窗口在线列表与 R4 界面依赖判定两条纯 UI 项** | 真机 + 磁盘核对，本轮零代码改动；§八 R5 与§一 已标已过 |
 | 2026-09-28 | **R1 通过 + R4 首轮抓出两个真 bug 并修复**：①`fix(P5)` `470b35b`——窗口里第一次装 `codename` 报「发布到 modules/codename/1.4.2 失败：rename tmp/modules/codename-1.4.2-8zs8br EPERM」，同一个包第二次成功（盘上台账 `sha256:be5e8af3094f…`/`hashVerified:true`、包内 32 文件与 git 零 diff）⇒ Windows 目录改名的瞬时冲突，原先只有 EXDEV 会被回落。`movePath` 桌面分支改为对 EPERM/EACCES/EBUSY/ENOTEMPTY 退避 80/160/320/640ms 有界重试；EXDEV 仍走非原子回落，确定性错误与 `IO_STALL` 一次即抛（重试 stall 只会成倍拉长等待）。②`fix(P6)` `5cbe69f`——提示条原文含两遍绝对路径，撑破对话框后被 `overflow:hidden` 剪掉、"滑到底也看不全"；改 `max-height:26%` + `overflow-y:auto` + `flex:0 0 auto` + `word-break:break-all`。③核清一处**不是 bug** 的显示：包全部声明 `dependencies:["core"]` 而行上写「依赖: 无」，是 `moduleAdmin` 的 `shownDeps` 刻意滤掉 core | 先 RED 后 GREEN 四块（注入两次 EPERM 必须成功且恰好 3 次、永久 EPERM 有界 2~8 次且源没被搬空、EROFS 只试 1 次、永不回调落定 `IO_STALL` 且 `renameCalls=1`）；十套测试 ✓；改动文件 `node --check` ✓；verify-pack 881/0、skin-imports 37/0、build-release `--verify` 7 包 ✓；`pnpm build` ✓ 且新 CSS 已进 dist |
 | 2026-09-28 | **P9 收尾：解压能力语义统一 + 台账基线恢复（`cc6ee72` + `3d316d2`，详见§四"P9 收尾记录"）**：①`isAvailable()` 从"端口挂没挂"改成"当前已知的可执行能力"——安装器内新增 readiness 缓存（成功失败都缓存、并发复用同一次 probe、重载即清空、不提供 reset），`ready()` 只读这份缓存，界面与安装路径共用；未探测时 `available:false` + `ready:false`（未知 ≠ 可用），探测失败多带 `reason`。②`installInner` 在**下载之前**插真实能力门：探不过即 `NO_EXTRACTOR @ stage="resolving"`，零下载零落盘台账不写（消除"下完 20MB 才发现没 JSZip"），`update` 走同一道门。③窗口 `installBlocker` 改按**端口是否缺失**判定——照搬新语义会让窗口首次打开就误报"本平台不支持"且因 `if (!installBlocker)` 永不触发 `ready()`。④`modules/installed.json` 逐字恢复 `1322767` 基线，清掉真机写入的 `installedAt`/`source:"local"`/`size`/`sha256`/`hashVerified`。JSZip 接线（按实例交付、不碰 `instance.constructor`）、发布事务、构建脚本**一字未改** | `cc6ee72` + `3d316d2`；227 JS/mjs 语法 ✓；**十套**测试 ✓（新增 7 块，全部先 RED）；verify-pack 881/0、skin-imports 37/0、build-release `--verify` exit=0、`pnpm build` ✓；7 个包目录与台账条目一致 |
+| 2026-09-28 | **P10 构建侧完成：Full Package + Release 说明/上传清单（`c91a9f8`，详见§四"P10 记录"）**：任务书§47 的 Release 结构落进 `pnpm build`——除 7 个分包 zip 与索引外，新增整包 `十周年UI-Stars-1.4.2-full.zip`（3589 文件 / 112,100,082 字节，包内根目录唯一、解压到 `extension/` 即用）与 `RELEASE-NOTES.md`（说明草稿 + 9 项资产的字节数/sha256 + 模块源地址 + 校验命令）。整包源取 `dist/`（vite 的部署形态，不另立排除表），排除 `release/` 与**内部三件**（总任务书、交接台账、P0 审计报告）——否则每次改台账都会让 112MB 资产摘要变（实测排除后 `pnpm build` 重跑摘要不变）。`--verify` 扩为四段（分包→索引→整包→说明文件按盘上重算逐字节比对），`--list` 列整包。核心决定：**Core 不进 Release**（本仓库源码即本体）、tag `v1.4.2-stars`、建 Release 传资产由用户执行 | `c91a9f8`；228 JS/mjs 语法 ✓；**十一套**测试 ✓（新增 `tests/p10-release.test.mjs`：打包前缀/排除项/无目录条目/两次同摘要 + 四类篡改必失败 + 说明清单完整性 + GitHub Release 形状地址解析）；verify-pack 881/0、skin-imports 37/0、`pnpm build` ✓、`build-release --verify` exit=0 |
 
 ## 四、进行中（当前任务指针）
 
 **当前任务：P9 构建系统模块化 —— 代码完成，待游戏内实测**（`dea6561` 索引相对地址解析 + `d5b8baf` `scripts/build-release.mjs`，详见§四"P9 记录"）。上一阶段 P8 两刀已完成：第一刀 Feature API + `kill-effect` 门控（`b4d8db5`/`8f89e43`/`16c398d` + 修复 `48a82bc`/`d31ab7e`），第二刀 `card-skin` 拆包（`28e1092`/`0e890c7` + §57 兼容修复 `64719f3`）。
 下一阶段：**P10 GitHub Release（任务书§47）**——发布结构 Core / Official Style Packs / Feature Packs / Full Package / module-index.json 与"下载链接必须可被客户端解析"。本轮产物已能直接作为上传物；建 Release、传资产、推 tag 由用户执行，我这侧只负责索引与解析正确。
 上一阶段 **P6 模块管理界面 —— ✅ 已验收通过（2026-09-27 用户游戏内实测：窗口可开、布局正常、"已独立安装 6"读取正确）**。P5（任务书§42 + §17/§18/§19/§11/§24/§20）已完成：`6c76534` + `f4a69ac` + `df2afea` + `29a69e3` + P6 实测暴露的 fs 锚点修复 `40149bf`；**P5/P6/P8 的 Android/SAF 真机实测并入§八收尾清单，不阻塞推进**。
+
+### P10 记录（GitHub Release，任务书§47，`c91a9f8`）
+
+| 项 | 内容 |
+|---|---|
+| 用户决定（2026-09-28 批问） | ①**Core 不进 Release**：本仓库源码即本体，玩家装扩展即得 Core，界面上 core 行仍显示"核心组件（随扩展发布）"；②**要 Full Package**：一个整包 zip 供"不想逐个装包"的玩家；③**tag 用 `v1.4.2-stars`**（内容与上游同版本发布不同，模块化改造所致）；④**由用户在 GitHub 网页建 Release 并传资产**（gh CLI 未登录，且发布动作一贯归用户） |
+| 产出（9 项上传物） | `十周年UI-Stars-1.4.2-full.zip`（整包 3589 文件 / 112,100,082 字节 / sha256 `4f7940c51b31…`）+ `module-index.json`（2452 字节 / `a41a026eefe9…`）+ 7 个分包（baby 112079 `b3e38d5f…`、card-skin 21627755 `54560999…`、codename 961947 `be5e8af3…`、decade 535358 `2493ea8c…`、mobile 1491339 `1fc3d006…`、online 587147 `47bd1446…`、yjcm 880436 `9ee4fba3…`）。分包与索引的摘要与 P9 完全一致（未受影响） |
+| 整包形态 | 包内根目录唯一 `十周年UI-Stars/`，解压到 `resources/app/extension/` 即用（目录名可改，`info.json` 在里面就行）。**源就是 `dist/`**（vite 已按部署形态备好 info.json/extension.js/ui/image/audio/assets/modules），不另立第二份排除表——两份清单迟早漂移。`release/` 不进整包（那是分包产物） |
+| 整包排除内部三件 | `README.md`（总任务书）、`docs/PROGRESS.md`（本台账）、`docs/modularization-audit.md`（P0 审计）不进整包；原版对外文档（`extension-readme`、`card-skin-api`、`dynamic-skin-api`、`update` 等）照旧随包。**为什么必须排**：台账每次会话都在改，打进去会让 112MB 资产的摘要随文档变动，Release 上记录的 sha 与后续重建就对不上号。实测排除后 `pnpm build` 重跑整包摘要不变 |
+| `RELEASE-NOTES.md` | 由构建生成（`dist/release/`，不入库）：Release 说明草稿 + 上传清单（9 项资产的字节数与 sha256）、安装两步、模块源地址（`https://github.com/zziyoo/decadeUi-Stars/releases/download/v1.4.2-stars/module-index.json`）、校验命令。资产顺序＝整包 → 索引 → 各分包 |
+| 校验（`--verify` 同规则） | 四段：分包（原有全套）→ 索引（与盘上重算逐字节一致）→ **整包**（根位 `info.json`/`extension.js` 在、每个分包的 `manifest.json` 在、不得含 `release/`、条目数与 dist 除 `release/`+内部件后一致）→ **说明文件**（按盘上产物重算文本逐字节比对，手改会被抓住）。`--list` 也列整包一行；日志前缀统一 `[P10产物]` |
+| 相对地址 | 索引 url 仍是裸文件名，客户端用索引地址解析成同 Release 下的资产地址（`resolveModuleUrl` 单点）。GitHub Release 形状已进测试：`…/releases/download/v1.4.2-stars/module-index.json` + `baby-1.4.2.zip` → 同目录绝对地址；非 ASCII 名称（整包文件名）解析出来是**百分号编码**，属 URL 规范的正确行为。所以索引与全部 zip **必须挂在同一个 tag 下** |
+| 测试 | 新增 `tests/p10-release.test.mjs`（临时沙盒，不碰仓库产物）：打包前缀/排除项（含内部三件与对外文档的对照）/无目录条目/两次打包同摘要、四类整包篡改必须失败（缺根位文件、缺分包清单、混入 `release/`、多余条目）、说明清单含全部资产的字节数与 sha256 且表格列数完整、GitHub Release 形状的裸文件名解析。负例走脚本的 `die()`，测试里断言后复位 `process.exitCode` |
+| 门禁 | 228 JS/mjs `node --check` ✓；**十一套**测试 ✓；verify-pack 881/0、check-skin-imports 37/0 ✓；`pnpm build` ✓；`build-release --verify` exit=0 ✓；整包两次构建摘要一致 ✓；排除内部件后改台账不影响整包摘要 ✓ |
+| 未做 | 建 Release、传资产、推 tag（用户侧动作）；CI 自动发布（§五 5 未迁 .github）；P11 自动更新与 P12 回滚 |
 
 ### P9 记录（构建系统模块化，任务书§46）
 
@@ -380,11 +396,16 @@
 
 1. ~~P0~~ ✅ ~~P1~~ ✅ ~~P2（含阻塞修复）~~ ✅ ~~P3/P4~~ ✅ ~~四包批量拆分（`33da307`）~~ ✅ ~~P5 下载器/安装器 + 可靠性审查修复 + 两笔补充修复（`f4a69ac`/`df2afea`/`29a69e3`）~~ ✅ ~~P6 模块管理界面（`2bae45e` + 实测暴露的 `40149bf`）~~ ✅ ~~P8 第一刀：Feature API + kill-effect 门控（`b4d8db5`/`8f89e43`）+ P6 Feature 行（`16c398d`）+ 两处修复（`48a82bc`/`d31ab7e`）~~ ✅ ~~P8 第二刀：card-skin 拆包（`28e1092`/`0e890c7` + §57 兼容修复 `64719f3`）~~ ✅ ~~P9 模块化构建：分包 zip + module-index + 完整校验（`dea6561`/`d5b8baf`）~~ ~~P5 真机前取证修复：JSZip 获取 + 解压端口形状 + 能力诚实化（`5c7b557`，实机打脸后改按实例交付 `d296f9e`）~~ ✅（2026-09-28，**纯代码 / Node 验证 + 一轮实机反馈**）。
 2. **无阶段阻塞**：P5/P6/P8/**P9** 的 Android/SAF 真机与游戏内实测按用户决定**不再阻塞推进**，统一并入§八「项目收尾验证清单」，在收尾（P14 全量测试）阶段一次性执行。
-3. **推送**：`git ls-remote origin refs/heads/main` = `c61882d`（用户已把此前 14 笔全部推上去，并自己提交了 `Update installed.json`——那笔里的真机痕迹已由本轮 `3d316d2` 恢复）。本地领先 **3 笔**（`cc6ee72` 能力语义统一、`3d316d2` 台账基线、本条 v1.17 台账），落后 0，**推送由用户本人执行**。另一份克隆 `extension/decadeUi-Stars` 落后，别在它上面开发。
+3. **推送**：`git ls-remote origin refs/heads/main` = `0297a39`（用户已推 P9 收尾三笔：能力语义、台账基线、v1.17 台账）。本地领先 **2 笔**（`c91a9f8` P10 构建产物、本条 v1.18 台账），落后 0，**推送由用户本人执行**。另一份克隆 `extension/decadeUi-Stars` 落后，别在它上面开发。
 4. ~~P6 模块市场/管理界面（任务书§43）~~ ✅ 已完成（2026-09-27）：独立窗口 + 纯逻辑行模型 + 模块源配置键；入口 `decadeUI.showModuleManager` / `Ctrl+Shift+M` / 配置窗口按钮。详见§四"P6 记录"。
 5. ~~P8 第二刀 card-skin 拆包~~ ✅ 已完成（2026-09-28）：双根寻址、可用性由扫描说话、五套卡面 1016 文件进包。详见§四"P8 card-skin 记录"。
 6. ~~P9 模块化构建（任务书§46）~~ ✅ 已完成（2026-09-28，`dea6561`/`d5b8baf`）：`pnpm build` 产出 `dist/release/` 七个分包 zip + `module-index.json` 并完整校验。详见§四"P9 记录"。
-7. **下一阶段：P10 GitHub Release（任务书§47）**。产物已可直接上传；发布结构 Core / Official Style Packs / Feature Packs / Full Package / module-index.json，"所有下载链接必须可被客户端解析"这一条：R2/R3 已真机过、R6 已命令行自验，剩 R1/R4/R5 三条待游戏内（判据已在§八 P9 部分按代码更正）。建 Release、传资产、推 tag 由用户执行；`core.zip` 与 Full Package 若要在§47 里齐，需要先决定 Core 的安装模型（本轮明确没做）。
+7. **P10 GitHub Release（任务书§47）——构建侧已完成，剩下是用户侧发布动作**（`c91a9f8`）：
+   - **建 Release**：tag 填 `v1.4.2-stars`（内容与上游同版本发布不同，故带后缀），标题与说明直接取 `dist/release/RELEASE-NOTES.md` 的内容；
+   - **上传 9 个资产**（全在 `dist/release/`，清单含字节数与 sha256，也在 `RELEASE-NOTES.md` 里）：`十周年UI-Stars-1.4.2-full.zip`（整包 112.1MB）、`module-index.json`、以及 `baby/card-skin/codename/decade/mobile/online/yjcm` 七个 `-1.4.2.zip`；
+   - **关键约束**：索引与全部 zip 必须挂在**同一个 tag** 下——索引里 url 是裸文件名，客户端用索引地址解析成同目录资产地址；
+   - 发布后把模块源地址填 `https://github.com/zziyoo/decadeUi-Stars/releases/download/v1.4.2-stars/module-index.json` 做一次真机回归（顺便验§八 R4：取消/EPERM/提示条那几条待重测项）；
+   - 发布结构对照§47：Core＝本仓库源码（玩家装扩展即得，**不进资产**，已由用户决定）、Official Style Packs＝六个样式分包、Feature Packs＝`card-skin`、Full Package＝整包、module-index.json＝索引。CI 自动发布未做（§五 5 未迁 .github）。
 8. **P7 剩余官方样式包**已随 `33da307` 完成；任务书§44"每完成一个单独 PR"未按字面执行（四包一次提交），验收时按样式逐个切换确认。
 
 ## 七、会话记录
@@ -414,6 +435,7 @@
 | 2026-09-28 | 用户跑回 R5/R2 结果：取消探针返回 `CANCELLED@downloading`，`fetchIndex`/`listInstalled` 正常。我方直接在盘上核残留（这个目录就是游戏加载目录，`git status --short modules/` 空、包内 1017 文件、无事务目录、台账无新字段），R5 就此关闭；顺手发现限速服务的第一版实现有死锁（`res.write()` 返回 false 后先 sleep 再等 `drain`，而 drain 在那 40ms 里已经发过 ⇒ 永久挂起，实测 112KB 的包挂满 120 秒），改成"一次只压一块、靠 write 回调落定"后才是现在这 15.4 秒。**给自己记一条**：探针判据要读码得出，不能按"听起来应该有"写——本轮三条（可安装数恒 0、没有 dependencies 进度阶段、回环太快点不到取消）都是照原样交出去就会把正确行为读成不合格 |
 | 2026-09-28 | 用户发来窗口截图：R1 通过（提示行与汇总行都对），R4 第一次点安装撞上发布步 `EPERM`、第二次成功。我方按"真机报的错误优先于自己的假设"处理：先查盘确认第二次确实装好了（台账 sha 与索引一致、包内 32 文件零 diff），据此把 EPERM 定性为 Windows 目录改名的瞬时冲突而不是逻辑错误，只加**有界**重试、不改发布事务；同时把截图里"提示条看不全"当独立 bug 修成自带滚动。过程中自己又踩一次锚点坑（追加 §三 行时锚点没带行尾那根竖线，产出 4 列残行，列数审计抓出；本轮追加 R1/R4 证据时又踩了同一类的反面——把证据接成了新单元格，5 列行）。另核清「依赖: 无」不是丢依赖，是行模型刻意滤掉 core |
 | 2026-09-28 | 用户下 P9 收尾任务书（HEAD `c61882d`，其中一笔 `Update installed.json` 是他自己把真机安装痕迹提交了），本轮只做两件事：恢复台账基线、统一 `isAvailable()`／`ready()` 能力语义。实施中发现任务书 §六 的示例（探测前 `available:false` + `missingExtractor:true`）若照搬，P6 窗口会因 `if (!installBlocker)` 跳过 `ready()` 从而**永久误报"本平台不支持"**——所以 `missing*` 保持端口语义、窗口按端口缺失判定，真实能力交给 `ready()` 的原因承担；这条已在§四记录里写明，免得后人再"照示例改回去"。另把 probe 抛错从 reject 收敛为 `{ok:false, reason}`（配合失败缓存 ⇒ 瞬时失败要重载才重试，如实写进边界） |
+| 2026-09-28 | 用户批 P10 四个决定（Core 不进 Release / 要 Full Package / tag `v1.4.2-stars` / 网页手工建 Release），随后又问了整包里要不要排内部文档——他选"排内部三件"。实施中有两处值得记：①整包摘要一度在 `pnpm build` 前后差 4.5KB，先怀疑构建不确定，查下来是 vite 把**我刚改的 README/台账**重新拷进 dist 所致，而 `build-release` 自身连跑两次摘要完全一致——即"看似不确定"实为产物含文档，正是排除内部件要解决的问题；②`new URL()` 会把非 ASCII 资产名百分号编码，测试期望值一开始按明文写，被实测纠正（那是 URL 规范的正确行为，不是缺陷） |
 
 ## 八、项目收尾验证清单（真机 / 游戏内，收尾阶段统一执行）
 

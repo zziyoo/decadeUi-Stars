@@ -2649,3 +2649,16 @@ P0 审计
 - **如实记的边界**：①probe **抛错**过去会让 `ready()` reject（窗口自己 try/catch），现在收敛成 `{ok:false, reason:"探测解压能力时抛错：…"}`；配合"失败也缓存"，**一次瞬时失败要重载游戏才会重试**（任务书要的就是这个行为）。②未探测前 `available:false` 是刻意的，调用方要么先 `await ready()`，要么按 `missing*` 判端口。
 - 门禁：227 JS/mjs `node --check` ✓；十套测试 ✓；verify-pack 881/0、check-skin-imports 37/0 ✓；`pnpm build` ✓；`build-release --verify` exit=0 ✓。提交 `cc6ee72` + `3d316d2`，本条台账另起一笔；推送由用户执行。
 - 范围确认：未动 P9 构建架构、ZIP 格式、`module-index.json` 结构、Feature/Style Runtime、card-skin 架构、P10 自动发布、noname 本体。
+
+## v1.18（2026-09-28）P10：把 Release 结构做进构建里
+
+任务书§47 要求"建立 Release，结构 Core / Official Style Packs / Feature Packs / Full Package / module-index.json，所有下载链接必须可被客户端解析"。用户批了四个决定：**Core 不进 Release**（本仓库源码即本体）、**要 Full Package**、**tag 用 `v1.4.2-stars`**、**由他在网页建 Release 传资产**。施工后对表：Official Style Packs＝六个样式分包、Feature Packs＝`card-skin`、Full Package＝新增整包、索引＝原有；Core 以"随扩展本体发布"落地。
+
+- **新增整包（`c91a9f8`）**：`十周年UI-Stars-1.4.2-full.zip`，3589 文件 / 112,100,082 字节，包内根目录唯一 `十周年UI-Stars/`，解压到 `resources/app/extension/` 即用。**源就是 `dist/`**——vite 已按部署形态备好 `info.json`/`extension.js`/`ui`/`image`/`audio`/`assets`/`modules`，天然排除 `node_modules`、`scripts`、`tests` 等开发件，所以不另立第二份排除表（两份清单迟早会漂移）。`release/` 不进整包（那是给装包流程用的分包产物）。
+- **整包排除内部三件**：`README.md`（总任务书）、`docs/PROGRESS.md`（交接台账）、`docs/modularization-audit.md`（P0 审计）；原版的对外文档（`extension-readme`、`card-skin-api`、`dynamic-skin-api`、`update` 等）照旧随包发布。**为什么必须排**：台账每次会话都在改，打进去会让 112MB 资产的摘要随文档变动，Release 上记录的 sha256 与后续重建就对不上号。实测排除后 `pnpm build` 重跑整包摘要不变——顺带解释了一个吓人的现象：整包摘要曾在 `pnpm build` 前后差 4.5KB，查下来是 vite 把**刚改的 README/台账**重新拷进 dist 所致，`build-release` 自身连跑两次摘要完全一致，不是构建不确定。
+- **新增 `RELEASE-NOTES.md`**：由构建生成在 `dist/release/`（不入库）——Release 说明草稿 + 上传清单（9 项资产的字节数与 sha256）+ 安装两步 + 模块源地址 + 校验命令。资产顺序：整包 → 索引 → 各分包。
+- **`--verify` 扩成四段同一套规则**：分包（原有全套）→ 索引（与盘上重算逐字节一致）→ 整包（根位 `info.json`/`extension.js` 在、每个分包的 `manifest.json` 在、不得含 `release/`、条目数与 dist 排除后一致）→ 说明文件（按盘上产物重算文本逐字节比对，手改会被抓住）。`--list` 也列整包一行；日志前缀统一 `[P10产物]`。
+- **相对地址（§47 的那句硬要求）**：索引 url 仍是裸文件名，客户端用索引地址解析成同 Release 下的资产地址（`resolveModuleUrl` 单点，对绝对地址幂等）。GitHub Release 形状已进测试：`…/releases/download/v1.4.2-stars/module-index.json` + `baby-1.4.2.zip` → 同目录绝对地址。测试里被实测纠正过一次期望值：非 ASCII 资产名（整包文件名）解析出来是**百分号编码**，那是 `new URL()` 的正确行为，不是缺陷。**所以索引与全部 zip 必须挂在同一个 tag 下**。
+- 测试（新增 `tests/p10-release.test.mjs`，临时沙盒、不碰仓库产物）：打包前缀/排除项（内部三件与对外文档对照）/无目录条目/两次打包同摘要；四类整包篡改必须失败（缺根位文件、缺分包清单、混入 `release/`、多余条目）；说明清单含全部资产的字节数与 sha256 且表格列数完整；GitHub Release 形状的裸文件名解析。负例走脚本的 `die()`，测试里断言后复位 `process.exitCode`（否则测试进程会以非零码退出——那正是它在 CLI 里该有的行为）。
+- 门禁：228 JS/mjs `node --check` ✓；**十一套**测试 ✓；verify-pack 881/0、check-skin-imports 37/0 ✓；`pnpm build` ✓；`build-release --verify` exit=0 ✓。
+- **未做（用户侧）**：建 Release、传 9 个资产、推 tag。上传清单与说明在 `dist/release/RELEASE-NOTES.md`，也摘要进了 §六 7。
