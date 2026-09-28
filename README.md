@@ -2368,11 +2368,17 @@ Online 1.1 → 1.2
 # 六十七、当前任务指针
 
 ```text
-当前阶段：P6（模块市场/管理界面）✅ 代码完成
-当前任务：P6 已完成（纯代码 / Node 验证），窗口 UI 待游戏内实测（清单见 docs/PROGRESS.md §八）
-状态：P5 + P6 均已推送；真机/游戏内实测统一并入收尾验证清单，不阻塞推进
+当前阶段：P8（Feature Pack）第一刀 ✅ 代码完成
+当前任务：featureRuntime 已建立（Feature 声明 / 门控 / CSS 寻址 / 能力归属），
+          kill-effect 定性为门控型 Feature（不搬资源，pack 恒 false），
+          P6 模块管理界面补出 Feature 行与启用/禁用
+状态：纯代码 / Node 验证通过；游戏内实测与 Android 真机项并入收尾清单
+      （docs/PROGRESS.md §八「P8 部分」），不阻塞推进
 
-下一步候选：P8 Feature Pack（§四十五）或 P10 最小 module-index（§四十七；P6 在线分支的前置）
+下一步：P8 第二刀 card-skin 拆包（第一个 pack:true 的 Feature）。
+        动手前须确认"双根扫描"设计：包内皮肤集 + 玩家手工丢进
+        image/card-skins/ 的文件夹都要继续可用。
+        其后 P10 最小 module-index（没有索引就没有真正的"可安装"）。
 
 注：本指针自 v1.1 起长期失更，历次阶段结论以
 「六十八、变更记录」与 docs/PROGRESS.md 为准。
@@ -2500,3 +2506,17 @@ P0 审计
 - **明确不做**：启用/禁用（当前架构无此概念，属新运行时能力，另立子任务）；真实 `module-index.json` 资产与上传（P10）；热切换与对局中卸载。
 - 验证（**纯代码 / Node**）：179 文件 `node --check` ✓；P1/P2/P3/P5/P6 五套测试 ✓（新增 `tests/p6-module-admin.test.mjs`：格式化 9 例、全码文案、行模型 9 行夹具、动作启用/禁用理由、summary、离线降级、缺省输入）；verify-pack 881 可达 / 0 未知缺失；check-skin-imports 37 / 0 缺失；`pnpm build` ✓（产物含 `moduleAdmin.js`、`moduleManagerWindow.js`、`module-manager-window.css`）。
 - **未验证**：窗口 UI（DOM/热键/进度渲染）无法在 Node 验证，需游戏内实测——清单见 `docs/PROGRESS.md` §八「P6 部分」。
+
+## v1.8（2026-09-28）P8 Feature 运行时 + kill-effect 门控 + P6 的 Feature 行
+
+- **新增 `src/core/featureRuntime.js`（正式 Feature API，任务书§45）**：`define/get/list/switchOn/active/asset/cssOf/capabilityOwner`。门控判据为 `active(id) = 已声明 × 资源在场 × 开关为真`，三条任一不满足都不装载且调用方必须能安全降级；配置未播种（`undefined`）回落声明的 `defaultEnabled`，**绝不当成"关"**；未声明/未注册的 id 一律 `false` 且不抛错。纯逻辑（不 import noname、不碰 DOM），Node 全量可测。
+- **Feature 两种形态，由声明的 `pack` 区分**：**门控型**（`pack:false`，资源随 Core 发布）与**拆包型**（`pack:true`，资源在 `modules/<id>/<version>/`，未装上即不可用——与 P3 样式包"样式不可用而 Core 正常"同一语义）。**用户决定**：`kill-effect` 定性为门控型，**不搬资源、`pack` 恒为 false**，原计划的"把特效资源迁入包"那一刀撤销；`card-skin` 作为下一个包（将成为第一个拆包型 Feature）。
+- **启停不新增状态源**：`kill-effect` 的开关就是既有配置键 `extension_十周年UI-Stars_killEffect`（外观页"击杀特效"同一个开关）。`moduleSystem` 把 **P1 起悬空的 `moduleManager.isModuleEnabled` 钩子**真实接到 `switchOn`，`isEnabled("kill-effect")` 从此有意义，而 `core`/样式不被误伤（未声明的 id 恒 `true`）。
+- **`kill-effect` 接入现有代码**：`builtInModules` 按声明注册 `type:"feature"` 模块（entry.css 备单体 `src/styles/effect.css` 与包内 `effect.css` 两套路径，按 `pack` 选用）；`setupEffects()` 只在 `active("kill-effect")` 时注册 `decadeUI.effect.line/kill/skill` 并加载 CSS；Core 调用点改为可选链 `decadeUI.effect?.kill?.()`、`decadeUI.effect?.skill?.()`；`src/styles/layout.css` 的 `@import "effect.css"` **删除**（禁用就真的什么都不加载）。`dialog` 与 `ghost` 通道**不受本 Feature 管辖**——"幻影出牌"有自己的开关 `cardGhostEffect`，始终可用。
+- **CSS 单一来源**：`cssOf(id)` 返回**模块相对路径**（取自 `manifest.entry.css`），绝对地址仍由 `resourceLoader.loadCSS` → `getModuleBase` 计算，runtime 不重复持有路径、不建第二套寻址。
+- **能力判断（任务书§15）**：`decadeUI.feature.capabilityOwner(name)` 供功能代码用能力而非 `style === "online"` 这类字面量判断能力归属。
+- **P6 界面补 Feature 行与启用/禁用（`16c398d`）**：`moduleAdmin.buildRows` 新增 `featureStates` 入参——门控型出「内置功能 / 内置 <版本>」且**只给**启用↔禁用（动作带 `switchKey`；即使模块源索引里有它的地址也不给安装按钮），拆包型未装只给安装、装上后卸载与启停并存；无 `switchKey` 的声明不给任何动作（不许凭空造配置键）；**不传 `featureStates` 时行为逐字不变**。窗口侧 `collectFeatureStates()` 由 `featureRuntime.list()+switchOn()` 得出，`toggleFeature()` 写同一个配置键并提示"重载游戏后生效"（装载发生在 content 初始化，§16 第一阶段不要求运行时卸载已执行的 JS）。
+- 测试：新增 `tests/p8-feature-runtime.test.mjs`（门控矩阵、两种 pack 形态与 CSS/asset 解析、`isModuleEnabled` 真实接线、`define` 校验、能力归属、**声明字段集契约**）与 `tests/p8-effects-gate.test.mjs`（装配层：启用→通道注册 + CSS 项、禁用→全部为空且 `ghost/dialog` 保留、再启用可恢复）；`tests/p6-module-admin.test.mjs` 增 6 类 Feature 行断言 + 真实接线用例；`tests/p1-smoke.test.mjs` 注册数 7→8、`list({type:"feature"})` 断言。
+- 验证（**纯代码 / Node，未进游戏**）：182 个 JS/mjs `node --check` ✓；七套测试（P1/P2/P3/P5/P6/P8×2）全过 ✓；verify-pack 881 可达 / 17 已知上游死引用 / **0 未知缺失** ✓；check-skin-imports 37 可达 / 0 缺失 ✓；`pnpm build` ✓。
+- **未验证 / 已知限制**：Feature 启停在重载前不产生"无副作用"的卸载（本次运行的 `effect.*` 通道与已插入的 CSS link 仍在）；窗口与 Feature 行的 DOM 表现、可选链降级路径需游戏内实测——清单见 `docs/PROGRESS.md` §八「P8 部分」（含 P/Q/R/S/T/U/V/W/X 八条探针）。
+- 提交：`b4d8db5`（Feature 运行时与门控）、`8f89e43`（kill-effect 定性为门控型，不拆包）、`16c398d`（P6 Feature 行与启停）、本条文档，各起一笔、不 squash。
