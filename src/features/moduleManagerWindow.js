@@ -9,6 +9,8 @@
  *   - 卸载需要二次确认（按钮变"确认卸载"，4 秒后自动复原），不使用原生 confirm。
  *   - 动作进行中禁止并发（busy 门闩）；下载可取消（AbortController，安装器支持 CANCELLED）。
  *   - 反馈文案按 INSTALL_CODES 出（moduleAdmin.resultText），安装/卸载成功后提示需重载。
+ *   - Feature 的启用/禁用只写它声明的 switchKey 配置键（与外观页同一个开关，不另立状态源）；
+ *     装载发生在 content 初始化，所以改完必须重载才生效（任务书§16）。
  */
 import { lib, game } from "noname";
 import { buildRows, resultText } from "../core/moduleAdmin.js";
@@ -52,17 +54,36 @@ function el(className, parent, tagName = "div") {
 	return node;
 }
 
-/** 注册表可见模块 → 行模型输入（moduleManager.list() 不含 dependencies，这里补上） */
+/** 注册表可见模块 → 行模型输入（moduleManager.list() 不含 dependencies/core，这里从 manifest 补上） */
 function collectModules(api) {
 	const manager = api?.moduleManager;
 	if (!manager?.list) return [];
-	return manager.list().map(item => ({
-		id: item.id,
-		name: item.name,
-		type: item.type,
-		version: item.version,
-		dependencies: manager.getManifest?.(item.id)?.dependencies || [],
-	}));
+	return manager.list().map(item => {
+		const manifest = manager.getManifest?.(item.id) || {};
+		return {
+			id: item.id,
+			name: item.name,
+			type: item.type,
+			version: item.version,
+			dependencies: manifest.dependencies || [],
+			core: manifest.core,
+		};
+	});
+}
+
+/** Feature 行判定输入：pack 取自声明，enabled 走 switchOn（与门控同一实现，不在 UI 里重读配置规则） */
+function collectFeatureStates(api) {
+	const feature = api?.feature;
+	if (!feature?.list) return {};
+	const states = {};
+	for (const item of feature.list()) {
+		states[item.id] = {
+			pack: item.pack === true,
+			switchKey: item.switchKey || null,
+			enabled: feature.switchOn?.(item.id) !== false,
+		};
+	}
+	return states;
 }
 
 /** 读取当前数据并整窗重绘 */
@@ -118,6 +139,7 @@ async function refresh() {
 		modules: collectModules(api),
 		currentStyleId: api?.style?.id ?? null,
 		coreVersion: api?.version ?? null,
+		featureStates: collectFeatureStates(api),
 	});
 	summaryBox.textContent = `共 ${summary.total} 个模块 · 已独立安装 ${summary.installed} · 可更新 ${summary.updatable} · 可安装 ${summary.installable}${
 		available.atomicRename ? "" : " · 本平台发布非原子（中断后请重做一次）"
@@ -160,6 +182,9 @@ function renderRows(listBox, rows) {
 				if (action.reason) btn.title = action.reason;
 			} else if (action.kind === "uninstall") {
 				armConfirm(btn, action.label, "确认卸载", () => runAction(row, action, rowEl));
+			} else if (action.kind === "enable" || action.kind === "disable") {
+				btn.title = "改写外观页的同一开关；重载游戏后生效";
+				btn.onclick = () => toggleFeature(row, action);
 			} else {
 				btn.classList.add("is-primary");
 				btn.onclick = () => runAction(row, action, rowEl);
@@ -199,6 +224,14 @@ function armConfirm(btn, label, confirmLabel, run) {
 			btn.classList.remove("armed");
 		}, UNINSTALL_ARM_MS);
 	};
+}
+
+/** Feature 启停：只写它声明的 switchKey（与配置页同一个键，不另立状态源）。装载在 content 初始化时发生，故需重载才生效（任务书§16） */
+function toggleFeature(row, action) {
+	if (busy || !action.switchKey) return;
+	game.saveConfig(`extension_${decadeUIName}_${action.switchKey}`, action.kind === "enable");
+	notice = { tone: "ok", text: `${row.name}：已${action.kind === "enable" ? "启用" : "禁用"}，点上方「重载游戏」后生效` };
+	refresh();
 }
 
 /** 执行一个动作：busy 门闩 + 进度 + 取消 + 结果文案 */

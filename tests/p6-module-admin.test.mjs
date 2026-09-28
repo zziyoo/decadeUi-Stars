@@ -4,8 +4,9 @@
  *   （被测模块只依赖 manifest.js / packageInstaller.js，均不依赖 noname 运行时，
  *    因此无需 noname 解析钩子；用 tests/helpers/register.mjs 跑也等价）
  *
- * 覆盖：状态推导（core/使用中/已装/有更新/未装/不兼容/依赖缺失）、动作可用性与禁用理由、
- * 文案映射（INSTALL_CODES 全覆盖 + 未知码兜底）、结果文案、大小格式化、汇总与排序。
+ * 覆盖：状态推导（core/使用中/已装/有更新/未装/不兼容/依赖缺失/内置功能）、动作可用性与禁用理由、
+ * Feature 行的两种形态（门控型只给启用/禁用、拆包型走安装通道）、文案映射（INSTALL_CODES 全覆盖 + 未知码兜底）、
+ * 结果文案、大小格式化、汇总与排序。
  */
 import assert from "node:assert/strict";
 import { buildRows, summarize, codeText, resultText, formatSize } from "../src/core/moduleAdmin.js";
@@ -252,6 +253,171 @@ assert.deepEqual(summary, { total: 9, installed: 5, updatable: 1, installable: 1
 	assert.deepEqual(empty.rows, []);
 	assert.deepEqual(empty.summary, { total: 0, installed: 0, updatable: 0, installable: 0, inUse: 0 });
 	assert.deepEqual(summarize([]), { total: 0, installed: 0, updatable: 0, installable: 0, inUse: 0 });
+}
+
+// ------------------------------------------------------------------ Feature 行（任务书§45/§16 启用·禁用）
+
+/** Feature 与样式共用一套行模型，差别由 featureStates 描述：pack=资源是否已拆成独立包 */
+const featureModules = [
+	{ id: "core", name: "十周年UI-Stars 核心", type: "core", version: "1.4.2", dependencies: [] },
+	{ id: "decade", name: "十周年样式", type: "style", version: "1.4.2", dependencies: ["core"] },
+	{ id: "kill-effect", name: "击杀/技能特效", type: "feature", version: "1.4.2", dependencies: ["core"] },
+	{ id: "card-skin", name: "卡牌皮肤", type: "feature", version: "1.4.2", dependencies: ["core"] },
+];
+const featureStates = {
+	"kill-effect": { pack: false, switchKey: "killEffect", enabled: true },
+	"card-skin": { pack: true, switchKey: "cardSkin", enabled: true },
+};
+/** 门控型 Feature 也可能出现在索引里（第三方打包了资源）——界面仍不许给安装按钮 */
+const featureIndex = {
+	schema: 1,
+	modules: {
+		"kill-effect": { latest: "1.0.0", url: "https://test/kill-effect-1.0.0.zip", core: ">=1.4.0" },
+		"card-skin": { latest: "1.0.0", url: "https://test/card-skin-1.0.0.zip", size: 5 * 1024 * 1024, core: ">=1.4.0" },
+	},
+};
+const fRow = (result, id) => {
+	const found = result.rows.find(item => item.id === id);
+	assert.ok(found, `应存在 ${id} 行，实际有 ${result.rows.map(item => item.id).join(", ")}`);
+	return found;
+};
+
+// 门控型：随扩展发布，只有启用/禁用；拆包型未装：只有安装
+{
+	const result = buildRows({ installed: {}, index: featureIndex, modules: featureModules, currentStyleId: "decade", coreVersion: "1.4.2", featureStates });
+	const gate = fRow(result, "kill-effect");
+	assert.equal(gate.type, "feature");
+	assert.equal(gate.statusKind, "built_in");
+	assert.match(gate.statusText, /内置/);
+	assert.equal(gate.installed, false, "installed 仍严格表示「有独立安装台账」");
+	assert.match(gate.versionText, /内置/, `内置功能不该显示成「未安装」：${gate.versionText}`);
+	assert.deepEqual(gate.actions.map(action => action.kind), ["disable"], "门控型不给安装/卸载，只给禁用");
+	assert.deepEqual(gate.actions[0], { kind: "disable", label: "禁用", enabled: true, reason: "", switchKey: "killEffect" });
+
+	const pack = fRow(result, "card-skin");
+	assert.equal(pack.statusKind, "not_installed");
+	assert.deepEqual(pack.actions.map(action => action.kind), ["install"], "拆包型未装时没有可启用/禁用的东西");
+	assert.equal(pack.actions[0].enabled, true);
+	assert.equal(pack.actions[0].spec.url, "https://test/card-skin-1.0.0.zip");
+
+	assert.deepEqual(result.summary, { total: 4, installed: 0, updatable: 0, installable: 1, inUse: 1 });
+}
+
+// 拆包型已装：卸载与禁用并存（两条通道互不替代）
+{
+	const result = buildRows({
+		installed: { decade: { version: "1.4.2" }, "card-skin": { version: "1.0.0" } },
+		index: featureIndex,
+		modules: featureModules,
+		currentStyleId: "decade",
+		coreVersion: "1.4.2",
+		featureStates,
+	});
+	const pack = fRow(result, "card-skin");
+	assert.equal(pack.installed, true);
+	assert.equal(pack.statusKind, "installed");
+	assert.deepEqual(pack.actions.map(action => action.kind), ["uninstall", "disable"]);
+	assert.equal(pack.actions[1].switchKey, "cardSkin");
+
+	const gate = fRow(result, "kill-effect");
+	assert.deepEqual(gate.actions.map(action => action.kind), ["disable"], "门控型即使索引里有条目也不给安装按钮");
+}
+
+// 开关已关：按钮变"启用"，状态文案要如实反映"当前是关着的"
+{
+	const result = buildRows({
+		installed: {},
+		index: featureIndex,
+		modules: featureModules,
+		currentStyleId: null,
+		coreVersion: "1.4.2",
+		featureStates: { ...featureStates, "kill-effect": { pack: false, switchKey: "killEffect", enabled: false } },
+	});
+	const gate = fRow(result, "kill-effect");
+	assert.deepEqual(gate.actions.map(action => action.kind), ["enable"]);
+	assert.equal(gate.actions[0].label, "启用");
+	assert.equal(gate.actions[0].switchKey, "killEffect");
+	assert.match(gate.statusText, /禁用|关/, `关闭状态要在徽标上看得见：${gate.statusText}`);
+}
+
+// 门控型却有台账记录（异常状态）：以台账为准，允许卸载，避免留下无人能清的残留
+{
+	const result = buildRows({
+		installed: { "kill-effect": { version: "1.0.0" } },
+		index: null,
+		modules: featureModules,
+		currentStyleId: null,
+		coreVersion: "1.4.2",
+		featureStates,
+	});
+	const gate = fRow(result, "kill-effect");
+	assert.equal(gate.installed, true);
+	assert.equal(gate.statusKind, "installed");
+	assert.deepEqual(gate.actions.map(action => action.kind), ["uninstall", "disable"]);
+}
+
+// 未声明开关的内置 Feature：不许凭空造一个配置键
+{
+	const result = buildRows({ installed: {}, index: featureIndex, modules: [{ id: "silent", name: "静默块", type: "feature", version: "1.0.0", dependencies: [] }], featureStates: { silent: { pack: false, switchKey: null, enabled: true } } });
+	assert.equal(result.rows[0].statusKind, "built_in");
+	assert.deepEqual(result.rows[0].actions, []);
+}
+
+// featureStates 缺省（老调用方 / runtime 未就绪）：行为与之前完全一致
+{
+	const result = buildRows({ installed: {}, index: featureIndex, modules: featureModules, currentStyleId: "decade", coreVersion: "1.4.2" });
+	assert.deepEqual(
+		fRow(result, "kill-effect").actions.map(action => action.kind),
+		["install"],
+		"不传 featureStates 时 Feature 行按通用规则处理，不新增判定"
+	);
+	assert.equal(fRow(result, "kill-effect").statusKind, "not_installed");
+}
+
+// ------------------------------------------------------------------ 真实接线（内置注册表 + featureRuntime → 行）
+
+{
+	// 界面传的是 moduleManager.list() 与 featureRuntime.list()+switchOn()，这里用真实实现跑一遍，
+	// 防止 builtInModules 的 type、list() 的字段形状或 switchKey 改了而界面集体出错
+	const { createModuleRegistry } = await import("../src/core/registry.js");
+	const { createModuleManager } = await import("../src/core/moduleManager.js");
+	const { registerBuiltInModules } = await import("../src/core/builtInModules.js");
+	const { createFeatureRuntime, BUILT_IN_FEATURES } = await import("../src/core/featureRuntime.js");
+
+	const registry = createModuleRegistry();
+	registerBuiltInModules(registry, { version: "1.4.2" });
+	let runtime;
+	const moduleManager = createModuleManager({ registry, isModuleEnabled: id => (runtime ? runtime.switchOn(id) : true) });
+	const killKey = "extension_十周年UI-Stars_killEffect";
+	const config = { [killKey]: true };
+	runtime = createFeatureRuntime({
+		moduleManager,
+		resourceLoader: { getAsset: (id, path) => path },
+		configKey: key => `extension_十周年UI-Stars_${key}`,
+		readConfig: key => config[key],
+	});
+	for (const definition of BUILT_IN_FEATURES) runtime.define(definition);
+
+	const featureStates = () => {
+		const states = {};
+		for (const item of runtime.list()) {
+			states[item.id] = { pack: item.pack === true, switchKey: item.switchKey || null, enabled: runtime.switchOn(item.id) !== false };
+		}
+		return states;
+	};
+	const modules = moduleManager.list().map(item => ({ id: item.id, name: item.name, type: item.type, version: item.version, dependencies: moduleManager.getManifest?.(item.id)?.dependencies || [] }));
+	const result = buildRows({ installed: {}, index: null, modules, currentStyleId: "decade", coreVersion: "1.4.2", featureStates: featureStates() });
+
+	const kill = fRow(result, "kill-effect");
+	assert.equal(kill.type, "feature", "注册表必须把 kill-effect 标成 feature，否则界面走通用（样式）判定");
+	assert.equal(kill.statusKind, "built_in", "真实声明 pack:false → 内置功能，不能显示成未安装");
+	assert.equal(kill.versionText, "内置 1.4.2", "版本取自 moduleManager.list()");
+	assert.deepEqual(kill.actions.map(action => action.kind), ["disable"]);
+	assert.equal(kill.actions[0].switchKey, "killEffect", "switchKey 必须与外观页的击杀特效开关同名");
+
+	config[killKey] = false;
+	const off = buildRows({ installed: {}, index: null, modules, currentStyleId: "decade", coreVersion: "1.4.2", featureStates: featureStates() });
+	assert.deepEqual(fRow(off, "kill-effect").actions.map(action => action.kind), ["enable"], "关掉开关后按钮要翻成启用（同一份配置，两个入口同步）");
 }
 
 console.log("P6 module-admin tests: all passed ✓");

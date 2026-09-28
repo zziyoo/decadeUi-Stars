@@ -127,13 +127,17 @@ export function summarize(rows = []) {
  * @param {Array} [input.modules] - 注册表可见模块 `{id,name,type,version,dependencies}`（moduleManager.list() + manifest.dependencies）
  * @param {string|null} [input.currentStyleId] - 当前使用中的样式模块 id（styleRuntime.id）
  * @param {string|null} [input.coreVersion] - 当前 Core 版本
+ * @param {Object} [input.featureStates] - Feature 模块的状态（featureRuntime.list() + switchOn）：
+ *   `{ id: { pack: 资源是否已拆成独立包, switchKey: 开关配置键, enabled: 当前是否开启 } }`。
+ *   缺省（空对象）时 Feature 行按通用规则处理，行为与引入本参数之前完全一致。
  * @returns {{rows: Array, summary: Object}}
  */
-export function buildRows({ installed = {}, index = null, modules = [], currentStyleId = null, coreVersion = null } = {}) {
+export function buildRows({ installed = {}, index = null, modules = [], currentStyleId = null, coreVersion = null, featureStates = {} } = {}) {
 	const ledger = installed && typeof installed === "object" ? installed : {};
 	const registry = asArray(modules).filter(item => item && item.id);
 	const registryIds = new Set(registry.map(item => item.id));
 	const entries = index && typeof index.modules === "object" ? index.modules : null;
+	const states = featureStates && typeof featureStates === "object" ? featureStates : {};
 
 	// 行集合 = 注册表顺序（core 自然在最前）+ 只在台账里的 + 只在索引里的；三类都要能看见
 	const order = [];
@@ -143,9 +147,9 @@ export function buildRows({ installed = {}, index = null, modules = [], currentS
 		seen.add(item.id);
 		order.push(item);
 	};
-	for (const item of registry) push({ id: item.id, name: item.name || item.id, type: item.type || "style", dependencies: asArray(item.dependencies), core: item.core });
-	for (const id of Object.keys(ledger)) push({ id, name: id, type: "style", dependencies: [], core: undefined });
-	for (const id of Object.keys(entries || {})) push({ id, name: id, type: "style", dependencies: [], core: undefined });
+	for (const item of registry) push({ id: item.id, name: item.name || item.id, type: item.type || "style", version: item.version || null, dependencies: asArray(item.dependencies), core: item.core });
+	for (const id of Object.keys(ledger)) push({ id, name: id, type: "style", version: null, dependencies: [], core: undefined });
+	for (const id of Object.keys(entries || {})) push({ id, name: id, type: "style", version: null, dependencies: [], core: undefined });
 
 	const rows = order.map(item => {
 		const ledgerEntry = ledger[item.id] || null;
@@ -153,6 +157,15 @@ export function buildRows({ installed = {}, index = null, modules = [], currentS
 		const entry = entries?.[item.id] || null;
 		const isCore = item.type === "core";
 		const inUse = Boolean(currentStyleId) && item.id === currentStyleId;
+
+		// Feature 判定（任务书§45）：门控型（资源随扩展发布）不走安装通道，只有启用/禁用；
+		// 拆包型资源未装上时谈不上启停，未装只给安装、装上后安装通道与启停通道并存。
+		const feature = item.type === "feature" ? states[item.id] || null : null;
+		const packed = Boolean(feature) && feature.pack === true;
+		const builtIn = Boolean(feature) && !packed && !isInstalled;
+		const toggleKey = feature && typeof feature.switchKey === "string" && feature.switchKey ? feature.switchKey : null;
+		const featureOn = Boolean(feature) && feature.enabled !== false;
+		const canToggle = Boolean(toggleKey) && (!packed || isInstalled);
 
 		const version = ledgerEntry?.version || null;
 		const latest = entry?.latest || entry?.version || null;
@@ -163,9 +176,10 @@ export function buildRows({ installed = {}, index = null, modules = [], currentS
 		const updatable = Boolean(isInstalled && latest && version && compareVersions(latest, version) > 0);
 		const dependents = order.filter(other => other.id !== item.id && other.dependencies.includes(item.id)).map(other => other.id);
 
-		// 状态优先级：core > 使用中 > 不兼容 > 依赖缺失 > 有更新 > 已安装 > 未安装
+		// 状态优先级：core > 内置功能 > 使用中 > 不兼容 > 依赖缺失 > 有更新 > 已安装 > 未安装
 		let statusKind = "not_installed";
 		if (isCore) statusKind = "core";
+		else if (builtIn) statusKind = "built_in";
 		else if (inUse) statusKind = "in_use";
 		else if (entry && !coreCheck.ok) statusKind = "incompatible";
 		else if (missingDeps.length) statusKind = "dep_missing";
@@ -174,29 +188,41 @@ export function buildRows({ installed = {}, index = null, modules = [], currentS
 
 		const actions = [];
 		if (!isCore) {
-			if (!isInstalled) {
-				if (!index) {
-					actions.push({ kind: "install", label: "安装", enabled: false, reason: "未配置模块源（P10 产出索引后可安装）", spec: null });
-				} else if (!entry || !entry.url) {
-					actions.push({ kind: "install", label: "安装", enabled: false, reason: "模块源未提供该模块", spec: entry ? specFromEntry(item.id, entry) : null });
-				} else {
+			if (!builtIn) {
+				if (!isInstalled) {
+					if (!index) {
+						actions.push({ kind: "install", label: "安装", enabled: false, reason: "未配置模块源（P10 产出索引后可安装）", spec: null });
+					} else if (!entry || !entry.url) {
+						actions.push({ kind: "install", label: "安装", enabled: false, reason: "模块源未提供该模块", spec: entry ? specFromEntry(item.id, entry) : null });
+					} else {
+						const spec = specFromEntry(item.id, entry);
+						const blocker = !coreCheck.ok ? coreCheck.message : missingDeps.length ? `缺少依赖：${missingDeps.join("、")}` : "";
+						actions.push({ kind: "install", label: "安装", enabled: !blocker, reason: blocker, spec });
+					}
+				} else if (entry && updatable) {
 					const spec = specFromEntry(item.id, entry);
-					const blocker = !coreCheck.ok ? coreCheck.message : missingDeps.length ? `缺少依赖：${missingDeps.join("、")}` : "";
-					actions.push({ kind: "install", label: "安装", enabled: !blocker, reason: blocker, spec });
+					const blocker = !spec.url ? "模块源未提供下载地址" : !coreCheck.ok ? coreCheck.message : missingDeps.length ? `缺少依赖：${missingDeps.join("、")}` : "";
+					actions.push({ kind: "update", label: "更新", enabled: !blocker, reason: blocker, spec });
 				}
-			} else if (entry && updatable) {
-				const spec = specFromEntry(item.id, entry);
-				const blocker = !spec.url ? "模块源未提供下载地址" : !coreCheck.ok ? coreCheck.message : missingDeps.length ? `缺少依赖：${missingDeps.join("、")}` : "";
-				actions.push({ kind: "update", label: "更新", enabled: !blocker, reason: blocker, spec });
 			}
 			if (isInstalled) {
 				const blocker = inUse ? "正在使用中，请先切换到其他样式再卸载" : dependents.length ? `被以下模块依赖，请先卸载它们：${dependents.join("、")}` : "";
 				actions.push({ kind: "uninstall", label: "卸载", enabled: !blocker, reason: blocker, spec: null });
 			}
+			if (canToggle) {
+				actions.push({
+					kind: featureOn ? "disable" : "enable",
+					label: featureOn ? "禁用" : "启用",
+					enabled: true,
+					reason: "",
+					switchKey: toggleKey,
+				});
+			}
 		}
 
 		const STATUS_TEXT = {
 			core: "核心组件（随扩展发布）",
+			built_in: "内置功能",
 			in_use: "当前使用",
 			incompatible: "与当前 Core 不兼容",
 			dep_missing: "缺少依赖",
@@ -214,8 +240,8 @@ export function buildRows({ installed = {}, index = null, modules = [], currentS
 			latest,
 			previousVersion: ledgerEntry?.previousVersion || null,
 			statusKind,
-			statusText: STATUS_TEXT[statusKind],
-			versionText: updatable ? `${version} → ${latest}` : isInstalled ? `已安装 ${version}` : "未安装",
+			statusText: builtIn && toggleKey && !featureOn ? `${STATUS_TEXT.built_in}（已禁用）` : STATUS_TEXT[statusKind],
+			versionText: updatable ? `${version} → ${latest}` : isInstalled ? `已安装 ${version}` : builtIn ? (item.version ? `内置 ${item.version}` : "内置") : "未安装",
 			sizeText: formatSize(entry?.size || ledgerEntry?.size || 0),
 			dependenciesText: shownDeps.length ? `依赖：${shownDeps.join("、")}` : "依赖：无",
 			compatibilityText: coreCheck.unknown ? "Core 版本未知，未做兼容性检查" : coreCheck.ok ? (entry?.core || item.core ? `需要 Core ${entry?.core || item.core}` : "未声明 Core 要求") : coreCheck.message,
