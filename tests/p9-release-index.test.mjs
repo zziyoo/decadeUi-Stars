@@ -153,4 +153,88 @@ function harness(extra = {}) {
 	assert.equal(fetched.indexUrl, IDX, "fetchIndex 要把索引自身的地址回带给调用方，否则相对 url 无从解析");
 }
 
+// ------------------------------------------------------------------ 构建脚本：索引生成与 zip 结构
+
+{
+	let script = null;
+	try {
+		script = await import("../scripts/build-release.mjs");
+	} catch {
+		/* 脚本尚不存在：下面按缺函数失败，而不是让整份测试崩在 import */
+	}
+	assert.equal(typeof script?.buildIndex, "function", "P9：module-index 的生成必须是可单测的纯函数");
+	assert.equal(typeof script?.zipDir, "function", "P9：分包 zip 的生成必须可单测（不绑死在命令行流程里）");
+
+	const packs = [
+		{ id: "core", version: "1.4.2", manifest: { id: "core", name: "核心", type: "core", version: "1.4.2" }, zip: { file: "core-1.4.2.zip", bytes: 10, sha256: "b".repeat(64) } },
+		{ id: "decade", version: "1.4.2", manifest: { id: "decade", name: "十周年样式", type: "style", version: "1.4.2", core: ">=1.4.2", dependencies: ["core"], capabilities: ["player-frame"] }, zip: { file: "decade-1.4.2.zip", bytes: 123, sha256: "a".repeat(64) } },
+		{ id: "card-skin", version: "1.4.2", manifest: { id: "card-skin", name: "卡牌皮肤", type: "feature", version: "1.4.2", core: ">=1.4.2", dependencies: ["core"], capabilities: ["card-skin"] }, zip: { file: "card-skin-1.4.2.zip", bytes: 456, sha256: "c".repeat(64) } },
+	];
+	const index = script.buildIndex({ packs, coreVersion: "1.4.2" });
+
+	assert.equal(index.schema, 1);
+	assert.deepEqual(index.core, { version: "1.4.2", latest: "1.4.2" }, "顶层 core 段供客户端做兼容判断");
+	assert.equal(index.modules.core, undefined, "本轮 Core 无包形态，不许混进可安装列表（否则界面会出现装不上的 Core）");
+	assert.deepEqual(Object.keys(index.modules).sort(), ["card-skin", "decade"]);
+
+	const decade = index.modules.decade;
+	assert.equal(decade.url, "decade-1.4.2.zip", "url 写裸文件名：同一份索引可指本地服务也可指 Release 资产");
+	assert.equal(decade.latest, "1.4.2");
+	assert.equal(decade.sha256, "a".repeat(64), "外部摘要取 zip 自身（安装器校验的是下载落盘那段字节）");
+	assert.equal(decade.size, 123, "size 必须是 zip 字节数，不是包内文件之和");
+	assert.equal(decade.type, "style");
+	assert.deepEqual(decade.dependencies, ["core"]);
+	assert.equal(decade.core, ">=1.4.2", "缺 core 要求的条目会被安装器拒绝，这里必须带上");
+
+	// 索引条目交给安装器后必须能解析成绝对地址（与 §47 发布地址无关的闭环）
+	assert.equal(resolveModuleUrl(decade.url, IDX), "https://host/releases/v1/decade-1.4.2.zip");
+}
+
+// ------------------------------------------------------------------ 构建脚本：zip 结构（manifest 必须在根）
+
+{
+	const fs = await import("node:fs");
+	const os = await import("node:os");
+	const path = await import("node:path");
+	const JSZip = (await import("jszip")).default;
+	const script = await import("../scripts/build-release.mjs");
+
+	// 所有产物与源目录都在同一个临时根里，删除只及本临时根（绝不让 rmSync 指向 os.tmpdir()）
+	const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "p9-release-"));
+	const src = path.join(tmp, "pack");
+	fs.mkdirSync(src, { recursive: true });
+	// 故意做出"有子目录、有非 ASCII 文件名"的包，验证条目名与结构
+	fs.writeFileSync(path.join(src, "manifest.json"), JSON.stringify({ schema: 1, id: "demo", name: "演示包", version: "1.0.0", type: "style", core: ">=1.0.0", entry: { css: ["styles/主样式.css"] } }));
+	fs.mkdirSync(path.join(src, "styles"), { recursive: true });
+	fs.writeFileSync(path.join(src, "styles", "主样式.css"), ".demo{color:red}");
+	const out = path.join(tmp, "demo-1.0.0.zip");
+
+	const info = await script.zipDir(src, out, {});
+	assert.equal(info.file, "demo-1.0.0.zip");
+	assert.match(info.sha256, /^[0-9a-f]{64}$/, `sha256 必须是 64 位十六进制：${info.sha256}`);
+	assert.equal(info.bytes, fs.statSync(out).size, "上报字节数必须等于落盘 zip 的实际大小");
+	assert.equal(info.files, 2, "只打源目录里的两个文件");
+
+	const zip = await JSZip.loadAsync(fs.readFileSync(out));
+	const names = Object.keys(zip.files).filter(name => !zip.files[name].dir);
+	assert.deepEqual(names.sort(), ["manifest.json", "styles/主样式.css"], "条目用正斜杠相对路径，且 manifest.json 直接在根");
+	// 目录条目一律不写：JSZip 自动补的父目录条目取的是当前时间（DOS 时间 2 秒粒度），
+	// 留着它，同样内容的两次构建就会算出不同摘要；解压侧（moduleIo.extract）按路径自建目录。
+	assert.deepEqual(Object.keys(zip.files).filter(name => zip.files[name].dir), [], "不得含目录条目");
+	const manifest = JSON.parse(await zip.file("manifest.json").async("string"));
+	assert.equal(manifest.id, "demo", "回读根位 manifest 才能过安装器§24 的结构校验");
+
+	// 确定性：同一内容两次打包必须得到同一个摘要，否则索引每次构建都在无意义地变
+	const out2 = path.join(tmp, "demo-1.0.0-again.zip");
+	const info2 = await script.zipDir(src, out2, {});
+	assert.equal(info2.sha256, info.sha256, "zip 内容确定性：不许把当前时间写进条目时间戳");
+
+	// 输出落在源目录里时不许把自己打进去（构建脚本dist 套 dist 的情况真实存在）
+	const inside = path.join(src, "self.zip");
+	const info3 = await script.zipDir(src, inside, {});
+	assert.equal(info3.files, 2, "生成中的 zip 不得自我包含");
+
+	fs.rmSync(tmp, { recursive: true, force: true });
+}
+
 console.log("P9 release-index tests: all passed ✓");
