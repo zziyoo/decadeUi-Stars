@@ -28,6 +28,7 @@
  */
 import { validateManifest, normalizeManifest, checkCoreRequirement } from "./manifest.js";
 import { downloadBuffer, sha256Hex, DownloadError } from "./downloader.js";
+import { assessModule, planRepair } from "./moduleHealth.js";
 
 /**
  * 索引/调用方给的相对地址 → 绝对下载地址（任务书§46/§47：P9 产物与发布共用一条解析）
@@ -71,6 +72,7 @@ export const INSTALL_CODES = {
 	ALREADY_INSTALLED: "ALREADY_INSTALLED",
 	PUBLISH_FAILED: "PUBLISH_FAILED",
 	ROLLBACK_FAILED: "ROLLBACK_FAILED",
+	NO_ROLLBACK: "NO_ROLLBACK",
 	STATE_FAILED: "STATE_FAILED",
 	INSTALLED_CORRUPT: "INSTALLED_CORRUPT",
 	NOT_INSTALLED: "NOT_INSTALLED",
@@ -191,6 +193,34 @@ export function createPackageInstaller(deps = {}) {
 	}
 
 	const packDir = (id, version) => `${paths.modulesRoot}/${id}/${version}`;
+
+	/**
+	 * 探测某个版本目录的健康状况（结构级四项，喂给 moduleHealth 的判据）。
+	 * **IO 错误一律抛出**，由调用方转成 IO_FAILED——不许把"读盘失败"当成"文件不存在"，
+	 * 否则一次读盘抖动就会让 planRepair 把好包判成损坏。
+	 */
+	async function probeModuleVersion(id, version) {
+		const dir = packDir(id, version);
+		if ((await kindOf(dir)) !== "dir") return { dirExists: false };
+		const text = await io.readText(`${dir}/manifest.json`);
+		if (text === null || text === undefined) return { dirExists: true, manifestExists: false };
+		let manifest = null;
+		let manifestParsed = true;
+		try {
+			manifest = JSON.parse(text);
+		} catch {
+			manifestParsed = false;
+		}
+		const missingEntries = [];
+		if (manifestParsed && manifest && typeof manifest === "object") {
+			for (const kind of ["js", "css"]) {
+				for (const rel of Array.isArray(manifest.entry?.[kind]) ? manifest.entry[kind] : []) {
+					if ((await kindOf(`${dir}/${rel}`)) === null) missingEntries.push(rel);
+				}
+			}
+		}
+		return { dirExists: true, manifestExists: true, manifestParsed, manifest, missingEntries };
+	}
 	const emit = (opts, info) => {
 		if (typeof opts.onProgress === "function") {
 			try {
@@ -1069,8 +1099,124 @@ export function createPackageInstaller(deps = {}) {
 		},
 
 		/**
+		 * 健康检查（任务书§49）：只探测、不写任何状态，供启动注册阶段与界面调用。
+		 * @param {string} id
+		 * @returns {Promise<Object>} success({id, version, previousVersion, status, reasons, action})
+		 */
+		async verifyInstalled(id) {
+			if (!io) return failure(INSTALL_CODES.NO_IO, "未注入文件系统端口，安装器不可用");
+			const state = await readInstalled();
+			if (!state.ok) return state;
+			const entry = state.data.modules[id];
+			if (!entry) return failure(INSTALL_CODES.NOT_INSTALLED, `${id} 不在安装台账里`, { stage: "checking", id });
+
+			const version = entry.version;
+			const previousVersion = entry.previousVersion || null;
+			let probe;
+			let previousProbe;
+			try {
+				probe = await probeModuleVersion(id, version);
+				if (previousVersion) previousProbe = await probeModuleVersion(id, previousVersion);
+			} catch (error) {
+				return toIoFailure(error, "checking", { id, message: `检查 ${id} 的健康状况失败: ${error?.message ?? error}` });
+			}
+			const plan = planRepair({ id, version, previousVersion, probe, previousProbe });
+			return success({ id, version, previousVersion, ...plan });
+		},
+
+		/**
+		 * 回退到台账记的上一版（§49 自动恢复的后半段，也可手动调用）。
+		 *
+		 * 顺序：先验上一版健康（坏的不许换上来）→ 当前（坏）目录改名 `.corrupt-<版本>-<随机>` 留证 →
+		 * 写台账把 version 指回上一版。任一步失败都把已改名的目录改回原位，按 ROLLBACK_FAILED +
+		 * residual 如实上报，绝不留下"台账说装着、盘上没有"。
+		 *
+		 * 使用中的样式也能回退——修复优先，重载后生效（结果里带 requiresReload）。
+		 * @param {string} id
+		 * @param {{version?: string}} [opts] - 缺省用台账里的 previousVersion
+		 */
+		async rollback(id, opts = {}) {
+			if (!io) return failure(INSTALL_CODES.NO_IO, "未注入文件系统端口，安装器不可用");
+			const state = await readInstalled();
+			if (!state.ok) return state;
+			const entry = state.data.modules[id];
+			if (!entry) return failure(INSTALL_CODES.NOT_INSTALLED, `${id} 不在安装台账里`, { stage: "checking", id });
+
+			const current = entry.version;
+			const target = opts.version || entry.previousVersion;
+			if (!target) {
+				return failure(INSTALL_CODES.NO_ROLLBACK, `${id} 没有记录上一版本，无法回退（可重装）`, { stage: "checking", id });
+			}
+			if (String(target) === String(current)) {
+				return failure(INSTALL_CODES.NO_ROLLBACK, `${id} 的上一版与当前版都是 ${current}，无需回退`, { stage: "checking", id });
+			}
+
+			let targetProbe;
+			try {
+				targetProbe = await probeModuleVersion(id, target);
+			} catch (error) {
+				return toIoFailure(error, "checking", { id, message: `检查上一版 ${target} 失败: ${error?.message ?? error}` });
+			}
+			const health = assessModule({ id, version: target, ...targetProbe });
+			if (!health.ok) {
+				return failure(INSTALL_CODES.NO_ROLLBACK, `上一版 ${target} 不可用（${health.reasons.join("；")}），请重装`, {
+					stage: "checking",
+					id,
+					target,
+					reasons: health.reasons,
+				});
+			}
+
+			// 坏目录改名留证；目录本来就不在（也是损坏的一种）就跳过这一步
+			let parked = null;
+			const currentDir = packDir(id, current);
+			try {
+				if ((await kindOf(currentDir)) === "dir") {
+					parked = `${paths.modulesRoot}/${id}/.corrupt-${current}-${random()}`;
+					await io.movePath(currentDir, parked);
+				}
+			} catch (error) {
+				return toIoFailure(error, "publishing", { id, message: `让位损坏目录失败: ${error?.message ?? error}` });
+			}
+
+			const next = { ...state.data, modules: { ...state.data.modules } };
+			next.modules[id] = { ...entry, version: target };
+			delete next.modules[id].previousVersion;   // 坏版本不再充当"可回退的上一版"
+			try {
+				await writeInstalled(next);
+			} catch (error) {
+				if (parked) {
+					try {
+						await io.movePath(parked, currentDir);
+					} catch (restoreError) {
+						return failure(INSTALL_CODES.ROLLBACK_FAILED, `回退 ${id} 失败（台账写失败：${error?.message ?? error}），且损坏目录改回失败：${restoreError?.message ?? restoreError}`, {
+							stage: "state",
+							id,
+							rolledBack: false,
+							residual: parked,
+						});
+					}
+				}
+				return failure(INSTALL_CODES.ROLLBACK_FAILED, `回退 ${id} 失败：台账未更新（${error?.message ?? error}）`, {
+					stage: "state",
+					id,
+					rolledBack: true,
+				});
+			}
+
+			return success({
+				id,
+				version: target,
+				from: current,
+				parked,
+				requiresReload: true,
+				message: `${id} 已回退到 ${target}${parked ? `（损坏的 ${current} 已改名为 ${parked}）` : `（原本就没有 ${current} 目录）`}`,
+			});
+		},
+
+		/**
 		 * 列出某模块本地已有的版本目录（P12 回滚/清理用）。
-		 * 让位/删除中的 `.replacing-*`、`.removing-*` 由 io.listDir 的隐藏前缀规则自然排除。
+		 * 让位/删除/隔离中的 `.replacing-*`、`.removing-*`、`.corrupt-*` 一律不算"可用版本"。
 		 * @param {string} id
 		 */
 		async localVersions(id) {
@@ -1086,7 +1232,7 @@ export function createPackageInstaller(deps = {}) {
 			if (rootKind !== "dir") return success({ id, versions: [] });
 			try {
 				const { dirs } = await io.listDir(root);
-				return success({ id, versions: dirs.filter(dir => !/\.(replacing|removing)-/.test(dir)) });
+				return success({ id, versions: dirs.filter(dir => !/\.(replacing|removing|corrupt)-/.test(dir)) });
 			} catch (error) {
 				return toIoFailure(error, "listing", { message: `列举 ${root} 失败: ${error?.message ?? error}` });
 			}

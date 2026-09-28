@@ -80,23 +80,35 @@ const el = (className, parent, tagName = "div") => {
 };
 
 /** 画出提示窗。返回移除函数（测试与"关闭"都用同一个出口） */
-export function createUpdateNotice(data) {
+export function createUpdateNotice(data, repairs = []) {
 	loadStyles();
 	// 同一时刻只留一个（重复触发时先清掉旧的）
 	document.querySelector(".decade-update-overlay")?.remove();
 
+	const list0 = Array.isArray(repairs) ? repairs.filter(Boolean) : [];
+	const hasUpdates = Boolean(data?.updates?.length || data?.core?.behind);
 	const overlay = el("decade-update-overlay", document.body);
 	const close = () => overlay.remove();
 
 	const dialog = el("decade-update-dialog", overlay);
 	const head = el("decade-update-head", dialog);
-	el("decade-update-title", head).textContent = "发现可更新的模块";
+	el("decade-update-title", head).textContent = hasUpdates
+		? (list0.length ? "模块更新与自动修复" : "发现可更新的模块")
+		: "已自动修复模块";
 	const closeBtn = el("decade-update-close", head, "button");
 	closeBtn.textContent = "×";
 	closeBtn.addEventListener("click", close);
 
 	const list = el("decade-update-list", dialog);
-	if (data.core?.behind) {
+	// P12：启动时的自动修复（回退成功 / 需要重装）
+	for (const note of list0) {
+		const row = el("decade-update-repair", list);
+		el("decade-update-row-name", row).textContent = note.kind === "restored"
+			? `${note.id}：${note.from} → ${note.to}`
+			: `${note.id}：需要重装`;
+		el("decade-update-core-note", row).textContent = note.message || "";
+	}
+	if (data?.core?.behind) {
 		const core = el("decade-update-core", list);
 		el("decade-update-row-name", core).textContent = `扩展本体 ${data.core.current} → ${data.core.latest}`;
 		el("decade-update-core-note", core).textContent = "本体更新需要下载整包替换扩展目录（不会自动替换）：";
@@ -106,7 +118,7 @@ export function createUpdateNotice(data) {
 		link.target = "_blank";
 		link.rel = "noopener";
 	}
-	for (const item of data.updates) {
+	for (const item of data?.updates || []) {
 		const row = el("decade-update-row", list);
 		el("decade-update-row-name", row).textContent = item.name || item.id;
 		el("decade-update-row-version", row).textContent = `${item.current} → ${item.latest}`;
@@ -119,15 +131,17 @@ export function createUpdateNotice(data) {
 		close();
 		showModuleManager();
 	});
-	const ignoreBtn = el("decade-update-btn", actions, "button");
-	ignoreBtn.textContent = "忽略此版本";
-	ignoreBtn.addEventListener("click", () => {
-		// 记的是"这次展示的版本号"：版本一变还会再提（用户决定：每版一次）
-		game.saveConfig(ignoredKey(), ignoreAll(lib.config?.[ignoredKey()], data));
-		close();
-	});
+	if (hasUpdates) {
+		const ignoreBtn = el("decade-update-btn", actions, "button");
+		ignoreBtn.textContent = "忽略此版本";
+		ignoreBtn.addEventListener("click", () => {
+			// 记的是"这次展示的版本号"：版本一变还会再提（用户决定：每版一次）
+			game.saveConfig(ignoredKey(), ignoreAll(lib.config?.[ignoredKey()], data));
+			close();
+		});
+	}
 	const laterBtn = el("decade-update-btn", actions, "button");
-	laterBtn.textContent = "稍后";
+	laterBtn.textContent = hasUpdates ? "稍后" : "知道了";
 	laterBtn.addEventListener("click", close);
 
 	return close;
@@ -153,16 +167,20 @@ export function waitForWelcome({ hasWelcome = () => Boolean(document.querySelect
 	});
 }
 
-/** 接线：content 阶段调用。延迟一点再查，避免和进场动画/欢迎窗抢注意力 */
-export function setupUpdateNotice() {
-	if (!shouldAutoCheck()) return;
+/**
+ * 接线：content 阶段调用。
+ * @param {{repairs?: Array}} [options] - P12 启动期自动修复的记录（moduleSystem.takeRepairNotes()）
+ * 有修复记录时**即使关掉了"启动检查更新"也要弹**——回退已经发生了，玩家有权知道。
+ */
+export function setupUpdateNotice({ repairs = [] } = {}) {
+	const notes = Array.isArray(repairs) ? repairs.filter(Boolean) : [];
 	setTimeout(() => {
-		checkForUpdates()
-			.then(async data => {
-				if (!data) return;
-				if (!(await waitForWelcome())) return;   // 欢迎窗一直开着：这次不打扰
-				createUpdateNotice(data);
-			})
-			.catch(() => {});
+		const show = async data => {
+			if (!data && !notes.length) return;
+			if (!(await waitForWelcome())) return;   // 欢迎窗一直开着：这次不打扰
+			createUpdateNotice(data, notes);
+		};
+		const probing = shouldAutoCheck() ? checkForUpdates() : Promise.resolve(null);
+		probing.then(show).catch(() => show(null));
 	}, SHOW_DELAY_MS);
 }

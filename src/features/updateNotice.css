@@ -119,6 +119,19 @@
 	word-break: break-all;
 }
 
+/* P12：启动时自动修复的记录（回退成功 / 需要重装） */
+.decade-update-repair {
+	display: block;
+	position: relative;
+	background: rgba(245, 158, 11, 0.24);
+	border-radius: 10px;
+	padding: 10px 12px;
+	margin-bottom: 8px;
+	color: #fff;
+	font-size: 13.5px;
+	line-height: 1.6;
+}
+
 /* 底部按钮区 */
 .decade-update-actions {
 	position: relative;

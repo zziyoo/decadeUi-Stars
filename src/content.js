@@ -8,7 +8,7 @@ import { lib, game, ui, get, ai, _status } from "noname";
 import { bootstrapExtension } from "./core/bootstrap.js";
 import { createDecadeUIObject } from "./core/decadeUI.js";
 import { registerDecadeUIUtilityModule, enhanceDecadeUIRuntime } from "./core/utility.js";
-import { getModuleSystem } from "./core/moduleSystem.js";
+import { getModuleSystem, takeRepairNotes } from "./core/moduleSystem.js";
 import { config as extensionConfig } from "./config.js";
 
 // 动画模块
@@ -100,8 +100,8 @@ export const finalizeDecadeUICore = (decadeUI, config) => {
 	setupCharacterAudio();
 	setupDynamicSkin();
 	setupWelcomeDialog(lib.extensionPack[decadeUIName]);
-	// P11：启动后异步查一次模块更新（未配置模块源/离线/超时一律静默，不阻塞进游戏）
-	setupUpdateNotice();
+	// P11：启动后异步查一次模块更新；P12：把启动期自动修复的记录一并告知（未配置/离线/超时一律静默）
+	setupUpdateNotice({ repairs: takeRepairNotes() });
 
 	console.timeEnd(decadeUIName);
 	return decadeUI;
