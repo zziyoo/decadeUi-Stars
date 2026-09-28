@@ -161,4 +161,32 @@ const { featureRuntime, moduleManager, registry, resourceLoader } = getModuleSys
 	assert.deepEqual(kill.actions.map(a => a.kind), ["disable"], "同一列表里门控型 Feature 的启停不受拆包型影响");
 }
 
+// ------------------------------------------------------------------ 第三方注册不得污染可用性（P1 兼容性回归）
+
+{
+	// 上一块已把 card-skin 注册为已安装；重起一次内部扫描作为干净起点
+	const statics = createStaticsModule();
+	await settle();
+	assert.equal(isCardSkinAvailable("decade"), true, "A：包装上且内置 decade 扫到牌面 → 可用");
+
+	// B：第三方用**已有** skinKey 注册，而它自己的目录不存在/为空
+	statics.registerCardSkin({ extensionName: "空壳扩展", skinKey: "decade", extension: "png" });
+	await settle();
+	assert.equal(isCardSkinAvailable("decade"), true, "B：第三方的空目录不许把内置 decade 整体标成不可用");
+	assert.equal(getAvailableCardSkinPresets().some(skin => skin.key === "decade"), true, "B：下拉里内置 decade 必须还在（否则 skin-applier 会当成 off）");
+
+	// C：第三方用已有 skinKey + cardNames → 它补的牌面走它自己的根，内置同名条目不被覆盖
+	statics.registerCardSkin({ extensionName: "同行扩展", skinKey: "decade", extension: "png", cardNames: ["sha", "yijie"] });
+	assert.equal(statics.cards.decade.yijie.url, `${lib.assetURL}extension/同行扩展/image/card-skins/decade/yijie.png`, "第三方补的牌面指向它的扩展目录（§57 根不变）");
+	assert.equal(statics.cards.decade.sha.url, `${decadeUIPath}modules/card-skin/1.4.2/image/card-skins/decade/sha.png`, "内置同名条目优先，第三方不许覆盖（原版去重行为）");
+	assert.equal(isCardSkinAvailable("decade"), true, "C：第三方注册根本不写 cardSkinAvailability");
+
+	// D：第三方用新 skinKey → 原有行为保持；空目录也不得写出一条"不可用"（不写＝乐观可用）
+	statics.registerCardSkin({ extensionName: "另一扩展", skinKey: "fresh", extension: "png" });
+	await settle();
+	assert.equal(isCardSkinAvailable("fresh"), true, "D：第三方路径完全不参与可用性发布，否则就是第二个状态源");
+	assert.equal(Object.keys(statics.cards.fresh).length, 0, "D：空目录注册后仍按原样留下空缓存");
+	assert.equal(statics.cards.READ_OK.fresh, true, "D：READ_OK 语义未变（可用性是另一个维度，不许搭车改写）");
+}
+
 console.log("P8 card-skin-pack tests: all passed ✓");

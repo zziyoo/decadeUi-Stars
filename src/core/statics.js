@@ -121,16 +121,20 @@ export function createStaticsModule() {
 	 * @param {string} baseUrl - 图片基础URL
 	 * @param {string[]} cardNames - 卡牌名称列表
 	 * @param {string} ext - 扩展名
+	 * @param {{publishAvailability?: boolean}} [options] - 仅内部扫描用：是否把结果发布为皮肤可用性
 	 */
-	const registerSkins = (skinKey, baseUrl, cardNames, ext) => {
+	const registerSkins = (skinKey, baseUrl, cardNames, ext, { publishAvailability = false } = {}) => {
 		const skinCache = ensureSkinCache(skinKey);
 		for (const name of cardNames) {
 			if (!name || skinCache[name]) continue;
 			skinCache[name] = { url: `${baseUrl}${name}.${ext}`, name, loaded: true };
 		}
 		cards.READ_OK[skinKey] = true;
-		// 可用性由扫描结果说话：扫到 0 张牌面就是不可用（card-skin 包未装时的内置五套即属此类）
-		setCardSkinAvailable(skinKey, cardNames.length > 0);
+		// 可用性只描述**内置 card-skin 包资源**本身，判据是内部那一次扫描（扫到 0 张即不可用）。
+		// 第三方 registerDecadeCardSkin 允许复用已有 skinKey（默认文档示例就是 skinKey:'decade'），
+		// 它自己的目录空不空都无权改写内置皮肤的可用性——否则一次别人的空目录注册
+		// 就会让 skin-applier 把整套内置皮肤当成 off，属对 §57 兼容 API 的行为回归。
+		if (publishAvailability) setCardSkinAvailable(skinKey, cardNames.length > 0);
 	};
 
 	/**
@@ -259,7 +263,8 @@ export function createStaticsModule() {
 
 			const files = await scanDirectory(dir);
 			const names = extractCardNames(files, ext);
-			registerSkins(skin.key, baseUrl, names, skin.extension || "png");
+			// 只有这一次内部扫描有权发布可用性（内置套 + 玩家自建文件夹都在它覆盖范围内）
+			registerSkins(skin.key, baseUrl, names, skin.extension || "png", { publishAvailability: true });
 		});
 
 		await Promise.all(tasks);
