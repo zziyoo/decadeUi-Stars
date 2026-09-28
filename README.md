@@ -2368,19 +2368,22 @@ Online 1.1 → 1.2
 # 六十七、当前任务指针
 
 ```text
-当前阶段：P8（Feature Pack）两刀 ✅ 代码完成
-当前任务：第一刀 featureRuntime + kill-effect 门控（门控型，pack 恒 false，
-          只门控 decadeUI.effect.kill，技能特效/划线/dialog/ghost 与原版一样在）；
-          第二刀 card-skin 拆包——第一个 pack:true：五套内置卡面 1016 文件
-          已 git mv 进 modules/card-skin/1.4.2/；双根寻址（内置→包根、
-          玩家自建→单体根、第三方→别人的扩展根），可用性由扫描结果说话，
-          开关语义仍归既有配置 cardPrettify 的 off（未新增状态源）
+当前阶段：P9（构建系统模块化）✅ 代码完成
+当前任务：pnpm build 现在自动产出 dist/release/{7 个分包}.zip + module-index.json
+          并在同一次运行里做完整校验（--verify 复跑）。zip 根直接是 manifest.json、
+          条目 POSIX 路径、不写目录条目（否则同样内容两次构建摘要不同）；
+          索引 url 写裸文件名，绝对化只由安装器 resolveModuleUrl(url, indexUrl)
+          一处负责且对绝对地址幂等；fetchIndex 回带 indexUrl，窗口把 indexUrl 与
+          index 一起交给 install/update（顺带接通了 §11 依赖自动安装在界面上
+          一直走不到的分支）。Core 本轮不列为可安装包（无包形态）
+前置：P8 两刀 ✅（featureRuntime + kill-effect 门控；card-skin 拆包 + 双根 + §57 兼容修复）
 状态：纯代码 / Node 验证通过；游戏内实测与 Android 真机项并入收尾清单
-      （docs/PROGRESS.md §八「P8 部分」P~Z6），不阻塞推进
+      （docs/PROGRESS.md §八「P8 部分」P~Z6 与「P9 部分」R1~R6），不阻塞推进
 
-下一步候选：P10 最小 module-index（§四十七前置；card-skin 进了索引，
-            P6 的"安装"按钮才第一次真能点亮）
-          或 P9 模块化构建（§四十六；六个样式包 + card-skin 的统一产物与校验）
+下一步：P10 GitHub Release（§四十七）。发布结构 Core / Official Style Packs /
+        Feature Packs / Full Package / module-index.json；本轮产物已可直接上传。
+        建 Release、传资产、推 tag 由维护者本人执行。
+        真机首验重点：本体 JSZip 2.7 能否解开 jszip 3.10 写的包（§五 13）。
 
 注：本指针自 v1.1 起长期失更，历次阶段结论以
 「六十八、变更记录」与 docs/PROGRESS.md 为准。
@@ -2559,4 +2562,21 @@ P0 审计
 - 验证（**纯代码 / Node**）：184 个 JS/mjs `node --check` ✓；八套测试全过 ✓；verify-pack 881 可达 / 0 未知缺失 ✓；check-skin-imports 37 / 0 ✓；`build-card-skin-pack.mjs --verify` 1016 文件 / 20.5MB 数量守恒 ✓；`pnpm build` ✓（确认 `dist/src/core/statics.js` 为当次重新产出）。
 - 范围守护：未改双根设计、未改 card-skin 安装模型、未提前进入 P9/P10。
 - 提交：`64719f3`，与 `28e1092`/`0e890c7` 分开、不 squash。
+
+## v1.12（2026-09-28）P9：构建系统模块化——分包 zip + module-index.json + 完整校验
+
+范围按批准的四项：只做§四十六（不碰发布）、新增 devDep `jszip`、只打已有包（core.zip 与 Full Package 留下轮）、索引 url 用相对地址。
+
+- **构建链**：`pnpm build` = `vite build` → `build-decade-pack.mjs dist` → **`node scripts/build-release.mjs`**。后者产出 `dist/release/` 下七个 `-1.4.2.zip`（六样式 + `card-skin`）与 `module-index.json`，并在同一次运行里完整校验；`--verify` 供门禁复跑，`--list` 预览将打包的包。`dist/` 与 `*.zip` 均已在 `.gitignore`，**产物不入库**。
+- **数据源唯一**：只认盘上 `modules/<id>/<version>/manifest.json`，同 id 取最新语义化版本（复用 `compareVersions`，与安装器§18 同口径）；`.replacing-*`/`.removing-*` 因不匹配版本号形状自然排除；脚本内不另存包清单。
+- **zip 结构**：`manifest.json` 必须直接在根（安装器 `verifyPackageDir` §24 按根位认包，套一层 `<version>/` 会被 `STRUCTURE_INVALID` 拒收）、条目名一律 POSIX 相对路径、输出写在源目录里时不自我包含。
+- **确定性（实测踩出来的）**：条目时间戳固定 `1980-01-01` + `createFolders:false`。JSZip 默认会给父目录补一条时间取**当前时间**的目录条目（DOS 时间 2 秒粒度），留着它，同样内容的两次构建就会算出不同 sha256，索引每次都在无意义地变；解压侧 `moduleIo.extract` 按路径自建目录，不需要目录条目。已证：跨 3 秒两次构建，7 个 zip 与 index 全部逐字节一致。
+- **索引形态**：`{schema:1, core:{version,latest}, modules:{<id>:{name,type,latest,url,sha256,size,dependencies,core,capabilities}}}`。字段名沿用§10 与 `specFromIndex`/`specFromEntry` 已在读的名字，不改契约；`url` 写裸文件名，`sha256/size` 取 **zip 文件自身**（安装器校验的是下载落盘那段字节，不是包内文件之和）；**core 不列为可安装包**（Core 至今无包形态，混进去界面会出现装不上的 Core）。
+- **相对地址解析**：`packageInstaller` 新增导出 `resolveModuleUrl(url, indexUrl)`，**唯一调用点在 `installInner` 的 `checkSpec` 之前**（那里只收 `http(s)` 绝对地址，相对条目本来会被当 `INVALID_SPEC`）。对绝对地址幂等 ⇒ 直接规格、索引里的依赖条目、依赖递归都安全。`fetchIndex` 成功结果回带 `indexUrl`；窗口把 `indexUrl` 与 `index` 交给 `install/update`。
+- **顺带接通**：窗口此前从不把 `index` 传给安装器 ⇒ P5 的§11「缺依赖先按索引装依赖」在界面上一直走不到（只有 Node 测试跑通）。本轮起可达，因此它按**新代码**看待、进了§八 P9 部分 R4 的实测项。
+- 测试：新增 `tests/p9-release-index.test.mjs`（九类解析语义、传与不传 `indexUrl` 的对照、依赖递归两种走向、`fetchIndex` 回带地址、`buildIndex` 形状、`zipDir` 结构含"无目录条目"与两次调用摘要一致）。
+- 验证（**纯代码 / Node**）：186 个 JS/mjs `node --check` ✓；**九套**测试 ✓；`pnpm build` ✓（含 release，实测 7.7s）；`--verify` 通过（`card-skin` 1017 文件 / 21,627,755 字节，5 套皮肤逐套核对）；verify-pack 881/0 ✓；check-skin-imports 37/0 ✓；card-skin `--verify` 1016/20.5MB ✓。
+- **实跑暴露的两个自身缺陷（已修，记录以免被当成"读代码就能发现"）**：①`--verify` 的重算行把 `.digest("hex")` 挂在文件 buffer 上（`TypeError: fs.readFileSync(...).digest is not a function`）——校验前半段全过、末尾才炸，说明"跑一遍"和"跑遍所有分支"不是一回事；②完成日志用 `notes.length` 把 7 个包写成 8 个包（`card-skin` 多一条逐套核对）。
+- **未验证 / 真机首验重点**：构建期用 `jszip@3.10.2` 写、运行时解压是**本体 JSZip 2.7**（未改），本轮只做了"自己回读 + 结构不变量"，**没有**证明 2.7 解得开 3.10 写的每个包；§八「P9 部分」R1~R6 是新加的实测组，R3 一旦报 `STRUCTURE_INVALID`/`ENTRY_MISSING` 即跨版本不兼容（不是网络问题）。另：`module-index.json` 不许手工编辑，`--verify` 会与盘上产物重算逐字节比对。
+- 提交：`dea6561`（相对地址解析）与 `d5b8baf`（构建脚本）各一笔，与本条文档分开，均未 squash。
 - **遗留边界（如实记）**：若 `card-skin` 包未装而某第三方扩展恰好用 `registerDecadeCardSkin({skinKey:'decade'})` 提供了自己的牌面，内置套的可用性仍是 `false`（按要求 2，第三方无权改它），因此该下拉项不出现——这是"内置资源没装上"与"别人借同名 key 供货"两种语义的交叉地带。仓库自带包在位时不会出现该组合；若今后要支持"借内置 key 供货"，需要单独设计（不属于本轮范围）。

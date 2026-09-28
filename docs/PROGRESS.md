@@ -14,7 +14,7 @@
 | Stars 仓库 | https://github.com/zziyoo/decadeUi-Stars （本仓库，**独立开发仓库，已迁入源码**） |
 | 原版扩展（玩家在用，不动） | `zziyoo/decadeUi`，本地路径 `C:\Users\32360\Desktop\无名杀-win32-x64\resources\app\extension\十周年UI` |
 | 总路线 | P0审计 → P1模块基础设施 → P2公共依赖解耦 → P3十周年Pack → P4移动版Pack → P5下载器 → P6模块管理界面 → P7全部Style → P8 Feature Pack → P9模块化构建 → P10 Release → P11自动更新 → P12回滚 → P13旧版本迁移 → P14全量测试 |
-| 当前阶段 | **P8 Feature Pack 两刀全部完成（代码 / Node 验证）**：第一刀 Feature API + `kill-effect` 门控（门控型，`pack` 恒 false，只门控 `effect.kill`）；**第二刀 `card-skin` 拆包**——第一个 `pack:true`：五套内置卡面 1016 文件 / 20.5MB 已 `git mv` 进 `modules/card-skin/1.4.2/`，双根寻址、可用性由扫描说话。待游戏内实测。P5/P6/P8 的真机（Android/SAF）与游戏内实测统一并入§八收尾清单，不阻塞推进。 |
+| 当前阶段 | **P9 构建系统模块化完成（代码 / Node 验证，2026-09-28）**：`pnpm build` 现在自动产出 `dist/release/` 下 7 个分包 zip + `module-index.json`，并在同一次运行里做完整校验（`--verify` 可复跑）。索引 url 用相对地址，解析点只在安装器一处。前置 P8 两刀已完成。待游戏内实测；下一步 P10 GitHub Release（§47，发布动作由用户执行）。P5/P6/P8/P9 的真机与游戏内实测统一并入§八收尾清单，不阻塞推进。 |
 
 ## 二、环境备忘（本机关键信息）
 
@@ -56,12 +56,31 @@
 | 2026-09-28 | **P8/P6 两处修复**（`48a82bc` + `d31ab7e`，详见§四"P8 修复记录"）：①`moduleManagerWindow.refresh()` 不再在 `isAvailable()===false` 时整窗提前 return——门控型 Feature 的启停不碰文件系统，任何平台都必须可用；改为 `buildRows` 新增 `installBlocker`，只置灰 `install/update/uninstall`（附加平台理由、保留 §19 原理由与 `spec`）。②按**原版语义**收窄门控：`killEffect` 只管击杀那一路，`effect.skill`/`effect.line`/`dialog`/`ghost` 恢复无条件注册，`effect.css` 回 `layout.css` 的 `@import`（内含技能特效用的 `.skill-name`），`kill-effect` 的 capabilities 去掉 `skill-effect`、manifest `entry.css` 置空，技能特效调用点去掉可选链回到原版直调 | 182 JS/mjs 语法 ✓；七套测试 ✓（P6 新增 4 块平台降级断言；P8 重写门控接线用例并锁住调用点边界）；verify-pack 881/0、skin-imports 37/0 ✓；构建 ✓ |
 | 2026-09-28 | **P8 第二刀：card-skin 拆包完成**（任务书§45/§60，`28e1092` 寻址与门控 + `0e890c7` 文件搬迁，详见§四"P8 card-skin 记录"）：`card-skin` 成为第一个 `pack:true` 的 Feature，`switchKey:null`（开关语义仍归 `cardPrettify` 的 `off`，不造第二套状态源）；`resourceLoader` 新增 `getModuleRel()` 让"URL 根"与"目录扫描根"共用同一决策；`statics` 按皮肤归属定根（内置五套→包根、玩家自建→单体根、第三方 `registerDecadeCardSkin` 一字未动）；`registerSkins` 顺带发布可用性（扫到 0 张即不可用），`skin-loader.buildSkinUrl` 不可用时返回空串并去掉硬编码扩展名回落，`skin-applier` 把"选中但无牌面"等同 `off`，外观页下拉改用 `getAvailableCardSkinPresets()`。五套卡面 1016 文件 / 21,500,762 字节经 `git mv` 进 `modules/card-skin/1.4.2/`（git 侧 1016 条 rename@100%、零增删），`image/card-skins/.gitkeep` 保留玩家皮肤根 | 184 JS/mjs 语法 ✓；P1/P2/P3/P5/P6/**P8×3** 八套测试 ✓（新增 `tests/p8-card-skin-pack.test.mjs`：假 `game.getFileList` 驱动真实扫描）；数量守恒逐套一致 ✓；verify-pack 881/0、skin-imports 37/0 ✓；构建 ✓（dist 包内 1017 文件、单体侧仅剩 .gitkeep） |
 | 2026-09-28 | **P8 card-skin 验收修复（`64719f3`）**：`registerSkins` 无条件发布可用性，而它同时服务内置扫描与第三方 `registerDecadeCardSkin` —— 别人一次空目录注册即把内置 `decade` 整体标为不可用（`skin-applier` 当 `off`），是对 §57 兼容 API 的行为回归（原版文档示例就是用 `skinKey:'decade'` 复用）。改为 `registerSkins(..., { publishAvailability })`，只有 `loadBuiltinSkins` 的内部扫描传 `true`；第三方两条调用点保持四参不写 availability，皮肤根/去重优先级/`READ_OK` 语义未动，未新增第二套状态源 | 184 JS/mjs 语法 ✓；八套测试 ✓（`p8-card-skin-pack` 新增 A/B/C/D 四态，RED 实测为「B：false 不等于 true」）；verify-pack 881/0、skin-imports 37/0、card-skin `--verify` 1016/20.5MB ✓；`pnpm build` ✓ |
+| 2026-09-28 | **P9 构建系统模块化完成**（任务书§46，`dea6561` 相对地址解析 + `d5b8baf` 构建脚本，详见§四"P9 记录"）：`pnpm build` 追加一步 `scripts/build-release.mjs`，产出 `dist/release/` 下 7 个分包 zip（6 样式 + card-skin）与 `module-index.json`，同一次运行内做完整校验；`--verify` 供门禁复跑、`--list` 预览。zip 根必须直接是 `manifest.json`、条目名 POSIX、**不写目录条目**（父目录条目带当前时间会让同样内容算出不同摘要）；索引 url 写裸文件名，绝对化只由安装器 `resolveModuleUrl(url, indexUrl)` 一处负责（对绝对地址幂等，依赖递归同路）；`fetchIndex` 回带 `indexUrl`，窗口把 `indexUrl` 与 `index` 一起交给 install/update（顺带接通了 P5 §11「缺依赖先按索引装依赖」在界面上一直走不到的分支）。Core 本轮不列为可安装包（无包形态）。新增 devDep `jszip@3.10.2`（仅构建期） | 186 JS/mjs 语法 ✓；P1/P2/P3/P5/P6/P8×3/**P9** 九套测试 ✓；跨 3 秒两次构建 7 个 zip 与 index 逐字节一致 ✓；`--verify` 全项通过 ✓；verify-pack 881/0、skin-imports 37/0、card-skin `--verify` 1016/20.5MB ✓；`pnpm build` ✓（含 release，实测 7.7s） |
 
 ## 四、进行中（当前任务指针）
 
-**当前任务：P8 Feature Pack —— 两刀全部代码完成，待游戏内实测**。第一刀：Feature API + `kill-effect` 门控（`b4d8db5`/`8f89e43`/`16c398d` + 两处修复 `48a82bc`/`d31ab7e`）。第二刀：**`card-skin` 拆包**（`28e1092` 双根寻址与可用性 + `0e890c7` 五套卡面 1016 文件迁入包），详见§四"P8 card-skin 记录"。
-下一阶段候选：**P9 模块化构建**（任务书§46：把"包"纳入构建与发布产物）或 **P10 最小 module-index**（任务书§47 前置；`card-skin` 已进入 `installed.json`，但要能被"下载/安装"就必须先进索引——P6 的在线分支至今仍在等这个文件）。
+**当前任务：P9 构建系统模块化 —— 代码完成，待游戏内实测**（`dea6561` 索引相对地址解析 + `d5b8baf` `scripts/build-release.mjs`，详见§四"P9 记录"）。上一阶段 P8 两刀已完成：第一刀 Feature API + `kill-effect` 门控（`b4d8db5`/`8f89e43`/`16c398d` + 修复 `48a82bc`/`d31ab7e`），第二刀 `card-skin` 拆包（`28e1092`/`0e890c7` + §57 兼容修复 `64719f3`）。
+下一阶段：**P10 GitHub Release（任务书§47）**——发布结构 Core / Official Style Packs / Feature Packs / Full Package / module-index.json 与"下载链接必须可被客户端解析"。本轮产物已能直接作为上传物；建 Release、传资产、推 tag 由用户执行，我这侧只负责索引与解析正确。
 上一阶段 **P6 模块管理界面 —— ✅ 已验收通过（2026-09-27 用户游戏内实测：窗口可开、布局正常、"已独立安装 6"读取正确）**。P5（任务书§42 + §17/§18/§19/§11/§24/§20）已完成：`6c76534` + `f4a69ac` + `df2afea` + `29a69e3` + P6 实测暴露的 fs 锚点修复 `40149bf`；**P5/P6/P8 的 Android/SAF 真机实测并入§八收尾清单，不阻塞推进**。
+
+### P9 记录（构建系统模块化，任务书§46）
+
+| 项 | 内容 |
+|---|---|
+| 产物 | `pnpm build` = `vite build` → `build-decade-pack.mjs dist`（样式包部署）→ `scripts/build-release.mjs`。后者产出 `dist/release/`：`baby/card-skin/codename/decade/mobile/online/yjcm` 七个 `-1.4.2.zip` + `module-index.json`。`dist/` 与 `*.zip` 均已在 `.gitignore` 内，**产物不入库** |
+| 数据源唯一 | 只认盘上 `modules/<id>/<version>/manifest.json`；同一 id 取最新语义化版本（用 `manifest.compareVersions`，与安装器§18 更新判定同口径）；`.replacing-*`/`.removing-*` 事务目录因不匹配 `^\d+\.\d+\.\d+` 自然被排除。脚本里**不另存一份包清单** |
+| zip 结构 | `manifest.json` 必须直接在根（安装器 `verifyPackageDir` §24 就按根位认包，套一层 `<version>/` 会被 STRUCTURE_INVALID 拒收）；条目名一律 POSIX 相对路径；输出文件若写在源目录内会被排除（不自我包含） |
+| 确定性 | 条目时间戳固定 `1980-01-01` + `createFolders: false`。后者是实测出来的坑：JSZip 默认为父目录自动补目录条目，而那些条目的时间是**当前时间**（DOS 时间 2 秒粒度），留着它，同样内容的两次构建就会算出不同 sha256，索引每次都在无意义地变。解压侧 `moduleIo.extract` 本来就按路径自建目录，不需要目录条目 |
+| 索引形态 | `{ schema:1, core:{version,latest}, modules:{ <id>: {name,type,latest,url,sha256,size,dependencies,core,capabilities} } }`。字段名沿用§10 与 `packageInstaller.specFromIndex`/`moduleAdmin.specFromEntry` 已经在读的名字，不改契约。`url` 写**裸文件名**；`sha256`/`size` 取 **zip 文件自身**（安装器校验的是下载落盘那段字节，不是包内文件之和）；**core 不列为可安装包**（本轮范围决定：Core 无包形态，混进去界面会出现装不上的 Core） |
+| 相对地址解析 | `packageInstaller` 新增导出 `resolveModuleUrl(url, indexUrl)`，且**唯一调用点在 `installInner` 的 `checkSpec` 之前**（那里只收 `http(s)` 绝对地址，相对条目本来会被当 INVALID_SPEC）。对绝对地址幂等 ⇒ 直接规格、索引里的依赖条目、依赖递归再进来都安全。`fetchIndex` 成功结果回带 `indexUrl`；窗口把 `indexUrl` + `index` 交给 `install/update` |
+| 顺带接通 | 窗口此前从不把 `index` 传给安装器 ⇒ P5 的§11「缺依赖先按索引装依赖」在界面上其实一直走不到，只有 Node 测试跑得通。本轮把 `index` 一并传入，该分支首次可达（也由此进入 P6 窗口的实测面） |
+| 校验（`--verify` 同规则，任一不符即非零退出） | ①zip 回读：根位 manifest 存在、`validateManifest` 复用通过、`manifest.id/version` 与目标一致、`manifest.entry.js/css` 逐个必须在包里、条目数 == 源目录文件数且逐个存在；②索引：每包有条目、`latest/url` 与盘上一致、`sha256`/`size` 与 zip 重算一致、相对 url 必须能解析成以该文件名结尾的绝对地址、`checkCoreRequirement(entry.core, coreVersion)` 通过、索引里不得出现 core、不得有盘上不存在的多余条目；③`card-skin` 按 `manifest.cardSkins` **逐套**核对文件数；④`--verify` 还要求 `module-index.json` 等于"由盘上产物重算的索引"（改了包忘了重生成索引会被抓住） |
+| 依赖 | 新增 devDependency `jszip@3.10.2`（**仅构建期**使用；运行时解压仍走本体 JSZip 2.7，未改 `moduleIo`）。写侧与读侧跨版本，故校验方式是"生成后自己回读 + 结构不变量断言"，而不是假设两版本字节级互通；真机能否被本体 2.7 解开属§八收尾项 |
+| 测试 | `tests/p9-release-index.test.mjs`：`resolveModuleUrl` 九类语义（裸名/子路径/绝对/协议相对/索引带查询串/无基准/空 url/索引地址非法/幂等）；install 传与不传 `indexUrl` 的对照（不传时仍按既有契约 INVALID_SPEC 且零下载）；依赖递归（依赖装失败不继续下主包、依赖已在注册表时只下主包）；`fetchIndex` 回带 `indexUrl`；`buildIndex` 形状；`zipDir` 结构（根位 manifest、**无目录条目**、不自我包含、两次调用摘要一致） |
+| 门禁 | 186 个 JS/mjs `node --check` ✓；九套测试 ✓；`pnpm build` ✓（含 release，实测 7.7s）；跨 3 秒两次构建 7 个 zip + index 逐字节一致 ✓；`--verify` 通过（card-skin 1017 文件 / 21,627,755 字节，卡面 5 套逐套核对）；verify-pack 881/0、check-skin-imports 37/0、card-skin `--verify` 1016/20.5MB ✓ |
+| 实测出的自身缺陷（已修） | `--verify` 的重算行把 `.digest("hex")` 挂在了文件 buffer 上（`TypeError: fs.readFileSync(...).digest is not a function`）——`--verify` 前半段过了、末尾才炸，说明"跑一遍"和"跑遍所有分支"不是一回事；完成日志用 `notes.length` 把 7 个包写成 8 个包（card-skin 多一条逐套核对）。两处都由实跑暴露 |
+| 未做 | GitHub Release 与上传（P10/§47，发布动作在用户侧）、`core.zip`、Full Package 整包、自动更新与回滚（P11/P12）、CI 里的产物校验（本仓库未迁 .github，见§五 5） |
 
 ### P8 card-skin 记录（第二刀：第一个 `pack:true` 的 Feature）
 
@@ -326,18 +345,20 @@
     - 老配置值指向未装包的 key 时等同 `off`，**代码不会替玩家改写配置**（避免"升级顺手清设置"）。
     - 卸载 `card-skin` 后包目录被删，内置五项即时不可选；重启前 `getAvailableCardSkinPresets()` 仍按上次扫描结果给列表（可用性由扫描发布，运行中不再重扫），属预期。
 
+13. **【P9 待真机确认】构建期 zip 与运行时解压器不是同一个库**：产物由 devDep `jszip@3.10.2` 生成，而运行时解压走**本体 JSZip 2.7**（`moduleIo.createZipExtractor`，用法 `new JSZip(buffer)` + `asNodeBuffer()`，未改）。本轮校验方式是"自己回读 + 结构不变量"（根位 manifest、条目名 POSIX、无目录条目），**没有**证明 2.7 能解 3.10 写出的每一个包。真机首验请用 §八 D 行（已改为直接用 `dist/release/` 产物）。若不兼容，症状会是 `STRUCTURE_INVALID`/`ENTRY_MISSING` 而不是下载失败。
+14. **【P9 新增可达面】依赖自动安装首次在界面上可达**：窗口此前从不把索引交给安装器，§11「缺依赖先按索引装依赖」只有 Node 测试跑通过。现在 P6 安装一个带缺失依赖的包会真的递归装依赖（多段进度、可取消），这条路径**没有**游戏内实测记录，风险按新代码看待。
+15. **【P9 产物纪律】** `dist/release/` 不入库（`.gitignore` 已含 `dist/` 与 `*.zip`）。要给别人试装只能走 Release 资产或本地 http 服务，别指望仓库里能拉到 zip；也别手改 `module-index.json`——`--verify` 会拿盘上产物重算并拒绝不一致。
+
 ## 六、下一步
 
-1. ~~P0~~ ✅ ~~P1~~ ✅ ~~P2（含阻塞修复）~~ ✅ ~~P3/P4~~ ✅ ~~四包批量拆分（`33da307`）~~ ✅ ~~P5 下载器/安装器 + 可靠性审查修复 + 两笔补充修复（`f4a69ac`/`df2afea`/`29a69e3`）~~ ✅ ~~P6 模块管理界面（`2bae45e` + 实测暴露的 `40149bf`）~~ ✅ ~~P8 第一刀：Feature API + kill-effect 门控（`b4d8db5`/`8f89e43`）+ P6 Feature 行（`16c398d`）+ 两处修复（`48a82bc`/`d31ab7e`）~~ ✅ ~~P8 第二刀：card-skin 拆包（`28e1092`/`0e890c7`）~~ ✅（2026-09-28，**纯代码 / Node 验证**）。
-2. **无阶段阻塞**：P5/P6/P8 的 Android/SAF 真机与游戏内实测按用户决定**不再阻塞推进**，统一并入§八「项目收尾验证清单」，在收尾（P14 全量测试）阶段一次性执行。
-3. **推送**：`origin/main` = `cc928e0`（`git ls-remote origin main` 于 2026-09-28 再次核实，用户已把 v1.9 台账与两处修复推上去）；本地领先 2 笔：`28e1092`（card-skin 双根寻址与可用性）、`0e890c7`（1016 文件迁入包）+ 本次 v1.10 台账，**推送由用户本人执行**。另一份克隆 `extension/decadeUi-Stars` 落后，别在它上面开发。
+1. ~~P0~~ ✅ ~~P1~~ ✅ ~~P2（含阻塞修复）~~ ✅ ~~P3/P4~~ ✅ ~~四包批量拆分（`33da307`）~~ ✅ ~~P5 下载器/安装器 + 可靠性审查修复 + 两笔补充修复（`f4a69ac`/`df2afea`/`29a69e3`）~~ ✅ ~~P6 模块管理界面（`2bae45e` + 实测暴露的 `40149bf`）~~ ✅ ~~P8 第一刀：Feature API + kill-effect 门控（`b4d8db5`/`8f89e43`）+ P6 Feature 行（`16c398d`）+ 两处修复（`48a82bc`/`d31ab7e`）~~ ✅ ~~P8 第二刀：card-skin 拆包（`28e1092`/`0e890c7` + §57 兼容修复 `64719f3`）~~ ✅ ~~P9 模块化构建：分包 zip + module-index + 完整校验（`dea6561`/`d5b8baf`）~~ ✅（2026-09-28，**纯代码 / Node 验证**）。
+2. **无阶段阻塞**：P5/P6/P8/**P9** 的 Android/SAF 真机与游戏内实测按用户决定**不再阻塞推进**，统一并入§八「项目收尾验证清单」，在收尾（P14 全量测试）阶段一次性执行。
+3. **推送**：**本轮 `git ls-remote` 未能核实**（2026-09-28 两次尝试均 `Failed to connect to github.com port 443 via 127.0.0.1`，本机代理不可达）。可确认的只有本地跟踪引用 `origin/main` = `b345d57`，HEAD = `d5b8baf` ⇒ 本地至少领先 2 笔（`dea6561` 相对地址解析、`d5b8baf` 构建脚本）+ 本次 v1.12 台账。**下一轮开工前先跑一次 `git ls-remote origin main` 再报状态**；推送由用户本人执行。另一份克隆 `extension/decadeUi-Stars` 落后，别在它上面开发。
 4. ~~P6 模块市场/管理界面（任务书§43）~~ ✅ 已完成（2026-09-27）：独立窗口 + 纯逻辑行模型 + 模块源配置键；入口 `decadeUI.showModuleManager` / `Ctrl+Shift+M` / 配置窗口按钮。详见§四"P6 记录"。
-5. **下一阶段候选（二选一，待你定）**：
-   - **P10 最小 module-index**（任务书§47 前置）：产出 `module-index.json` + 分包 zip + 上传方式。**现在它比之前更值钱了**——`card-skin` 这类"仓库自带包"只有进了索引，P6 的"安装"按钮才第一次真能点亮，§42/§43 的在线分支才算验完。
-   - **P9 模块化构建**（任务书§46）：把七个包（6 样式 + card-skin）纳入统一构建与发布产物、`dist` 布局与校验编排（现在只有 `build-decade-pack.mjs` + `vite-plugin-static-copy` 两条路拼起来的）。
-6. ~~P8 第二刀 card-skin 拆包~~ ✅ 已完成（2026-09-28）：双根寻址、可用性由扫描说话、五套卡面 1016 文件进包。详见§四"P8 card-skin 记录"。
-6. **P10 最小 module-index**（任务书§47 的前置）：产出 `module-index.json` 与分包 zip 及上传方式。P6 的"可安装/可更新"链路只有在有索引后才真正可用（当前只有离线分支与手工填 URL）；card-skin 拆包后必须进索引才谈得上"下载"。
-7. **P7 剩余官方样式包**已随 `33da307` 完成；任务书§44"每完成一个单独 PR"未按字面执行（四包一次提交），验收时按样式逐个切换确认。
+5. ~~P8 第二刀 card-skin 拆包~~ ✅ 已完成（2026-09-28）：双根寻址、可用性由扫描说话、五套卡面 1016 文件进包。详见§四"P8 card-skin 记录"。
+6. ~~P9 模块化构建（任务书§46）~~ ✅ 已完成（2026-09-28，`dea6561`/`d5b8baf`）：`pnpm build` 产出 `dist/release/` 七个分包 zip + `module-index.json` 并完整校验。详见§四"P9 记录"。
+7. **下一阶段：P10 GitHub Release（任务书§47）**。产物已可直接上传；发布结构 Core / Official Style Packs / Feature Packs / Full Package / module-index.json，"所有下载链接必须可被客户端解析"这一条要靠§八 P9 部分 R1~R3 在游戏内确认。建 Release、传资产、推 tag 由用户执行；`core.zip` 与 Full Package 若要在§47 里齐，需要先决定 Core 的安装模型（本轮明确没做）。
+8. **P7 剩余官方样式包**已随 `33da307` 完成；任务书§44"每完成一个单独 PR"未按字面执行（四包一次提交），验收时按样式逐个切换确认。
 
 ## 七、会话记录
 
@@ -357,6 +378,7 @@
 | 2026-09-28 | **用户指出两处问题 → 修复（`48a82bc`/`d31ab7e`）**：①`refresh()` 在 `isAvailable()===false` 时整窗提前 return，把"只写配置键"的门控型 Feature 启停一起挡掉了——改为 `buildRows` 新增 `installBlocker`，只置灰 `install/update/uninstall`（保留 §19 原理由与 `spec`），列表/台账/模块源照常。②P8 把 `kill/skill/line` 一起门控是**改变旧行为**：对照原版 `setupEffects()` 无条件注册、`killEffect` 全库只被击杀技能 `filter()` 读取，且 `playerSkill()` 会白等 2.5 秒——门控收窄到 `effect.kill` 一路，技能特效调用点恢复原版直调，`effect.css` 回 `layout.css` 的 `@import`（内含 `.skill-name`），`kill-effect` 的 capabilities 去掉 `skill-effect`、`entry.css` 置空并删掉 `FEATURE_ENTRY`。两处都先写 RED 再改绿，未新增第二套配置、未做动态 import/运行时卸载/card-skin 预拆。门禁：182 语法 ✓、七套测试 ✓、verify-pack 881/0 ✓、skin-imports 37/0 ✓、`pnpm build` ✓ |
 | 2026-09-28 | **P8 第二刀：card-skin 拆包完成（`28e1092` + `0e890c7`）**：按批准的三项范围做——一次搬完、未装包时内置五项从下拉消失、`switchKey:null` 只资源门控（开关语义仍归 `cardPrettify` 的 `off`，不造第二套状态源）。`resourceLoader` 新增 `getModuleRel()` 使"URL 根"与"目录扫描根"共用同一决策；`statics` 按归属定根（内置五套→包根、玩家自建→单体根、第三方 `registerDecadeCardSkin` 一字未动）；可用性由 `registerSkins` 的扫描结果发布，`buildSkinUrl` 对不可用皮肤返回空串（不产生必 404 的地址）并顺手删掉硬编码扩展名回落，`getFallbackKey`/`skin-applier` 同步收紧。五套卡面 1016 文件 / 20.5MB 经 `git mv` 进包（git 侧 1016 条 rename@100%、零增删），`image/card-skins/.gitkeep` 保留玩家根，包 manifest 存每套数量快照 + `--verify` 门禁复跑。新增 `tests/p8-card-skin-pack.test.mjs`（假 `game.getFileList` 驱动真实扫描）。门禁：184 语法 ✓、八套测试 ✓、数量守恒 ✓、verify-pack 881/0 ✓、skin-imports 37/0 ✓、`pnpm build` ✓（dist 包内 1017 文件、单体侧只剩 .gitkeep） |
 | 2026-09-28 | **P8 card-skin 验收发现一处 §57 兼容回归并修复（`64719f3`）**：可用性发布写在了 `registerSkins` 里，而它同时被第三方 `registerDecadeCardSkin` 复用 —— 第三方用**已有** `skinKey`（原版文档示例即 `skinKey:'decade'`）注册一个空/不存在的目录，就会把内置 `decade` 整体标成不可用，`skin-applier` 随之按 `off` 处理。改法是内部选项参数 `{ publishAvailability }`：只有 `loadBuiltinSkins` 那一次扫描有权发布，第三方两条调用点保持四参不写 availability。未动双根设计、未动 card-skin 安装模型、未新增第二套状态源，第三方的皮肤根与同名去重优先级一字未改。测试 A/B/C/D 四态先 RED（`B：false !== true`）后绿；八套测试、184 语法、verify-pack/skin-imports/card-skin `--verify`、`pnpm build` 全过 |
+| 2026-09-28 | **P9 构建系统模块化完成（`dea6561` + `d5b8baf`）**：`pnpm build` 追加 `scripts/build-release.mjs`，产出 `dist/release/` 七个分包 zip + `module-index.json` 并在同一次运行里完整校验（`--verify` 复跑、`--list` 预览）。索引 url 用裸文件名，绝对化只由安装器 `resolveModuleUrl(url, indexUrl)` 一处负责且对绝对地址幂等（解析必须放在 `checkSpec` 之前，那里只收 http(s)）；`fetchIndex` 回带 `indexUrl`；窗口把 `indexUrl` 与 `index` 一起交给 install/update，顺带接通了 P5 §11 依赖自动安装在界面上一直走不到的分支。zip 侧实测出并修掉两个真缺陷：JSZip 默认给父目录补"当前时间"的目录条目导致同样内容摘要不稳（改 `createFolders:false` + 固定 1980 时间戳，证过跨 3 秒两次构建 7 个 zip 与 index 逐字节一致）、`--verify` 重算行 `.digest("hex")` 挂错对象（TypeError）。新增 devDep jszip@3.10.2 仅构建期使用，运行时解压仍是本体 JSZip 2.7 —— 该跨版本兼容性列为真机收尾项。门禁：186 语法 ✓、九套测试 ✓、verify-pack 881/0 ✓、skin-imports 37/0 ✓、card-skin `--verify` 1016/20.5MB ✓、`pnpm build` ✓（7.7s） |
 
 ## 八、项目收尾验证清单（真机 / 游戏内，收尾阶段统一执行）
 
@@ -369,7 +391,7 @@
 | A | 端口可用性与原子性能力 | `await decadeUI.packageInstaller.isAvailable()` | `{available:true, missingIo:false, missingExtractor:false, atomicRename:true}`（桌面端 true；若为 false 说明无 Node fs，发布走非原子的 copy+remove） |
 | B | 读已安装台账 | `await decadeUI.packageInstaller.listInstalled()` | items 含六个样式包，`independent:true`；老条目无 `hashVerified` 字段属正常（仓库自带包未经安装器写入） |
 | C | 离线不崩（任务书§42） | `await decadeUI.packageInstaller.fetchIndex("https://example.invalid/module-index.json")` | `{ok:false, code:"DOWNLOAD_FAILED", cause:"NETWORK"\|"HTTP", attempts:3}`，**无异常抛出、游戏不卡死** |
-| D | 真实安装一个包（外部摘要为唯一信任来源） | 先把 `modules/decade/1.4.2/` 压成 zip（zip 根须直接是 `manifest.json`）、算出它的 sha256，传到可 CORS 访问的 https 地址，然后 `await decadeUI.packageInstaller.install({id:"decade", expectedVersion:"1.4.2", url:"<zip地址>", expectedSha256:"<64位摘要>"}, {onProgress: i => console.log(i)})` | 进度逐条 → `{ok:true, hashVerified:true, path:"modules/decade/1.4.2", requiresReload:true}`；`modules/installed.json` 里该条目的 `sha256` 等于外部值、`hashVerified:true` |
+| D | 真实安装一个包（外部摘要为唯一信任来源，**P9 起直接用构建产物**） | 先 `pnpm build`（或 `node scripts/build-release.mjs`）产出 `dist/release/`，把其中一个 zip（建议先试最小的 `baby-1.4.2.zip`）与 `dist/release/module-index.json` 放到可 CORS 访问的 https 地址（本地可用 `npx http-server -p 8089` 起在仓库根，索引地址就是 `http://localhost:8089/dist/release/module-index.json`），然后 `await decadeUI.packageInstaller.install({id:"baby", expectedVersion:"1.4.2", url:"<zip地址>", expectedSha256:"<索引里那条 sha256>"}, {onProgress: i => console.log(i)})` | 进度逐条 → `{ok:true, hashVerified:true, path:"modules/baby/1.4.2", requiresReload:true}`；`modules/installed.json` 里该条目 `sha256` 等于外部值、`hashVerified:true`。**这一条同时证明"jszip 3 写的包本体的 JSZip 2.7 解得开"**（§五 13），若报 `STRUCTURE_INVALID`/`ENTRY_MISSING` 就是跨版本问题而非网络问题 |
 | D2 | 缺外部摘要的本地安装 | 同 D 去掉 `expectedSha256` | `{ok:true, hashVerified:false}`，warnings 明写"内容未经完整性校验"，台账 `sha256:""`（**不会**把包内自述值当已验证写进去） |
 | E | 摘要不符零落地 | 同 D 但 `expectedSha256` 改成 `"0".repeat(64)` | `{ok:false, code:"SHA_MISMATCH", expected, actual}`，`modules/decade/1.4.2/` 内容不变、`tmp/` 无残留 |
 | F | 使用中拒卸，且 force 也不许（§19） | 当前样式为十周年时依次跑 `await decadeUI.packageInstaller.uninstall("decade")` 与 `await decadeUI.packageInstaller.uninstall("decade", {force:true})` | 两次都是 `{ok:false, code:"IN_USE"}`；`uninstall("core")` 同样拒绝；文件与台账不变 |
@@ -380,7 +402,7 @@
 1. `install` 成功后需 `game.reload()` 才生效（任务书原则4：不做对局中热卸载）。
 2. 下载源必须允许跨域（XHR 读 GitHub Release 资产需走 `objects.githubusercontent.com` 或 raw/jsDelivr 等带 CORS 的地址）；若实测卡在 CORS，把 transport 换成本体 `game.download` 的桌面原生通道是 P6 的备选方案（已预留注入点）。
 3. 测试会改写 `modules/installed.json`；要回到仓库状态用 `git checkout -- modules/installed.json`。
-4. 真实模块包目前不存在（P9/P10 才产出 `module-index.json` 与分包 zip），所以 D~H 需要手工造包；不想造包时至少要跑 A/B/C/F 四条。
+4. **P9 起产物已存在**：`pnpm build` 会产出 `dist/release/*.zip` 与 `module-index.json`（不入库），所以 D~H 不再需要手工造包，直接用产物即可；仍不想联网时至少跑 A/B/C/F 四条。
 5. **IO 故障无法在游戏内安全注入**（需要只读目录/断链回调），已在 Node 层用假 io 覆盖：`createDir` 报错 → 安装器返回 `IO_FAILED@stage=temp`；本体永不回调 → 15 秒后 `IO_STALL`（测试用 3 秒 `Promise.race` 断言不会 pending）。游戏内若安装**超过 15 秒无响应**即属异常，请把返回对象与 `tmp/modules/` 残留情况回贴。
 6. 卸载的事务顺序是"改名让位 → 改台账 → 才真删"，所以中途失败时模块仍在；若你看到 `modules/<id>/.removing-*` 目录，说明删除阶段没走完（不影响使用，可手工删）。
 7. **Android 已知残留面（代码层已尽力，真机仍需确认）**：
@@ -434,4 +456,23 @@
 2. Feature 的启用/禁用不触发任何文件读写：`isAvailable()` 为 false 的平台**同样必须**能启停（`48a82bc` 起窗口不再整窗拒绝；若又变成"整窗空白 + 不支持安装"，是回归，见上表 Y 行）。
 3. 未声明 `switchKey` 的 Feature 不给任何按钮（不许凭空造一个配置键）；`featureStates` 缺省时 Feature 行退回通用规则（显示"未安装 + 安装"），那意味着 `decadeUI.feature` 没挂上，属接线 bug。
 4. **第三方皮肤注册（§57）与可用性是两件事**（`64719f3`）：`registerDecadeCardSkin` 的注册结果**不许**改变内置皮肤的可用性。若你同时启用了另一个会注册卡面的扩展，验证方法是：内置「原十周年」照常可选 → 那个扩展用自己的目录注册 `skinKey:'decade'`（甚至空目录）→ 重载后内置 `decade` **仍可用、卡面仍来自 `modules/card-skin/1.4.2/`**，它补的新牌名走它自己的扩展目录。若内置五项整体消失或卡面回落本体默认，就是这条被改回去了（`tests/p8-card-skin-pack.test.mjs` 的 A/B/C/D 四态会红）。
+
+### P9 部分（构建产物与在线分支，必须在游戏内验）
+
+> 前置：先 `pnpm build`（产物在 `dist/release/`，不入库），再用任意可 CORS 的 https/http 源把 `module-index.json` 与 zip 暴露出去（本地最省事：`npx http-server -p 8089` 起在仓库根，模块源地址填 `http://localhost:8089/dist/release/module-index.json`）。以下均为**单行单表达式**。
+
+| # | 目的 | 指令 / 操作 | 预期 |
+|---|---|---|---|
+| R1 | 索引可读且条目齐 | 在模块管理窗口的"模块源地址"填索引 URL → 保存并刷新 | 提示行出现"模块源已连接（索引 schema 1）"；7 个包行（六样式 + `card-skin`）全部出现 `可安装/可更新` 判定；汇总行"可安装 N"不为 0 |
+| R2 | **相对 url 解析** | `await decadeUI.packageInstaller.fetchIndex("http://localhost:8089/dist/release/module-index.json")` | `{ok:true, indexUrl:"<你填的那个地址>", index:{…}}`；`index.modules.baby.url` 是 `"baby-1.4.2.zip"`（裸文件名）——界面与安装器必须能把它解析成同目录下的绝对地址 |
+| R3 | 真装一个包（含跨版本解压） | 按 §八 D 行用 `dist/release/baby-1.4.2.zip` 走 `install(...)` | `{ok:true, hashVerified:true, requiresReload:true}`；**若报 `STRUCTURE_INVALID`/`ENTRY_MISSING`，说明本体 JSZip 2.7 解不开 jszip 3 写的包**（§五 13），这是本轮最大的未知量，请务必回贴返回对象 |
+| R4 | 依赖自动安装（界面首次可达） | 卸载 `card-skin` 后重载 → 在窗口里对 `card-skin` 点"安装" | 进度依次出现「安装依赖 → 下载中 → 落盘 → 解压中 → 校验中 → 发布中 → 写台账」；`dependencies:[core]` 里的 core 已在注册表 ⇒ 不应去下载 core（若出现下载 core 就是依赖判定退化）；成功后行变"已安装" |
+| R5 | 取消与残留 | 装一个较大的包（`card-skin`，20MB）过程中点"取消" | `{ok:false, code:"CANCELLED"}`，`tmp/` 无残留、`modules/` 不出现半成品目录、台账未变 |
+| R6 | 索引与产物一致 | 命令行 `node scripts/build-release.mjs --verify` | 输出"校验通过：7 个包"且"module-index.json 与产物一致"；故意改动 `dist/release/` 里任一 zip 后再跑，必须**失败退出**（非零码），不许警告着过 |
+
+**注意事项（P9）**
+1. 构建期 zip 由 devDep `jszip@3.10.2` 生成，运行时解压是**本体 JSZip 2.7**（未改）。R3 是这项兼容性的首验，成功与否都要回贴。
+2. 索引里的 `sha256/size` 取自 **zip 文件本身**；手工重新压 zip（哪怕内容一样）大概率摘要变，`install` 会以 `SHA_MISMATCH` 零落地拒收——这是设计，不是 bug。
+3. `module-index.json` 不许手工编辑：`--verify` 会用盘上产物重算并逐字节比对。
+4. Core 本轮**不在**索引的可安装列表里（无包形态）；界面上 `core` 行仍显示"核心组件（随扩展发布）"且无按钮，属预期。
 
