@@ -2662,3 +2662,17 @@ P0 审计
 - 测试（新增 `tests/p10-release.test.mjs`，临时沙盒、不碰仓库产物）：打包前缀/排除项（内部三件与对外文档对照）/无目录条目/两次打包同摘要；四类整包篡改必须失败（缺根位文件、缺分包清单、混入 `release/`、多余条目）；说明清单含全部资产的字节数与 sha256 且表格列数完整；GitHub Release 形状的裸文件名解析。负例走脚本的 `die()`，测试里断言后复位 `process.exitCode`（否则测试进程会以非零码退出——那正是它在 CLI 里该有的行为）。
 - 门禁：228 JS/mjs `node --check` ✓；**十一套**测试 ✓；verify-pack 881/0、check-skin-imports 37/0 ✓；`pnpm build` ✓；`build-release --verify` exit=0 ✓。
 - **未做（用户侧）**：建 Release、传 9 个资产、推 tag。上传清单与说明在 `dist/release/RELEASE-NOTES.md`，也摘要进了 §六 7。
+
+## v1.19（2026-09-28）P11 自动更新：启动查一次，只提示不代劳
+
+任务书§48 要求"启动 → 读本地版本 → 读远程索引 → 比较 → 提示更新，且能只更新某一项而不是每次下完整 UI"。四个决定（用户批）：**Core 只提示不自动替换**、**可关闭的提示窗**、**启动后异步查一次**、**每版一次可忽略**。
+
+- **纯逻辑先写（`src/core/updateChecker.js`）**：`checkUpdates({installed, index, coreVersion, ignored})` 产出 `{updates, ignoredUpdates, core:{behind,current,latest}}`；版本比较复用 `manifest.compareVersions`（与安装器§18 同口径，不写第二套）。核心原则是**读不出来就沉默**：本地版本未知（null/空/非版本号）、`latest` 非法、索引比本机旧——一律不提示。宁可漏一次，也不要把垃圾数据变成一次白下载（那是玩家的一次流量和一次困惑）。忽略清单的读写也是纯函数（坏 JSON 当空，不抛）。
+- **界面（`updateNoticeWindow.js` + `updateNotice.css`）**：可关闭的小窗，逐条列 `名字 1.4.2 → 1.4.3`；Core 落后单独一块并给"打开发布页"链接（**只提示**，本体就是正在运行的扩展目录，自我覆盖风险高）；按钮＝打开模块管理（复用现成的更新/进度/取消）、忽略此版本、稍后。列表自带滚动上限——P6 的提示条就是因为没上限被 `overflow:hidden` 剪掉过；DOM 逐类声明 `position`，不受本体 `div{position:absolute}` 侵扰。
+- **接线**：`content.js` 末尾 `setupUpdateNotice()` 延迟 1.5 秒异步查一次，`fetchIndex` 走安装器现成的重试/超时（5 秒）。**未配置模块源 / 离线 / 索引坏 / 超时 / 抛错一律静默返回 null**：不弹空窗、不写状态、不阻塞进游戏。新增可见配置键 `autoCheckUpdate`（`init:true`，关掉即不查）；忽略记录存 `extension_<扩展名>_ignoredUpdates`，跟随既有键前缀约定，不新增存储层。
+- **"每版一次"的实现**：忽略记的是**那个 `latest` 版本号**而不是"这个模块"——版本一变（1.4.3 → 1.4.4）还会再提。否则玩家一次忽略就等于永久放弃该模块的更新。
+- 测试（`tests/p11-update-check.test.mjs`，19 组）：13 组纯逻辑（更新/不降级/同版本/未安装不算更新/本地版本未知/null 边界/Core 落后与索引缺 core/忽略只对同一版本生效/输出排序/空输入不抛/忽略读写/批量忽略）+ 6 组接线（默认查与明确关掉、未配置不发请求、离线与抛错都吞、有更新返回可展示数据、全被忽略则不弹、无更新不弹空窗）。Core 忽略与批量忽略两块**先 RED 后 GREEN**。
+- **真机演示源**：现有产物索引里都是 1.4.2 ⇒ "发现更新"这条测不出来，故加 `tmp/make-update-demo.mjs`（不入库）：把 `baby` 复制成 1.4.3、索引里 baby 与 core 都标 1.4.3、其余保持 1.4.2，产出 `tmp/update-demo/release/`，用 `node tmp/dev-release-server.mjs 8100 --root tmp/update-demo/release` 服务；它只动 `tmp/`，不碰正式产物。§八"P11 部分"列了 5 条探针（发现更新/忽略只压一次/提示→窗口→更新整条链/关开关不查/离线静默）。
+- 顺带记一笔盘上证据：用户此前在游戏里装了 `mobile`/`online`/`yjcm`，台账里三条都是 `source:"local"` + `hashVerified:true`、无 `previousVersion`、7 个包目录文件数全对、无事务残留 ⇒ **P5 的 EPERM 有界重试 + 能力门之后的安装链路真机通过**（§八 R4 只剩界面观感待他确认）。
+- 门禁：231 JS/mjs `node --check` ✓；**十二套**测试 ✓；verify-pack 881/0、check-skin-imports 37/0 ✓；`pnpm build` ✓；`build-release --verify` exit=0 ✓（整包随源码增至 3592 文件 / 112,104,844 字节 / `fe14797f5834…`；分包与索引自 P9 起未变——**发布时以 `RELEASE-NOTES.md` 里的数字为准**）。
+- 范围：未动 P9 构建架构、ZIP 格式、`module-index.json` 结构、Feature/Style Runtime、card-skin 架构、安装事务；未做 CI 自动发布与自动下载更新（用户决定只提示）。P12 回滚的地基已在（`update()` 保留旧版本目录 + 台账 `previousVersion`）。
