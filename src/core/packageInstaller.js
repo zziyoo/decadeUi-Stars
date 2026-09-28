@@ -155,6 +155,41 @@ export function createPackageInstaller(deps = {}) {
 				? (...args) => extractZip.extract(...args)
 				: null;
 
+	/**
+	 * 解压能力的**真实**探测缓存（null=尚未探测）。
+	 *
+	 * `extractArchive` 只说明"端口对象在"，真正能不能解压要看运行时取不取得到一份可用的 JSZip
+	 * （本体把它内联成 ES 模块、不挂全局，历史上正是"端口在但取不到库"）。这里把 probe 的结论
+	 * 缓存下来：成功失败都缓存、并发复用同一次探测，于是
+	 *   - `ready()` 可以随便被窗口反复调用，不会把 JSZip 反复加载；
+	 *   - `isAvailable()` 同步拿到"当前已知"的真实能力；
+	 *   - 安装路径能在**下载之前**就知道该不该拒（不再白下 20MB 才失败）。
+	 * 重载游戏会重建安装器，缓存自然清空；刻意不提供 reset（任务书§四）。
+	 */
+	let extractorReadiness = null;
+	let extractorProbe = null;
+
+	function ensureExtractorReadiness() {
+		if (extractorReadiness) return Promise.resolve(extractorReadiness);
+		if (extractorProbe) return extractorProbe;
+		extractorProbe = (async () => {
+			if (!io) return { ok: false, reason: "未注入文件系统端口" };
+			if (!extractArchive) return { ok: false, reason: "未注入解压端口（ZIP）" };
+			// 端口没提供 probe（注入的替身/单测/纯函数端口）时按既有事实报可用，绝不凭空判死
+			if (typeof extractZip?.probe !== "function") return { ok: true, reason: "" };
+			try {
+				const probed = await extractZip.probe();
+				return { ok: probed?.ok === true, reason: probed?.reason || "" };
+			} catch (error) {
+				return { ok: false, reason: `探测解压能力时抛错：${error?.message ?? error}` };
+			}
+		})().then(result => {
+			extractorReadiness = result;
+			return result;
+		});
+		return extractorProbe;
+	}
+
 	const packDir = (id, version) => `${paths.modulesRoot}/${id}/${version}`;
 	const emit = (opts, info) => {
 		if (typeof opts.onProgress === "function") {
@@ -453,6 +488,15 @@ export function createPackageInstaller(deps = {}) {
 	async function installInner(rawSpec, opts = {}, chain = new Set()) {
 		if (!io) return failure(INSTALL_CODES.NO_IO, "未注入文件系统端口，安装器不可用");
 		if (!extractArchive) return failure(INSTALL_CODES.NO_EXTRACTOR, "未注入可用的解压端口（ZIP），安装器不可用");
+		// 真实能力检查必须在**下载之前**：已知取不到 JSZip 时先把包下完再失败是白费流量
+		// （窗口那侧靠同一次缓存，不会因此多探测一遍）。尚未探测的走这里探一次再决定。
+		const readiness = await ensureExtractorReadiness();
+		if (!readiness.ok) {
+			return failure(INSTALL_CODES.NO_EXTRACTOR, `解压能力不可用：${readiness.reason || "原因未知"}`, {
+				stage: "resolving",
+				extractor: false,
+			});
+		}
 
 		// 信任来源只能是外部安装目标（索引条目/调用方），不能是包内自述：见 externalTarget()
 		const spec = externalTarget(rawSpec);
@@ -759,13 +803,27 @@ export function createPackageInstaller(deps = {}) {
 		 * atomicRename=false 表示本平台发布走 copy+remove，**不是原子操作**（可能留部分副本），
 		 * 安装器仍会尽力回滚，但 UI 应提示"安装中断后建议重做一次"。
 		 */
+		/**
+		 * 同步能力快照：表示"当前**已知**的可执行安装能力"，不再只是"端口对象挂没挂"。
+		 *
+		 * - 端口缺失 → available:false + 对应 missing* 标记；
+		 * - 端口在但还没探测 → `ready:false`、available 保持 false（**未知 ≠ 可用**）；
+		 * - 探测过 → available 就是 probe 的结论，失败时带 `reason`。
+		 *
+		 * 真值来源只有一处：`ready()` 那次探测（与安装路径共用同一缓存）。
+		 */
 		isAvailable() {
-			return {
-				available: !!io && !!extractArchive,
+			const state = {
+				available: false,
 				missingIo: !io,
 				missingExtractor: !extractArchive,
 				atomicRename: io?.capabilities?.atomicRename ?? false,
+				ready: extractorReadiness !== null,
 			};
+			if (state.missingIo || state.missingExtractor) return state;
+			if (!extractorReadiness) return state;
+			if (!extractorReadiness.ok) return { ...state, reason: extractorReadiness.reason };
+			return { ...state, available: true };
 		},
 
 		/**
@@ -778,11 +836,7 @@ export function createPackageInstaller(deps = {}) {
 		 * @returns {Promise<{ok: boolean, reason: string}>}
 		 */
 		async ready() {
-			if (!io) return { ok: false, reason: "未注入文件系统端口" };
-			if (!extractArchive) return { ok: false, reason: "未注入解压端口（ZIP）" };
-			if (typeof extractZip.probe !== "function") return { ok: true, reason: "" };
-			const probed = await extractZip.probe();
-			return { ok: probed?.ok === true, reason: probed?.reason || "" };
+			return ensureExtractorReadiness();
 		},
 
 		/** 读取 installed.json（结构化，不抛错） */

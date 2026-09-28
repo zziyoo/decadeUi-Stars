@@ -841,7 +841,7 @@ assert.equal(checkCoreRequirement("~1.5.0", "1.9.0").ok, false, "不认识的写
 
 {
 	const bare = createPackageInstaller();
-	assert.deepEqual(bare.isAvailable(), { available: false, missingIo: true, missingExtractor: true, atomicRename: false });
+	assert.deepEqual(bare.isAvailable(), { available: false, missingIo: true, missingExtractor: true, atomicRename: false, ready: false });
 	assert.equal((await bare.install({ id: "x", url: "https://test/a.zip" })).code, INSTALL_CODES.NO_IO);
 	assert.equal((await bare.uninstall("x")).code, INSTALL_CODES.NO_IO);
 	assert.equal((await bare.listInstalled()).code, INSTALL_CODES.NO_IO);
@@ -852,6 +852,55 @@ assert.equal(checkCoreRequirement("~1.5.0", "1.9.0").ok, false, "不认识的写
 	);
 	const noZip = createPackageInstaller({ io: createFakeIo() });
 	assert.equal((await noZip.install({ id: "x", url: "https://test/a.zip" })).code, INSTALL_CODES.NO_EXTRACTOR);
+}
+
+// -------------------------------------------- 能力真实性：已知取不到解压能力时，下载前就拒
+
+{
+	// 端口对象在、但运行时取不到 JSZip ⇒ install 不许先下 20MB 再失败
+	const registry = createModuleRegistry();
+	const io = createFakeIo();
+	let downloads = 0;
+	const installer = createPackageInstaller({
+		registry,
+		moduleManager: createModuleManager({ registry }),
+		io,
+		extractZip: { extract: async () => ["tmp/x"], probe: async () => ({ ok: false, reason: "取不到本体 JSZip" }) },
+		download: async () => { downloads++; return { buffer: new Uint8Array([1]).buffer, bytes: 1, attempts: 1 }; },
+	});
+	const spec = { id: "testmod", expectedVersion: "1.0.0", url: "https://test/a.zip", expectedSha256: "0".repeat(64) };
+	const result = await installer.install(spec);
+	assert.equal(result.code, INSTALL_CODES.NO_EXTRACTOR, `实际 ${result.code}`);
+	assert.equal(result.stage, "resolving", "早拒发生在下载之前，stage 不该是 downloading/extracting");
+	assert.equal(downloads, 0, `能力缺失时下载次数必须为 0，实际 ${downloads}`);
+	assert.equal(io.files.size, 0, "既没下载也不该落下任何文件（含 tmp/ 临时件）");
+	assert.equal(await io.readText("modules/installed.json"), null, "台账不得被创建或改写");
+	assert.equal(installer.isAvailable().available, false, "isAvailable() 也要跟着转为不可用");
+	assert.equal(installer.isAvailable().ready, true, "这次探测已被记账");
+	// 更新与卸载走同一道门：能力缺失时也不该动文件
+	assert.equal((await installer.update("testmod", { spec })).code, INSTALL_CODES.NO_EXTRACTOR);
+	assert.equal(downloads, 0);
+}
+
+{
+	// 尚未探测过 ⇒ install 先 await 一次真实探测再决定，探通了照常继续（不拒装、不重复探测）
+	const registry = createModuleRegistry();
+	const io = createFakeIo();
+	let probes = 0;
+	let downloads = 0;
+	const installer = createPackageInstaller({
+		registry,
+		moduleManager: createModuleManager({ registry }),
+		io,
+		extractZip: { extract: createFakeExtractor(io), probe: async () => { probes++; return { ok: true, reason: "" }; } },
+		download: async () => { downloads++; return { buffer: makePackage(styleManifest("testmod", "1.0.0"), styleFiles("testmod")).buffer, bytes: 4, attempts: 1 }; },
+		getCoreVersion: () => "1.4.2",
+	});
+	const result = await installer.install({ id: "testmod", expectedVersion: "1.0.0", url: "https://test/a.zip" });
+	assert.equal(probes, 1, `install 必须先探一次真实能力，实际 probe ${probes} 次`);
+	assert.equal(downloads, 1, "探通之后必须照常下载");
+	assert.notEqual(result.code, INSTALL_CODES.NO_EXTRACTOR, `不该被误拒，实际 ${result.code}`);
+	assert.equal(probes, 1, "安装路径与界面共用一个缓存，不得二次探测");
 }
 
 // ------------------------------------------------------------------ 模块索引（任务书§10）

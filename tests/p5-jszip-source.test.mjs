@@ -198,28 +198,33 @@ const { createPackageInstaller } = await import("../src/core/packageInstaller.js
 const { createModuleRegistry } = await import("../src/core/registry.js");
 const { createModuleManager } = await import("../src/core/moduleManager.js");
 
-function installerHarness(extractZip) {
+function installerHarness(extractZip, hooks = {}) {
 	const registry = createModuleRegistry();
 	const io = makeIo();
+	const calls = { download: 0 };
 	const installer = createPackageInstaller({
 		registry,
 		moduleManager: createModuleManager({ registry }),
 		io,
 		extractZip,
-		download: async () => ({ buffer: new Uint8Array([1, 2, 3, 4]).buffer, bytes: 4, attempts: 1 }),
+		download: async (...args) => {
+			calls.download++;
+			return hooks.download ? hooks.download(...args) : { buffer: new Uint8Array([1, 2, 3, 4]).buffer, bytes: 4, attempts: 1 };
+		},
 		hash: async () => "0".repeat(64),
 	});
-	return { installer, io };
+	return { installer, io, calls };
 }
 
 {
+	// 已知取不到解压能力 ⇒ 必须在**下载之前**拒绝：能力都没有，不该先把包下下来再失败
 	const noZip = Object.assign(new Error("[ModuleIo] 取不到可用的 JSZip"), { ioCode: "NO_EXTRACTOR" });
-	const { installer, io } = installerHarness({ extract: async () => { throw noZip; }, probe: async () => ({ ok: false, reason: "取不到本体 JSZip" }) });
+	const { installer, io, calls } = installerHarness({ extract: async () => { throw noZip; }, probe: async () => ({ ok: false, reason: "取不到本体 JSZip" }) });
 	const result = await installer.install({ id: "decade", expectedVersion: "1.4.2", url: "https://x/decade.zip", expectedSha256: "0".repeat(64) });
 	assert.equal(result.code, "NO_EXTRACTOR", `能力缺失必须报 NO_EXTRACTOR，实际 ${result.code}——报成 STRUCTURE_INVALID 会让人以为下载到的包坏了`);
-	assert.equal(result.stage, "extracting");
-	assert.deepEqual(io.writes.filter(rel => rel.startsWith("modules/")), [], "失败不得在正式模块目录落下文件");
-	assert.ok(io.removed.some(rel => rel.startsWith("tmp/")), "临时 zip 要被清理");
+	assert.equal(result.stage, "resolving", "早拒要发生在 resolving，不该走到 extracting");
+	assert.equal(calls.download, 0, "能力缺失时不许发生下载（20MB 白下一遍是这一轮要消除的现象）");
+	assert.deepEqual(io.writes, [], "既没下载也不该落下任何文件（含 tmp/）");
 
 	const ready = await installer.ready();
 	assert.equal(ready.ok, false, "界面置灰看 ready()，不是只看端口对象在不在");
@@ -232,6 +237,73 @@ function installerHarness(extractZip) {
 	const fn = installerHarness(async () => ["tmp/pack/a.txt"]);
 	const result = await fn.installer.install({ id: "decade", expectedVersion: "1.4.2", url: "https://x/decade.zip", expectedSha256: "0".repeat(64) });
 	assert.equal(result.code, "MANIFEST_INVALID", "函数形状端口能被调用（走到结构校验才因夹具 manifest 不合而停）");
+	assert.equal(fn.calls.download, 1, "旧端口没有 probe 时不得被误判成取不到能力从而拒装");
+}
+
+// -------------------------------------------------- 能力语义：isAvailable() 与 ready() 必须说同一件事
+
+{
+	// A) 未注入解压端口：两边都必须是"不可用"，且 ready() 之后结论不许反转
+	const { installer } = installerHarness(null);
+	const before = installer.isAvailable();
+	assert.equal(before.available, false);
+	assert.equal(before.missingExtractor, true);
+	assert.equal((await installer.ready()).ok, false);
+	const after = installer.isAvailable();
+	assert.equal(after.available, false, "ready() 之后不能被端口在不在顶回可用");
+	assert.equal(after.ready, true, "探测已完成");
+}
+
+{
+	// B) probe 通过：探测前是"未验证"（不许声称可用），探测后两边一致为可用
+	let probes = 0;
+	const probe = async () => { probes++; return { ok: true, reason: "" }; };
+	const { installer } = installerHarness({ extract: async () => [], probe });
+	const before = installer.isAvailable();
+	assert.equal(before.available, false, "还没探测就不能声称可用");
+	assert.equal(before.ready, false, "ready 字段要如实反映尚未验证过");
+	assert.equal((await installer.ready()).ok, true);
+	const after = installer.isAvailable();
+	assert.equal(after.available, true);
+	assert.equal(after.ready, true);
+	assert.equal(after.missingExtractor, false);
+	assert.equal(after.missingIo, false);
+	assert.equal(probes, 1);
+}
+
+{
+	// C) probe 失败：缓存失败，isAvailable() 永久转为不可用（同一次运行内不再翻供）
+	let probes = 0;
+	const probe = async () => { probes++; return { ok: false, reason: "取不到本体 JSZip" }; };
+	const { installer } = installerHarness({ extract: async () => [], probe });
+	assert.equal((await installer.ready()).ok, false);
+	const after = installer.isAvailable();
+	assert.equal(after.available, false);
+	assert.equal(after.ready, true);
+	assert.match(after.reason, /JSZip/, "失败原因要透出来，界面才能给出可诊断的置灰理由");
+	assert.equal(installer.isAvailable().available, false, "再问一次也不许变回 true");
+	assert.equal(probes, 1, "失败同样要缓存，不能每次问都重探");
+}
+
+{
+	// D) 并发 ready()：复用同一次探测（窗口频繁 refresh 不该把 JSZip 反复加载）
+	let probes = 0;
+	const probe = async () => { probes++; await new Promise(resolve => setTimeout(resolve, 20)); return { ok: true, reason: "" }; };
+	const { installer } = installerHarness({ extract: async () => [], probe });
+	const results = await Promise.all([installer.ready(), installer.ready(), installer.ready()]);
+	assert.ok(results.every(item => item.ok === true), "三次并发都要拿到同一个结论");
+	assert.equal(probes, 1, `并发必须复用同一次 probe，实际 ${probes} 次`);
+	assert.equal((await installer.ready()).ok, true);
+	assert.equal(probes, 1, "后续调用直接读缓存");
+}
+
+{
+	// E) 没有 probe 方法的端口（注入替身/纯函数端口）：按既有事实视为可用，不凭空判死
+	const { installer } = installerHarness({ extract: async () => [] });
+	assert.equal((await installer.ready()).ok, true);
+	const after = installer.isAvailable();
+	assert.equal(after.available, true);
+	assert.equal(after.ready, true);
 }
 
 console.log("P5 jszip-source tests: all passed ✓");

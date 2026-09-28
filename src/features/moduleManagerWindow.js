@@ -119,8 +119,10 @@ async function refresh() {
 	const available = installer.isAvailable?.() || {};
 	// 端口缺失只剥夺"安装/更新/卸载"这三条落盘通道，不剥夺整窗浏览，
 	// 更不剥夺门控型 Feature 的启用/禁用（它只写一个配置键，任务书§16 第一阶段就要它）。
+	// 注意：`available.available` 在"解压能力尚未探测"时也是 false（未知 ≠ 可用），
+	// 所以这里只按**端口是否缺失**判定；真实能力交给下面的 ready() 探明后再定夺。
 	const missing = [available.missingIo ? "文件系统端口" : null, available.missingExtractor ? "解压端口" : null].filter(Boolean);
-	let installBlocker = available.available ? null : `本平台不支持安装/卸载（缺少：${missing.join("、") || "未知能力"}）`;
+	let installBlocker = missing.length ? `本平台不支持安装/卸载（缺少：${missing.join("、")}）` : null;
 
 	// 端口对象在 ≠ 解压能力在：本体把 JSZip 当内联 ES 模块用、不挂全局，
 	// 真机上完全可能"能下载却解不开"。这里异步探一次，探不过就同样置灰三个动作
