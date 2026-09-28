@@ -51,12 +51,13 @@
 | 2026-09-27 | **P5 补充修复一：跨平台文件移动与 IO 吞错**（`df2afea`）：`movePath` 按源类型分流，修掉"用 copyTree 搬文件 → 一个字节不复制却把源删掉"（Android/SAF 上表现为 `installed.json` 永不更新）；`kindOf` 不再把权限/磁盘/`IO_STALL` 吞成"不存在"（entry 检查/已在位预检/发布目标/卸载根/localVersions 五处各自转结构化错误）；`writeInstalled` 无原子 rename 平台改「备份 → 提交 → 回读校验 → 失败还原」，还原失败抛 `StateCommitError` → 调用方报 `ROLLBACK_FAILED`+residual；卸载让位恢复失败改报 `ROLLBACK_FAILED`；空 `installed.json` 判 `INSTALLED_CORRUPT` 不再当空台账改写 | 215 JS/mjs 语法 ✓；四套测试 ✓（新增 21 块）；verify-pack/skin-imports ✓；构建 ✓ |
 | 2026-09-27 | **P5 补充修复二：非原子平台 file→已存在文件的目标事务**（`29a69e3`）：`movePath` 的 file 分支改为专用 `moveFileNonAtomic`（写临时目标并校验 → 备份旧目标 → 提交并回读校验 → 删源 → 清理事务件）；提交失败恢复旧目标、**提交成功但删源失败明确报 `IO_FAILED` 且不回滚已提交目标**、恢复失败抛 `IO_ROLLBACK_FAILED`+residual 并保留备份；目录搬运保持 `copyTree + removeTree` 未动 | 语法 ✓；四套测试 ✓（新增 A~H + 目录目标共 9 块）；verify-pack/skin-imports ✓；构建 ✓ |
 | 2026-09-27 | **P6 模块管理界面完成**（任务书§43，详见§四"P6 记录"）：新增纯逻辑模型 `src/core/moduleAdmin.js`（行状态/动作判定/结果码文案/大小格式化）+ 独立窗口 `src/features/moduleManagerWindow.js`（列表/行内按钮/进度/取消/二次确认/重载）+ 样式 `module-manager-window.css`；新增模块源配置键 `moduleIndexUrl`（definitions/misc.js + handlers/module-handlers.js）与配置窗口"模块管理界面"按钮；入口 `decadeUI.showModuleManager`/`Ctrl+Shift+M`。**明确不做**启用/禁用与真实 module-index 资产 | 179 JS/mjs 语法 ✓；P1/P2/P3/P5/**P6** 五套测试 ✓；verify-pack 881/0、skin-imports 37/0 ✓；构建 ✓（UI 未进游戏实测） |
-| 2026-09-28 | **P8 Feature 运行时 + kill-effect 门控完成**（任务书§45/§16，`b4d8db5` + 定性修正 `8f89e43`，详见§四"P8 记录"）：新增 `src/core/featureRuntime.js`（声明/门控矩阵/CSS 由 manifest 驱动/能力归属）；`moduleSystem` 把 P1 起悬空的 `isModuleEnabled` 钩子接到 `switchOn`；`builtInModules` 按声明注册 feature 模块（entry.css 备单体/包内两套路径）；`setupEffects()` 改为门控装载，Core 调用点全部可选链降级（`decadeUI.effect?.kill?.()`）；`layout.css` 的 `@import "effect.css"` 移除，改由 Feature 激活时 `resourceLoader.loadCSS` 加载。**用户决定**：kill-effect 不搬资源，定性为**门控型 Feature**（`pack:false` 恒久），"幻影出牌"不受它管辖（自有开关 `cardGhostEffect`） | 182 JS/mjs 语法 ✓；P1/P2/P3/P5/P6/**P8×2** 七套测试 ✓；verify-pack 881/0、skin-imports 37/0 ✓；构建 ✓（未进游戏实测） |
+| 2026-09-28 | **P8 Feature 运行时 + kill-effect 门控完成**（任务书§45/§16，`b4d8db5` + 定性修正 `8f89e43`，详见§四"P8 记录"）：新增 `src/core/featureRuntime.js`（声明/门控矩阵/CSS 由 manifest 驱动/能力归属）；`moduleSystem` 把 P1 起悬空的 `isModuleEnabled` 钩子接到 `switchOn`；`builtInModules` 按声明注册 feature 模块（entry.css 备单体/包内两套路径）；`setupEffects()` 改为门控装载，Core 调用点全部可选链降级（`decadeUI.effect?.kill?.()`）；`layout.css` 的 `@import "effect.css"` 移除，改由 Feature 激活时 `resourceLoader.loadCSS` 加载。**用户决定**：kill-effect 不搬资源，定性为**门控型 Feature**（`pack:false` 恒久），"幻影出牌"不受它管辖（自有开关 `cardGhostEffect`）。**注：本行的"CSS 由 Feature 激活时加载"与"kill/skill 一起门控"已由 `d31ab7e` 按原版语义修正，见下一行与§四"P8 修复记录"** | 182 JS/mjs 语法 ✓；P1/P2/P3/P5/P6/**P8×2** 七套测试 ✓；verify-pack 881/0、skin-imports 37/0 ✓；构建 ✓（未进游戏实测） |
 | 2026-09-28 | **P6 扩展：Feature 行与启用/禁用**（`16c398d`）：`buildRows` 新增 `featureStates` 入参——门控型出「内置功能」行并只给启用/禁用（动作带 `switchKey`，写外观页同一个配置键，不另立状态源），拆包型走安装/卸载通道、装上后才给启停；不传该参数时行为逐字不变。窗口侧 `collectFeatureStates()` 由 `featureRuntime.list()+switchOn()` 得出，启停后提示需重载；顺带把 `manifest.core` 传给行模型（离线时"兼容性"列不再一律"未声明 Core 要求"） | 182 JS/mjs 语法 ✓；七套测试 ✓（P6 新增 6 类行断言 + 真实接线用例；P8 锁定声明字段集）；verify-pack/skin-imports ✓；构建 ✓ |
+| 2026-09-28 | **P8/P6 两处修复**（`48a82bc` + `d31ab7e`，详见§四"P8 修复记录"）：①`moduleManagerWindow.refresh()` 不再在 `isAvailable()===false` 时整窗提前 return——门控型 Feature 的启停不碰文件系统，任何平台都必须可用；改为 `buildRows` 新增 `installBlocker`，只置灰 `install/update/uninstall`（附加平台理由、保留 §19 原理由与 `spec`）。②按**原版语义**收窄门控：`killEffect` 只管击杀那一路，`effect.skill`/`effect.line`/`dialog`/`ghost` 恢复无条件注册，`effect.css` 回 `layout.css` 的 `@import`（内含技能特效用的 `.skill-name`），`kill-effect` 的 capabilities 去掉 `skill-effect`、manifest `entry.css` 置空，技能特效调用点去掉可选链回到原版直调 | 182 JS/mjs 语法 ✓；七套测试 ✓（P6 新增 4 块平台降级断言；P8 重写门控接线用例并锁住调用点边界）；verify-pack 881/0、skin-imports 37/0 ✓；构建 ✓ |
 
 ## 四、进行中（当前任务指针）
 
-**当前任务：P8 Feature Pack —— 第一刀（Feature API + kill-effect 门控）+ P6 Feature 行已代码完成，待游戏内实测**（`b4d8db5` / `8f89e43` / `16c398d`，详见§四"P8 记录"）。
+**当前任务：P8 Feature Pack —— 第一刀（Feature API + kill-effect 门控）+ P6 Feature 行已代码完成，同日两处修复完毕（`48a82bc` 平台能力降级、`d31ab7e` 门控边界收窄），待游戏内实测**（首个功能提交 `b4d8db5` / 定性 `8f89e43` / Feature 行 `16c398d`，详见§四"P8 记录"与"P8 修复记录"）。
 下一阶段：**P8 第二刀 card-skin 拆包**（用户已定为第二个包）——动手前需确认"双根扫描"设计：包根 `modules/card-skin/<ver>/image/card-skins/` 与单体 `image/card-skins/` 并存，保住"玩家自己丢一个皮肤文件夹进目录即可用"的既有行为（触点 `src/core/statics.js:162,169,209,247,249`、`src/overrides/card/skin-loader.js:70`，收益 23.4MB）。
 上一阶段 **P6 模块管理界面 —— ✅ 已验收通过（2026-09-27 用户游戏内实测：窗口可开、布局正常、"已独立安装 6"读取正确）**。P5（任务书§42 + §17/§18/§19/§11/§24/§20）已完成：`6c76534` + `f4a69ac` + `df2afea` + `29a69e3` + P6 实测暴露的 fs 锚点修复 `40149bf`；**P5/P6/P8 的 Android/SAF 真机实测并入§八收尾清单，不阻塞推进**。
 
@@ -66,17 +67,26 @@
 |---|---|
 | 分层 | `src/core/featureRuntime.js`（纯逻辑：不 import noname、不碰 DOM，Node 全量可测）+ 接线在 `moduleSystem.js`（单例装配，晚绑定）+ 门控点在调用方（`src/effects/index.js`、`src/skills/animate.js`、`src/overrides/player/animations.js`） |
 | Feature 形态 | 两种，由声明里的 `pack` 区分：**门控型**（`pack:false`，资源随 Core 发布，kill-effect 即此类，用户决定**永不拆包**）；**拆包型**（`pack:true`，资源装在 `modules/<id>/<version>/`，未装上即不可用——与 P3 样式包"不可用而 Core 正常"同一语义）。card-skin 将成为第一个拆包型 Feature |
-| 声明 | `BUILT_IN_FEATURES = [{ id:"kill-effect", name:"击杀/技能特效", capabilities:["kill-effect","skill-effect"], switchKey:"killEffect", defaultEnabled:true, pack:false }]`；字段集由 `tests/p8-feature-runtime.test.mjs` 锁定（P6 界面 `collectFeatureStates` 直接读 `id/pack/switchKey`，改名会红） |
+| 声明 | `BUILT_IN_FEATURES = [{ id:"kill-effect", name:"击杀特效", capabilities:["kill-effect"], switchKey:"killEffect", defaultEnabled:true, pack:false }]`；字段集由 `tests/p8-feature-runtime.test.mjs` 锁定（P6 界面 `collectFeatureStates` 直接读 `id/pack/switchKey`，改名会红）。**capabilities 不含 `skill-effect`**——技能特效原版没有开关，不许借 Feature 之名造第二个状态源（`d31ab7e`） |
 | 门控矩阵 | `active(id) = 已声明 × 资源在场(hasResources) × 开关为真(switchOn)`；配置未播种（`undefined`）回落 `defaultEnabled`，绝不当成"关"；无 `switchKey` 的 Feature 只看资源；未声明/未注册的 id 一律 false 且不抛错 |
 | 状态源 | **不新增**：开关就是既有 `extension_十周年UI-Stars_killEffect`（外观页"击杀特效"同一个键）。`moduleSystem` 把 P1 起悬空的 `moduleManager.isModuleEnabled` 钩子接到 `switchOn` → `moduleManager.isEnabled("kill-effect")` 从此真实，`core`/样式不被误伤 |
-| 资源寻址 | 不建第二套：`asset()` 委托 `resourceLoader.getAsset` → `getModuleBase`；`cssOf(id)` 返回**模块相对路径**（取自 `manifest.entry.css`），绝对地址由 `resourceLoader.loadCSS` 负责。`builtInModules` 为每个 Feature 备两套 entry（单体 `src/styles/effect.css` / 包内 `effect.css`），按声明的 `pack` 选用 |
-| Core 降级 | `setupEffects()` 始终挂 `decadeUI.effect.dialog` 与 `.ghost`（幻影出牌自有开关 `cardGhostEffect`，不随本 Feature 关停），仅当 `active("kill-effect")` 才注册 `line/kill/skill` 并加载 CSS；调用点改可选链：`decadeUI.effect?.kill?.(source, player)`、`decadeUI.effect?.skill?.(player, name, avatar)`；`src/styles/layout.css` 的 `@import "effect.css"` 删除（改为激活时加载，禁用就真的什么都不加载） |
+| 资源寻址 | 不建第二套：`asset()` 委托 `resourceLoader.getAsset` → `getModuleBase`；`cssOf(id)` 返回**模块相对路径**（取自 `manifest.entry.css`），绝对地址由 `resourceLoader.loadCSS` 负责。**kill-effect 的 `entry.css` 为空**（`d31ab7e`）：`effect.css` 同时含击杀窗口 `.effect-window` 与技能特效 `.skill-name`，没有单一 Feature 归属，登记进 Feature 入口会造成"登记了却不加载"或"加载了却随击杀开关卸载"的双重语义；自带样式的拆包型 Feature 才在 `builtInModules` 里按 `pack` 登记单体/包内两套路径 |
+| Core 降级 | **门控只作用于击杀那一路**（`d31ab7e`，以原版为准绳）：`setupEffects()` 无条件注册 `line/skill/dialog/ghost`，仅 `effect.kill` 由 `active("kill-effect")` 决定；`src/skills/animate.js` 的击杀调用点保留可选链 `decadeUI.effect?.kill?.()`（它真会被门控），`src/overrides/player/animations.js` 的技能特效调用点**恢复原版的直调** `decadeUI.effect.skill(...)`；`src/styles/layout.css` 的 `@import "effect.css"` 保留（位置与原版一致，不改级联） |
 | 公开 API | `decadeUI.feature`（content 阶段挂载，§57 面）：`define/get/list/switchOn/active/asset/cssOf/capabilityOwner`。能力查询按任务书§15：`featureRuntime.capabilityOwner("online-gift")` 这类判断替代 `style === "online"` |
-| P6 侧 | `moduleAdmin.buildRows` 新增 `featureStates`（缺省＝行为逐字不变）：门控型出行「内置功能 / 内置 1.4.2」并只给 `禁用`↔`启用`；拆包型未装只给 `安装`，装上后 `卸载` 与 `禁用` 并存；门控型即使索引里有地址也不给安装按钮（避免"装了个不需要的包"）；异常状态（门控型却有台账记录）以台账为准，允许卸载，不留无人能清的残留；无 `switchKey` 的声明不给任何动作（不许凭空造配置键） |
-| 测试 | 新增 `tests/p8-feature-runtime.test.mjs`（门控矩阵、pack 两种形态与 CSS/asset 解析、`isModuleEnabled` 真实接线、`define` 校验、能力归属、声明字段集契约）与 `tests/p8-effects-gate.test.mjs`（装配层：启用→`kill/skill` 注册 + `["kill-effect:src/styles/effect.css"]`；禁用→`undefined` + `[]` + `ghost/dialog` 保留；再启用可恢复）；`tests/p6-module-admin.test.mjs` 新增 6 类 Feature 行 + 真实接线用例（`builtInModules`+`moduleManager.list()`+`featureRuntime` → 行）；`tests/p1-smoke.test.mjs` 注册数 7→8、`list({type:"feature"}).length===1` |
+| P6 侧 | `moduleAdmin.buildRows` 新增 `featureStates`（缺省＝行为逐字不变）：门控型出行「内置功能 / 内置 1.4.2」并只给 `禁用`↔`启用`；拆包型未装只给 `安装`，装上后 `卸载` 与 `禁用` 并存；门控型即使索引里有地址也不给安装按钮（避免"装了个不需要的包"）；异常状态（门控型却有台账记录）以台账为准，允许卸载，不留无人能清的残留；无 `switchKey` 的声明不给任何动作（不许凭空造配置键）。再新增 `installBlocker`（`48a82bc`，缺省＝行为不变）：平台缺文件/解压端口时只把 `install/update/uninstall` 置灰、把平台理由**附加**在既有理由之前，`spec` 原样保留，Feature 的启停不受影响 |
+| 测试 | `tests/p8-feature-runtime.test.mjs`（门控矩阵、pack 两种形态与 CSS/asset 解析、`isModuleEnabled` 真实接线、`define` 校验、能力归属、声明字段集契约）；`tests/p8-effects-gate.test.mjs`（装配层，`d31ab7e` 按原版语义重写：默认 `kill/skill/line` 都在且 `setupEffects` 不自行 loadCSS；禁用后仅 `kill` 缺席，`skill/line/ghost/dialog` 必须在；并锁住边界依据——`layout.css` 仍 `@import effect.css`、`effect.css` 含 `.skill-name`、`skill.js` 创建该元素、技能特效调用点不读 `killEffect`、击杀技能 `filter` 继续读该键）；`tests/p6-module-admin.test.mjs`（6 类 Feature 行 + 4 块平台降级 + 真实接线用例）；`tests/p1-smoke.test.mjs`（注册数 8、`type:"feature"` 计数、`entry.css` 为空、capabilities 不含 `skill-effect`） |
 | 门禁 | 182 个 JS/mjs `node --check` ✓；七套测试 ✓；verify-pack 881 可达 / 17 已知上游死引用 / 0 未知缺失 ✓；check-skin-imports 37 / 0 ✓；`pnpm build` ✓（产物含 `featureRuntime.js`、`moduleAdmin.js`、`moduleManagerWindow.js`） |
 | 未做（边界） | dynamic-skin / progress-bar 尚未成为 Feature（progress-bar 受 precontent 时序限制，另议）；card-skin 拆包为下一刀；Feature 的 CSS 变更不热生效（需重载，任务书§16 第一阶段明确不要求运行时卸载已执行的 JS）；未做 Feature 详情/能力面板 |
 | 待游戏内实测 | 见§八「P8/P6 Feature 行部分」 |
+
+### P8 修复记录（同日，用户指出两处问题）
+
+| 问题 | 根因与证据 | 修法 |
+|---|---|---|
+| ① **模块管理窗口阻断门控型 Feature**（`48a82bc`） | `refresh()` 里 `if (!available.available) { …空提示…; return; }` 把整窗挡下。但门控型 Feature 的启用/禁用**只写一个配置键**，根本不碰文件系统——被"没有文件端口"连带禁掉是语义越界；而 `readInstalled()` 缺端口时返回结构化 `NO_IO` 不抛、`fetchIndex()` 走网络不需要 io，所以提前 return 也不是必需的 | 删除提前 return：能力缺失改为算出一句 `installBlocker` 传给 `buildRows`，列表/台账/模块源照常读照常出。`buildRows` 新增 `installBlocker`（缺省 null＝行为逐字不变），只把 `install/update/uninstall` 三动作置灰、平台理由附加在既有理由之前、`spec` 保留；`enable/disable` 不受影响。汇总行与提示行如实写"本平台不支持安装/卸载；内置功能的启用/禁用仍可用" |
+| ② **`killEffect` 意外牵连技能特效**（`d31ab7e`） | 对照**原版** `../十周年UI`：`src/effects/index.js` 的 `setupEffects()` **无条件**注册 `line/kill/skill/ghost/dialog`；`killEffect` 配置全库只在一处被读——`src/skills/animate.js` 的击杀技能 `filter()`。原版 `src/config/definitions/appearance.js` 的 `killEffect` 也只写"击杀敌方角色时会显示击杀特效"。所以"关闭击杀特效→技能特效消失"是 P8 引入的**行为改变**，且 `playerSkill()` 会先 `decadeUI.delay(2500)` 再调 `effect.skill`，玩家白等 2.5 秒什么都不发生 | 门控边界收窄到 `effect.kill` 一路：`line/skill/dialog/ghost` 恢复无条件注册、`setupCardGhost()` 位置回原版；技能特效调用点去掉可选链回到原版直调（击杀那一路保留可选调用，因为它真会被门控）；`effect.css` 回 `layout.css` 的 `@import`（它同时含 `.skill-name`，无单一 Feature 归属）；`kill-effect` 声明改名"击杀特效"、capabilities 去掉 `skill-effect`、manifest `entry.css` 置空并删掉 `FEATURE_ENTRY` 映射。**未新增第二套配置**，配置名/intro 与原版一致无需改动 |
+| 边界守护 | 未做动态 import、未改 Vite 多入口、未重构 precontent/content、未做运行时卸载、未提前拆 card-skin、未动 Shared/样式包 | — |
+| 门禁 | 182 个 JS/mjs `node --check` ✓；七套测试全过 ✓（含新增 RED→GREEN：平台降级 4 块、门控接线重写）；verify-pack 881 可达 / 0 未知缺失 ✓；check-skin-imports 37 / 0 ✓；`pnpm build` ✓ |
 
 ### P6 记录
 
@@ -282,15 +292,17 @@
 
 10. **【P6 已修并已复核通过】本体 `div` 默认绝对定位导致窗口布局挤压**：本体 `layout/default/layout.css` 有 `div { display: inline-block; position: absolute; }`，窗口里未显式声明 `position` 的 div 全部脱离文档流、各自收缩并重叠（用户实测：文字竖挤成一堆）。已为所有该留在流里的类显式 `position: static`（装饰件与进度条保持绝对定位）。**这类坑对后续任何自绘 UI（P6 后续界面、P8 Feature 面板）都成立：在无名杀里自绘 div 必须显式声明 position。**
 
-11. **【P8 已知限制】Feature 启停在重载前不是"无副作用"的**：装载发生在 content 初始化（`setupEffects()` 决定 `decadeUI.effect.kill/skill` 是否注册、`effect.css` 是否加载），所以窗口里点"禁用"后**本次运行仍会播放特效**，需重载才真正不装载——任务书§16 第一阶段明确不要求"对局中真正无副作用地卸载已执行的 JS"，界面文案已写"点上方「重载游戏」后生效"。两点补充：
-    - `src/skills/animate.js` 的 `filter()` 读的是 `lib.config["extension_十周年UI-Stars_killEffect"]` 本身（每次触发都读），所以**击杀动画那一路是即时生效的**；不即时的是 `decadeUI.effect.*` 通道与 CSS 加载。别把这两路的差异误报成 bug。
+11. **【P8 已知限制】Feature 启停在重载前不是"无副作用"的**：装载发生在 content 初始化（`setupEffects()` 决定 `decadeUI.effect.kill` 是否注册），所以窗口里点"禁用"后**本次运行仍会播放击杀特效**，需重载才真不装载——任务书§16 第一阶段明确不要求"对局中真正无副作用地卸载已执行的 JS"，界面文案已写"点上方「重载游戏」后生效"。三点补充：
+    - **门控只管击杀那一路**（`d31ab7e` 收窄）：`effect.skill`/`effect.line`/`dialog`/`ghost` 与原版一样无条件在；技能特效**没有开关**，外观页的 `killEffect` 只写"击杀"。如果你在某个版本里看到"关击杀→技能特效也没了"，那是回归，`tests/p8-effects-gate.test.mjs` 会红。
+    - `src/skills/animate.js` 的 `filter()` 每次触发都读 `lib.config[...killEffect]`，所以**禁用后击杀那一路连延迟都不会产生**；`playerSkill()` 的 `decadeUI.delay(2500)` 属技能特效路径，与击杀开关无关，不许顺手加判断。
     - 门控型 Feature 的行不显示"未安装"（它随扩展发布），只有"内置功能 / 内置 <版本>"加一个启停按钮；若看到"未安装 + 安装按钮"，说明 `featureStates` 没传到（`decadeUI.feature` 未挂载或 content 未跑完），是接线问题不是数据问题。
+    - **无文件/解压端口的平台**（`48a82bc` 之后）：列表仍出、Feature 仍可启停，只有安装/更新/卸载三钮置灰。若窗口又变成"整窗空白 + 不支持安装"，也是回归。
 
 ## 六、下一步
 
 1. ~~P0~~ ✅ ~~P1~~ ✅ ~~P2（含阻塞修复）~~ ✅ ~~P3/P4~~ ✅ ~~四包批量拆分（`33da307`）~~ ✅ ~~P5 下载器/安装器 + 可靠性审查修复 + 两笔补充修复（`f4a69ac`/`df2afea`/`29a69e3`）~~ ✅ ~~P6 模块管理界面（`2bae45e` + 实测暴露的 `40149bf`）~~ ✅ ~~P8 第一刀：Feature API + kill-effect 门控（`b4d8db5`/`8f89e43`）+ P6 Feature 行（`16c398d`）~~ ✅（2026-09-28，**纯代码 / Node 验证**）。
 2. **无阶段阻塞**：P5/P6/P8 的 Android/SAF 真机与游戏内实测按用户决定**不再阻塞推进**，统一并入§八「项目收尾验证清单」，在收尾（P14 全量测试）阶段一次性执行。
-3. **推送**：`origin/main` = `51e3cc6`（`git ls-remote` 于 2026-09-28 核实）；本地领先 3 笔（`b4d8db5`/`8f89e43`/`16c398d`）+ 本次台账文档，**推送由用户本人执行**。另一份克隆 `extension/decadeUi-Stars` 落后，别在它上面开发。
+3. **推送**：`origin/main` = `51e3cc6`（`git ls-remote` 于 2026-09-28 核实）；本地领先 7 笔：`b4d8db5` `8f89e43` `16c398d` `3569feb` `48a82bc` `d31ab7e` + 本次修复的台账，**推送由用户本人执行**。另一份克隆 `extension/decadeUi-Stars` 落后，别在它上面开发。
 4. ~~P6 模块市场/管理界面（任务书§43）~~ ✅ 已完成（2026-09-27）：独立窗口 + 纯逻辑行模型 + 模块源配置键；入口 `decadeUI.showModuleManager` / `Ctrl+Shift+M` / 配置窗口按钮。详见§四"P6 记录"。
 5. **下一步：P8 第二刀 card-skin 拆包**（用户已定为第二个包，`pack:true` 的第一个 Feature）。**动手前需确认的设计**：卡牌皮肤是"双根扫描"模型——内置皮肤集进包（`modules/card-skin/<ver>/image/card-skins/`），而玩家手工丢进 `image/card-skins/` 的文件夹必须继续可用（现有行为，单体根保留扫描）。触点：`src/core/statics.js:162,169,209,247,249`、`src/overrides/card/skin-loader.js:70`；收益约 23.4MB。
 6. **P10 最小 module-index**（任务书§47 的前置）：产出 `module-index.json` 与分包 zip 及上传方式。P6 的"可安装/可更新"链路只有在有索引后才真正可用（当前只有离线分支与手工填 URL）；card-skin 拆包后必须进索引才谈得上"下载"。
@@ -311,6 +323,7 @@
 | 2026-09-27 | **P6 模块管理界面完成（纯代码验证）**：新增 `src/core/moduleAdmin.js`（行状态/动作判定/结果码文案/大小格式化，纯逻辑可 Node 测）+ `src/features/moduleManagerWindow.js`（独立窗口：列表/行内安装·更新·卸载/进度/取消/二次确认/重载/模块源输入）+ `module-manager-window.css`；新增配置键 `moduleIndexUrl`（definitions + handlers）与配置窗口 `type:"button"` 行（"模块管理界面"入口）；`content.js` 挂 `setupModuleManagerWindow()`（`decadeUI.showModuleManager` + `Ctrl+Shift+M`）。新增 `tests/p6-module-admin.test.mjs`。**范围外**：启用/禁用（新运行时能力）、真实 module-index 资产（P10） |
 | 2026-09-28 | **P6 游戏内实测通过 + fs 锚点修复**：用户实测窗口可开后报"文字挤压在一块"→ 根因本体 `div{position:absolute}`，显式 `position:static` 修复（`f41c524`）；再报"已独立安装 0"→ 根因 `moduleIo` 桌面分支把扩展根相对路径交给裸 `fs`（基准是 `process.cwd()`，而本体用归一化后的 `window.__dirname`），`fs.stat` ENOENT 被 `kind()` 当"不存在" → 空台账且无错误；新增 `fsRoot()/fsAbs()` 并让桌面分支一律走绝对基准（`40149bf`，TDD RED→GREEN，复核显示"已独立安装 6"） |
 | 2026-09-28 | **P8 第一刀完成（纯代码验证，`b4d8db5`/`8f89e43`/`16c398d`）**：新增 `src/core/featureRuntime.js`（Feature 声明 + 门控矩阵 + `cssOf`/`asset` 委托 resourceLoader + 能力归属）；`moduleSystem` 把 P1 起悬空的 `isModuleEnabled` 钩子真实接到 `switchOn`；`builtInModules` 按声明注册 `kill-effect` 为 `type:"feature"`（entry 备单体/包内两套路径）；`setupEffects()` 改门控装载、Core 调用点全部可选链降级、`layout.css` 去掉 `@import "effect.css"`。**用户两项决定**：①kill-effect **不搬资源**，定性为**门控型 Feature**（`pack:false` 恒久），拆包那一刀撤掉；②第二个包做 **card-skin**。据此补齐 P6 的 Feature 行：`buildRows` 新增 `featureStates`（门控型出"内置功能"+启用/禁用，拆包型走安装/卸载且装上后才给启停，缺省时行为逐字不变），窗口 `collectFeatureStates()` + `toggleFeature()` 写外观页同一个 `killEffect` 配置键并提示需重载。新增 `tests/p8-feature-runtime.test.mjs`/`tests/p8-effects-gate.test.mjs`，`p6` 加 6 类 Feature 行 + 真实接线用例。门禁：182 语法 ✓、七套测试 ✓、verify-pack 881/0 ✓、skin-imports 37/0 ✓、`pnpm build` ✓ |
+| 2026-09-28 | **用户指出两处问题 → 修复（`48a82bc`/`d31ab7e`）**：①`refresh()` 在 `isAvailable()===false` 时整窗提前 return，把"只写配置键"的门控型 Feature 启停一起挡掉了——改为 `buildRows` 新增 `installBlocker`，只置灰 `install/update/uninstall`（保留 §19 原理由与 `spec`），列表/台账/模块源照常。②P8 把 `kill/skill/line` 一起门控是**改变旧行为**：对照原版 `setupEffects()` 无条件注册、`killEffect` 全库只被击杀技能 `filter()` 读取，且 `playerSkill()` 会白等 2.5 秒——门控收窄到 `effect.kill` 一路，技能特效调用点恢复原版直调，`effect.css` 回 `layout.css` 的 `@import`（内含 `.skill-name`），`kill-effect` 的 capabilities 去掉 `skill-effect`、`entry.css` 置空并删掉 `FEATURE_ENTRY`。两处都先写 RED 再改绿，未新增第二套配置、未做动态 import/运行时卸载/card-skin 预拆。门禁：182 语法 ✓、七套测试 ✓、verify-pack 881/0 ✓、skin-imports 37/0 ✓、`pnpm build` ✓ |
 
 ## 八、项目收尾验证清单（真机 / 游戏内，收尾阶段统一执行）
 
@@ -365,18 +378,20 @@
 
 | # | 目的 | 指令 / 操作 | 预期 |
 |---|---|---|---|
-| P | Feature 声明可读 | `decadeUI.feature.list()` | 数组含 `{id:"kill-effect", name:"击杀/技能特效", capabilities:["kill-effect","skill-effect"], switchKey:"killEffect", defaultEnabled:true, pack:false}`；`pack` 为 false 是**门控型**的判据（资源随 Core 发布，永不拆包） |
+| P | Feature 声明可读 | `decadeUI.feature.list()` | 数组含 `{id:"kill-effect", name:"击杀特效", capabilities:["kill-effect"], switchKey:"killEffect", defaultEnabled:true, pack:false}`；`pack` 为 false 是**门控型**的判据（资源随 Core 发布，永不拆包）；capabilities **不应**含 `skill-effect`（技能特效无开关） |
 | Q | 门控与开关同源 | `decadeUI.feature.active("kill-effect")`；再 `decadeUI.moduleManager.isEnabled("kill-effect")`；再 `decadeUI.moduleManager.isEnabled("core")` | 前两个同为 `true`（`isEnabled` 的钩子已真实接到 `switchOn`，P1 起悬空的实现不再恒真）；`core` 恒 `true`（Feature 开关不许误伤 core/样式） |
-| R | CSS 改由 Feature 装载 | `document.querySelectorAll('link[href*="effect.css"]').length` | `1`（`layout.css` 里的 `@import "effect.css"` 已删除，改由 `featureRuntime.cssOf` → `resourceLoader.loadCSS("kill-effect", …)` 加载） |
+| R | 特效 CSS 无条件在场 | `(()=>{const d=document.createElement("div");d.className="skill-name";document.body.appendChild(d);const f=getComputedStyle(d).fontSize;d.remove();return f})()` | `"55px"`（`effect.css` 由 `layout.css` 的 `@import` 带入，**禁用击杀特效并重载后仍应是 55px**——`.skill-name` 属技能特效，不随击杀开关卸载） |
 | S | Feature 行出形 | 打开窗口看 `kill-effect` 行 | 徽标"内置功能"、版本列"内置 <版本号>"、**只有"禁用"一个按钮**（没有"安装/卸载"）；行不被压扁（同 P6 的 `position:static` 坑） |
-| T | 禁用 → 重载才真不装载 | 点该行"禁用" → `decadeUI.feature.active("kill-effect")` → 重载 → 再看 `!!decadeUI.effect.kill` 与 `document.querySelectorAll('link[href*="effect.css"]').length` | 按钮立刻变"启用"、`active` 立刻 `false`（配置同值写回）；**本次运行内 `effect.kill` 与那条 link 仍在属预期**（任务书§16 不要求运行时卸载已执行的 JS），重载后两者变为 `false` / `0` |
+| T | 禁用只关击杀 | 点该行"禁用" → `decadeUI.feature.active("kill-effect")` → 重载 → 再依次看 `typeof decadeUI.effect.kill`、`typeof decadeUI.effect.skill`、`typeof decadeUI.effect.line` | 按钮立刻变"启用"、`active` 立刻 `false`（配置同值写回）；**本次运行内 `effect.kill` 仍在属预期**（任务书§16 不要求运行时卸载已执行的 JS）；重载后 `kill` 变为 `"undefined"`，而 **`skill` 与 `line` 必须仍是 `"function"`**——若它们变 undefined，是 P8 修复被改回去了 |
 | U | 两个入口同步 | 在外观页关掉"击杀特效"，再开窗口看该行 | 按钮显示"启用"（同一配置键 `extension_十周年UI-Stars_killEffect`，不存在第二状态源）；反之亦然 |
-| V | Core 安全降级 | 禁用并重载后，对局里击杀一个角色 | 无击杀特效、无技能特效弹窗，Console **不得**出现 `Cannot read properties of undefined (reading 'kill'/'skill')`（调用点为 `decadeUI.effect?.kill?.()` 可选链；`src/skills/animate.js` 的 `filter()` 也会直接挡住） |
+| V | 技能特效不受击杀开关牵连 | 禁用并重载后，发动一个带特效的技能（如界定军类技能） | **技能全屏特效照常出现**，且在 `decadeUI.delay(2500)` 之后播放（原版语义：`playerSkill()` 不读 `killEffect`）。若出现"等 2.5 秒什么都不发生"，就是门控边界又被扩大了 |
 | W | 幻影出牌不受管辖 | 禁用 kill-effect 并重载后出牌 | 拖尾仍在（`!!decadeUI.effect.ghost.add` 为 `true`，`cardGhostEffect` 是独立开关；`decadeUI.effect.dialog` 也仍在）——**若幻影出牌被一起关掉，那是 bug** |
+| W2 | 击杀那一路安全降级 | 禁用并重载后击杀一个角色 | 无击杀窗口，Console **不得**出现 `Cannot read properties of undefined (reading 'kill')`（击杀调用点是 `decadeUI.effect?.kill?.()`；`src/skills/animate.js` 的 `filter()` 也会直接挡住，连延迟都不产生） |
 | X | 拆包型 Feature 的语义（card-skin 落地后再验） | 手工把 `modules/card-skin/<ver>/` 移走 → 重载 | 行显示"未安装"、卡牌皮肤回落默认、Core 与其他样式正常（`pack:true` 且包未装 → 不激活，与 P3 样式包同语义） |
+| Y | 无安装能力平台的降级边界（真机） | 在 `await decadeUI.packageInstaller.isAvailable()` 返回 `available:false` 的平台打开窗口 | **列表仍出**：门控型 Feature 行可点"禁用/启用"并生效（写配置，不碰文件）；`安装/更新/卸载` 三钮置灰，悬停理由含"本平台不支持安装/卸载（缺少：…）"且保留原有"使用中/被依赖"理由；汇总行显示"· 本平台不支持安装/卸载" |
 
 **注意事项（P8）**
-1. `cssOf()` 返回的是**模块相对路径**，绝对地址由 `resourceLoader.loadCSS` → `getModuleBase` 负责；若在 Network 面板看到 `effect.css` 请求落在扩展根而不是 `modules/kill-effect/…`，那对门控型是**正确的**（`pack:false` 就是单体路径）。
-2. Feature 的启用/禁用不触发任何文件读写，因此 `isAvailable()` 为 false 的平台也应能启停（但当前窗口在端口不可用时会提前整窗提示、不列行——真机若撞上请把现象回贴）。
+1. `cssOf()`/`asset()` 是 Feature 的公开寻址 API，但 **kill-effect 目前 `entry.css` 为空**（样式与技能特效共用 `effect.css`，随 Core 的 `@import` 无条件加载）。所以 Network 面板里 `effect.css` 应由 `layout.css` 的 @import 发起、路径在扩展根——这是**正确**的，不是"门控失效"。自带样式的拆包型 Feature 才会出现 `modules/<id>/<ver>/…` 的 CSS 请求。
+2. Feature 的启用/禁用不触发任何文件读写：`isAvailable()` 为 false 的平台**同样必须**能启停（`48a82bc` 起窗口不再整窗拒绝；若又变成"整窗空白 + 不支持安装"，是回归，见上表 Y 行）。
 3. 未声明 `switchKey` 的 Feature 不给任何按钮（不许凭空造一个配置键）；`featureStates` 缺省时 Feature 行退回通用规则（显示"未安装 + 安装"），那意味着 `decadeUI.feature` 没挂上，属接线 bug。
 
