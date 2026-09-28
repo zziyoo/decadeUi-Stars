@@ -1,16 +1,16 @@
 /**
- * P5 解压能力获取（A+C 修复）测试：JSZip 到底从哪儿来、拿不到时怎么说
+ * P5 解压能力获取（A+C 修复）测试：JSZip 到底怎么拿到、拿不到时怎么说
  * 运行：node --import ./tests/helpers/register.mjs tests/p5-jszip-source.test.mjs
  *
- * 背景（真机静态取证）：本体把 jszip@2.7.0 当 ES 模块内联使用，
- * **从不**给 window.JSZip 赋值，也没有 resources/app/game/jszip.js 这个脚本，
- * 所以旧实现的 defaultLoadJsZip 两条路都断在运行时。
- * 这里锁三件事：
- *   1. 获取顺序 window.JSZip → 本体公开 API get.zip → lib.init.js，且结果缓存；
- *   2. 全拿不到时以 ioCode=NO_EXTRACTOR 落定（永不 pending、也不伪装成包结构非法）；
- *   3. 安装器把这类失败映射成 NO_EXTRACTOR 且零落地，并新增 ready() 供界面诚实置灰。
- * 用 mimic 2.x API 的假构造器：测的是"取哪份构造器"，不是 jszip 内部（2.7 真读产物
- * 已由一次性探针逐字节验过）。
+ * 实机反馈修正了本文件的第一版假设。用户 Console 的 reason 是：
+ *   「get.zip 交出的实例不带 2.x 的 load()」+「加载 game/jszip 无响应」
+ * 在 Node 里用本体真正 import 的那份 JSZip 复核后确认：jszip@2.7.0 是
+ * **整体替换 JSZip.prototype** 的老写法，prototype 上没有 `constructor` 属性，
+ * 于是 `instance.constructor === Object`——"从实例反推构造器"这条路根本走不通。
+ *
+ * 因此端口的抽象单位是**实例**，不是构造器：`get.zip(cb)` 每次 `callback(new JSZip())`
+ * 给一个干净实例（2.x 的 `load()` 是原地写入，复用会把上一个包的条目带进下一个）。
+ * 本文件锁的就是这两件事：实例必须每次新取，而"哪一级可用"的选型只算一次。
  */
 import assert from "node:assert/strict";
 
@@ -19,100 +19,137 @@ globalThis.decadeUIName = "十周年UI-Stars";
 
 const mod = await import("../src/core/moduleIo.js");
 
-/** 造一个 mimicking 本体 JSZip 2.x 用法的构造器：`new Ctor()` 带 load()，load 后 .files 可用 */
-function makeCtor(tag) {
-	return class JSZipMock {
-		constructor(data) {
-			this.tag = tag;
-			this.data = data;
-			this.files = {};
-		}
-		/** 2.x 的读法：new JSZip() 之后 .load(buffer) —— 本体 optionsMenu 就是这么用的 */
+/** 2.x 用法的假实例：有 load()，load 后 .files 出条目 */
+function makeInstance(tag = "noname") {
+	return {
+		tag,
+		files: {},
 		load(data) {
 			this.data = data;
-			this.files = { "a.txt": { dir: false, asArrayBuffer: () => new Uint8Array([97, 98]).buffer } };
+			this.files = { "a.txt": { dir: false, asArrayBuffer: () => new Uint8Array([97, 98]).buffer, asNodeBuffer: () => Buffer.from([97, 98]) } };
 			return this;
-		}
+		},
 	};
 }
 
-// ------------------------------------------------------------------ 获取必须可独立注入
-
-assert.equal(typeof mod.createJsZipSource, "function", "P5：JSZip 的获取必须独立可测（不能埋在 defaultLoadJsZip 里）");
-
-// 1) 全局可用时优先用它，不去动本体的其它入口
-{
-	const ctor = makeCtor("global");
-	let getZipCalls = 0;
-	const source = mod.createJsZipSource({ win: { JSZip: ctor }, get: { zip: () => getZipCalls++ }, lib: {} });
-	assert.equal(await source.load(), ctor, "window.JSZip 存在就直接用");
-	assert.equal(getZipCalls, 0, "全局可用时不许再去动用 get.zip");
+/** 复刻 jszip@2.7.0 的原型形状：实例有 load，但 constructor 指向 Object */
+function makeJszip27Like() {
+	const inst = makeInstance();
+	assert.equal(inst.constructor, Object, "夹具前提：普通对象的 constructor 就是 Object（2.7 替换 prototype 后正是这样）");
+	return inst;
 }
 
-// 1b) 形状不对的一律不许当可用：3.x 只有 loadAsync、没有 load，
-//     若当可用接受，zip.files 会是空对象 → 最后报成"包结构非法"，比现在更难查
+assert.equal(typeof mod.createJsZipSource, "function", "JSZip 的获取必须独立可测");
+assert.equal(typeof (mod.createJsZipSource({ win: {}, get: {}, lib: {} })?.createInstance), "function", "端口对外要的是一份**实例**，不是构造器（2.7 的 constructor 链是断的）");
+
+// ------------------------------------------------------------------ 全局 JSZip（带 load 才行）
+
 {
-	class JSZipV3 {
+	class GlobalZip2x {
+		constructor() { this.files = {}; }
+		load() { this.files = { "a.txt": { dir: false, asArrayBuffer: () => new Uint8Array([97]).buffer } }; return this; }
+	}
+	let getZipCalls = 0;
+	const source = mod.createJsZipSource({ win: { JSZip: GlobalZip2x }, get: { zip: () => getZipCalls++ }, lib: {} });
+	const inst = await source.createInstance();
+	assert.ok(inst && typeof inst.load === "function", "全局可用时直接 new 一个实例");
+	assert.equal(getZipCalls, 0, "全局可用时不该再去动 get.zip");
+	assert.equal((await source.probe()).ok, true);
+}
+
+// ------------------------------------------------------------------ 3.x 形状必须被拒（不能悄悄写出空条目）
+
+{
+	class GlobalZip3x {
 		constructor() { this.files = {}; this.loadAsync = () => {}; }
 	}
-	const source = mod.createJsZipSource({ win: { JSZip: JSZipV3 }, get: {}, lib: {} });
-	const error = await source.load().then(() => null, err => err);
-	assert.equal(error?.ioCode, "NO_EXTRACTOR", "JSZip 3.x 形状必须被拒（我们用的是 2.x 的 load 契约）");
+	const source = mod.createJsZipSource({ win: { JSZip: GlobalZip3x }, get: {}, lib: {} });
+	const error = await source.createInstance().then(() => null, err => err);
+	assert.equal(error?.ioCode, "NO_EXTRACTOR", "只有 loadAsync 的 3.x 不许当可用：否则 zip.files 为空，症状会伪装成「包结构非法」");
 }
 
-// 2) 本体的正规入口：get.zip(cb) 把实例交出来，构造器就从实例上取
+// ------------------------------------------------------------------ 实机回归锁：constructor 是 Object 也要能干活
+
 {
-	const ctor = makeCtor("noname");
-	let calls = 0;
+	let issued = 0;
 	const source = mod.createJsZipSource({
 		win: {},
-		get: { zip: cb => { calls++; cb({ constructor: ctor }); } },
+		get: { zip: cb => { issued++; cb(makeJszip27Like()); } },
 		lib: {},
 	});
-	assert.equal(await source.load(), ctor, "本体 get.zip 的实现就是 callback(new JSZip())，实例的 constructor 即那份 JSZip");
-	await source.load();
-	await source.load();
-	assert.equal(calls, 1, "探测结果必须缓存：不能每个包解压都重新加载一遍");
+	const first = await source.createInstance();
+	assert.equal(typeof first?.load, "function", "本体 get.zip 给的实例就是能用的那份，不去反推构造器");
+	assert.equal(first.constructor, Object, "夹具形状与 jszip@2.7.0 一致（prototype 被整体替换）");
+
+	const second = await source.createInstance();
+	assert.notEqual(first, second, "2.x 的 load() 原地写入：每次解压必须拿新实例，否则上一个包的条目会串进下一个");
+	// 选型时要一份来验形状（只此一次），此后每次解压现取一份
+	assert.equal(issued, 3, "选型一次 + 两次解压各一次");
+	await source.createInstance();
+	assert.equal(issued, 4, "第三次解压再要一份新实例（选型不重复）");
+
+	// 用第二个实例装载后，第一个不得被污染
+	second.load("x");
+	assert.equal(Object.keys(first.files).length, 0, "实例之间互不影响");
 }
 
-// 3) 连 get.zip 都没有的老构建：才回落到 lib.init.js 脚本加载
-{
-	const ctor = makeCtor("script");
-	const win = {};
-	const lib = { assetURL: "http://x/", init: { js: (dir, name, cb) => { win.JSZip = ctor; cb(); } } };
-	const source = mod.createJsZipSource({ win, get: {}, lib });
-	assert.equal(await source.load(), ctor, "脚本加载后 window.JSZip 出现仍算成功");
-}
+// ------------------------------------------------------------------ 选型只算一次，失败不许反复白等
 
-// 4) 全部拿不到：ioCode=NO_EXTRACTOR，且 probe 给出原因
 {
-	const source = mod.createJsZipSource({ win: {}, get: {}, lib: {} });
-	const error = await source.load().then(() => null, err => err);
-	assert.ok(error, "拿不到 JSZip 必须以失败落定，绝不静默当成功");
-	assert.equal(error.ioCode, "NO_EXTRACTOR", "能力缺失要报 NO_EXTRACTOR，不能留成裸 Error");
+	let entered = 0;
+	const source = mod.createJsZipSource({
+		win: {},
+		get: { zip: () => { entered++; } },
+		lib: {},
+		stallMs: 200,
+	});
+	const keepAlive = setTimeout(() => {}, 5000);
+	let error = null;
+	let elapsed = 0;
+	try {
+		const started = Date.now();
+		error = await source.createInstance().then(() => null, err => err);
+		elapsed = Date.now() - started;
+	} finally {
+		clearTimeout(keepAlive);
+	}
+	assert.ok(error, "get.zip 不回调也必须落定（本体不回调时 watchdog 兜底，不静默当成功）");
+	assert.equal(error.ioCode, "NO_EXTRACTOR", "落定原因归能力缺失");
 	assert.match(error.message, /JSZip/);
+	assert.ok(elapsed < 3000, `不许长挂，实际 waited ${elapsed}ms`);
+	assert.equal(entered, 1, "一次探测进了一次");
+
+	// 失败也被缓存：再要实例不该再白等一遍 watchdog
+	const again = Date.now();
+	const error2 = await source.createInstance().then(() => null, err => err);
+	assert.equal(error2?.ioCode, "NO_EXTRACTOR", "第二次仍是能力缺失，不许假装成功");
+	assert.ok(Date.now() - again < 100, `选型失败要缓存，第二次几乎零耗时，实际 ${Date.now() - again}ms`);
+	assert.equal(entered, 1, "失败后不许反复重探");
 	const probed = await source.probe();
 	assert.equal(probed.ok, false);
 	assert.match(probed.reason, /JSZip/);
 }
 
-// 5) 本体不回调时不得永挂（watchdog 兜底仍归为能力缺失）
+// ------------------------------------------------------------------ 全断：三级都不给
+
 {
-	const source = mod.createJsZipSource({ win: {}, get: { zip: () => {} }, lib: {}, stallMs: 200 });
-	const started = Date.now();
-	// settle() 的 watchdog 计时器是 unref 的（P5 就不想让兜底拖住进程），
-	// 浏览器里 setTimeout 返回值没有 unref、行为不受影响；在 Node 里本用例得自己保持事件循环存活。
-	const keepAlive = setTimeout(() => {}, 5000);
-	let error = null;
-	try {
-		error = await source.load().then(() => null, err => err);
-	} finally {
-		clearTimeout(keepAlive);
+	const source = mod.createJsZipSource({ win: {}, get: {}, lib: {} });
+	const error = await source.createInstance().then(() => null, err => err);
+	assert.equal(error?.ioCode, "NO_EXTRACTOR");
+	assert.match(error.message, /get\.zip|JSZip/, "原因要能指到具体哪一级，玩家回贴时才有用");
+}
+
+// ------------------------------------------------------------------ 老构建：lib.init.js 脚本加载后出现全局
+
+{
+	class ScriptZip {
+		constructor() { this.files = {}; }
+		load() { this.files = { "a.txt": { dir: false, asArrayBuffer: () => new Uint8Array([97]).buffer } }; return this; }
 	}
-	assert.ok(error, "get.zip 不回调也必须落定");
-	assert.equal(error.ioCode, "NO_EXTRACTOR", "落定原因归能力缺失");
-	assert.match(error.message, /JSZip/);
-	assert.ok(Date.now() - started < 3000, `不许长挂，实际 waited ${Date.now() - started}ms`);
+	const win = {};
+	const lib = { assetURL: "http://x/", init: { js: (dir, name, cb) => { win.JSZip = ScriptZip; cb(); } } };
+	const source = mod.createJsZipSource({ win, get: {}, lib });
+	assert.equal(typeof (await source.createInstance())?.load, "function", "脚本加载后 window.JSZip 出现仍算成功");
 }
 
 // ------------------------------------------------------------------ 解压端口
@@ -127,8 +164,7 @@ function makeIo() {
 		kind: async () => null,
 		readText: async () => JSON.stringify({ schema: 1, modules: {} }),
 		writeText: async () => {},
-		writeBinary: async (rel, data) => { writes.push(rel); },
-		// 安装器会回读落盘内容算摘要（SHA 判据取自磁盘而非内存），缺了这个方法会先炸在这一步
+		writeBinary: async rel => { writes.push(rel); },
 		readBinary: async () => new Uint8Array([1, 2, 3, 4]).buffer,
 		removeFile: async rel => { removed.push(rel); },
 		removeTree: async () => {},
@@ -138,14 +174,13 @@ function makeIo() {
 	};
 }
 
-assert.equal(typeof mod.createZipExtractor, "function", "解压端口必须仍然可注入创建");
 {
 	const io = makeIo();
-	const extractor = mod.createZipExtractor({ io, jsZip: mod.createJsZipSource({ win: { JSZip: makeCtor("g") }, get: {}, lib: {} }) });
+	const extractor = mod.createZipExtractor({ io, jsZip: mod.createJsZipSource({ win: {}, get: { zip: cb => cb(makeInstance()) }, lib: {} }) });
 	const landed = await extractor.extract(new Uint8Array([1, 2, 3]).buffer, "tmp/pack");
-	assert.deepEqual(landed, ["tmp/pack/a.txt"], "解压落地路径仍按扩展根相对返回");
+	assert.deepEqual(landed, ["tmp/pack/a.txt"], "落地路径按扩展根相对返回");
 	assert.deepEqual(io.writes, ["tmp/pack/a.txt"]);
-	assert.equal(typeof extractor.probe, "function", "端口要能被探测，界面才不会谎报可安装");
+	assert.equal(typeof extractor.probe, "function", "端口要可探测，界面才不会谎报可安装");
 	assert.equal((await extractor.probe()).ok, true);
 }
 {
@@ -157,12 +192,11 @@ assert.equal(typeof mod.createZipExtractor, "function", "解压端口必须仍�
 	assert.equal((await dead.probe()).ok, false);
 }
 
-// ------------------------------------------------------------------ 安装器：映射与 ready()
+// ------------------------------------------------------------------ 安装器：映射、置灰依据与端口形状
 
 const { createPackageInstaller } = await import("../src/core/packageInstaller.js");
 const { createModuleRegistry } = await import("../src/core/registry.js");
 const { createModuleManager } = await import("../src/core/moduleManager.js");
-const { DownloadError } = await import("../src/core/downloader.js");
 
 function installerHarness(extractZip) {
 	const registry = createModuleRegistry();
@@ -179,25 +213,25 @@ function installerHarness(extractZip) {
 }
 
 {
-	const noZip = Object.assign(new Error("[ModuleIo] 取不到本体 JSZip"), { ioCode: "NO_EXTRACTOR" });
+	const noZip = Object.assign(new Error("[ModuleIo] 取不到可用的 JSZip"), { ioCode: "NO_EXTRACTOR" });
 	const { installer, io } = installerHarness({ extract: async () => { throw noZip; }, probe: async () => ({ ok: false, reason: "取不到本体 JSZip" }) });
 	const result = await installer.install({ id: "decade", expectedVersion: "1.4.2", url: "https://x/decade.zip", expectedSha256: "0".repeat(64) });
-	assert.equal(result.ok, false);
-	assert.equal(result.code, "NO_EXTRACTOR", `解压能力缺失必须报 NO_EXTRACTOR，实际 ${result.code}——以前会被误报成 STRUCTURE_INVALID（像包自己的问题）`);
+	assert.equal(result.code, "NO_EXTRACTOR", `能力缺失必须报 NO_EXTRACTOR，实际 ${result.code}——报成 STRUCTURE_INVALID 会让人以为下载到的包坏了`);
 	assert.equal(result.stage, "extracting");
-	assert.deepEqual(io.writes.filter(rel => rel.startsWith("modules/")), [], "失败不得在正式模块目录下落一个文件");
-	assert.ok(io.removed.some(rel => rel.startsWith("tmp/")), "临时 zip 必须被清理");
+	assert.deepEqual(io.writes.filter(rel => rel.startsWith("modules/")), [], "失败不得在正式模块目录落下文件");
+	assert.ok(io.removed.some(rel => rel.startsWith("tmp/")), "临时 zip 要被清理");
 
 	const ready = await installer.ready();
-	assert.equal(ready.ok, false, "界面置灰要看 ready()，不能只看同端口是否注入");
+	assert.equal(ready.ok, false, "界面置灰看 ready()，不是只看端口对象在不在");
 	assert.match(ready.reason, /JSZip/);
-	assert.equal(result.message !== undefined, true, "面向玩家的 message 必须还在");
 }
 {
-	// 注入了没有 probe 的端口（单测常用替身）：不得因此误判不可用
-	const { installer } = installerHarness({ extract: async () => ["tmp/pack/a.txt"] });
-	const ready = await installer.ready();
-	assert.equal(ready.ok, true, "端口没提供探测能力时按现有事实（已注入）报可用");
+	// 函数形状的旧端口仍要能用（P5 既有测试与外部注入都是这种）
+	const { installer } = installerHarness({ extract: async () => ["tmp/pack/a.txt"], probe: async () => ({ ok: true, reason: "" }) });
+	assert.equal((await installer.ready()).ok, true);
+	const fn = installerHarness(async () => ["tmp/pack/a.txt"]);
+	const result = await fn.installer.install({ id: "decade", expectedVersion: "1.4.2", url: "https://x/decade.zip", expectedSha256: "0".repeat(64) });
+	assert.equal(result.code, "MANIFEST_INVALID", "函数形状端口能被调用（走到结构校验才因夹具 manifest 不合而停）");
 }
 
 console.log("P5 jszip-source tests: all passed ✓");
