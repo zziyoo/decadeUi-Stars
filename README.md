@@ -2380,10 +2380,10 @@ Online 1.1 → 1.2
 状态：纯代码 / Node 验证通过；游戏内实测与 Android 真机项并入收尾清单
       （docs/PROGRESS.md §八「P8 部分」P~Z6 与「P9 部分」R1~R6），不阻塞推进
 
-下一步：P10 GitHub Release（§四十七）。发布结构 Core / Official Style Packs /
-        Feature Packs / Full Package / module-index.json；本轮产物已可直接上传。
-        建 Release、传资产、推 tag 由维护者本人执行。
-        真机首验重点：本体 JSZip 2.7 能否解开 jszip 3.10 写的包（§五 13）。
+下一步：先由维护者手动打开无名杀跑 §八「P9 部分」R0/R3（真机 install 首次可行——
+        P5 的 JSZip 获取与解压端口形状两个必败点已在 `5c7b557` 修掉）；
+        通过后进入 P10 GitHub Release（§四十七）。建 Release、传资产、推 tag 由维护者执行。
+        跨版本解压已在 Node 侧用本体那份 JSZip 证过（1285 条目逐字节一致）。
 
 注：本指针自 v1.1 起长期失更，历次阶段结论以
 「六十八、变更记录」与 docs/PROGRESS.md 为准。
@@ -2579,4 +2579,19 @@ P0 审计
 - **实跑暴露的两个自身缺陷（已修，记录以免被当成"读代码就能发现"）**：①`--verify` 的重算行把 `.digest("hex")` 挂在文件 buffer 上（`TypeError: fs.readFileSync(...).digest is not a function`）——校验前半段全过、末尾才炸，说明"跑一遍"和"跑遍所有分支"不是一回事；②完成日志用 `notes.length` 把 7 个包写成 8 个包（`card-skin` 多一条逐套核对）。
 - **未验证 / 真机首验重点**：构建期用 `jszip@3.10.2` 写、运行时解压是**本体 JSZip 2.7**（未改），本轮只做了"自己回读 + 结构不变量"，**没有**证明 2.7 解得开 3.10 写的每个包；§八「P9 部分」R1~R6 是新加的实测组，R3 一旦报 `STRUCTURE_INVALID`/`ENTRY_MISSING` 即跨版本不兼容（不是网络问题）。另：`module-index.json` 不许手工编辑，`--verify` 会与盘上产物重算逐字节比对。
 - 提交：`dea6561`（相对地址解析）与 `d5b8baf`（构建脚本）各一笔，与本条文档分开，均未 squash。
+
+## v1.13（2026-09-28）P5 真机前取证修复：JSZip 取不到 + 解压端口形状不一致（A+C）
+
+用户给出真机验证链（构建 → 7 个 zip → 真机 `packageInstaller.install()` → 本体 JSZip 2.x 解压 → 装 `card-skin`/`decade` → 重载 → 看资源可用）。我先把**不需要客户端**的部分做完，结果一好一坏，坏的按批准的 A+C 当场修掉（`5c7b557`）。
+
+- **✓ 已证（v1.12 的 §五 13 未知量消掉）**：用本体**真正 import 的那份** JSZip 跑探针——`noname/get/index.js`、`optionsMenu.js` 都 `import JSZip from "../../_virtual/index2.js"`（内部 `jszip@2.7.0`）。它读遍 `dist/release/`：条目数 `27/1017/32/50/44/70/45` 与源目录一致、根位 `manifest.json` 全在、**1285 个条目 `asNodeBuffer()` 逐字节一致**、非 ASCII 条目名 0。探针刻意喂 `ArrayBuffer`（与下载器给运行时的类型一致）并用 `new JSZip()` + `zip.load()`（与本体 optionsMenu 同读法）。
+- **✗ 真因不是格式，是取不到库（A 修）**：`noname.js` 里 `window.JSZip`/`globalThis.JSZip` 出现 **0 次**，`resources/app/game/` 下**没有 `jszip.js`** —— 旧 `defaultLoadJsZip` 的两条路（全局 / `lib.init.js(game/jszip)`）在真机上全断，`install()` 必败于解压。新增 `createJsZipSource()`：`window.JSZip` → **`get.zip(cb)`**（本体公开 API，实现就是 `callback(new JSZip())`，从实例取 `constructor`）→ `lib.init.js(game/jszip)`；每级过"必须有 2.x `load()`"的形状校验；结果连失败一起缓存（探测带加载副作用，界面每次刷新不该再白等一次 watchdog）；解压改 `new Ctor()` + `zip.load(buffer)`。**不 vendor、不改本体、不 import 打包器内部路径**（§56禁止1）。
+- **顺手堵掉一个侥幸**：`拖拽读取` 扩展 vendor 的 JSZip 是 **3.6.0**，静态看只有 `loadAsync`、没有 `load`。若把它当"可用"接受，`new Ctor(buffer)` 不载入数据、`.files` 为空，症状会退化成"包结构非法/`ENTRY_MISSING`"这种更难查的假象——形状校验正是为此。（这条是静态判断 + 我们代码路径的推演，未执行第三方代码。）
+- **✗ 第二个必败点（端口形状）**：`moduleSystem` 注入的是 `createZipExtractor()` 的 `{extract, probe}` **对象**，而安装器一路 `await extractZip(...)` 当**函数**调 ⇒ 真机 `TypeError: extractZip is not a function`，且它不带 ioCode，于是被解压步的 catch 误报成 `STRUCTURE_INVALID「解压失败」`，看起来像下载的包坏了。现在工厂里归一两种形状（函数仍受支持，P5 既有测试用的就是函数替身），归一不了即 `NO_EXTRACTOR`。
+- **C：能力诚实化**：端口暴露 `probe()`、安装器新增 `ready()`、窗口 `refresh()` 额外 `await ready()`；探不过就把 `安装/更新/卸载` 置灰并显示"本机取不到解压能力（ZIP）：…"，不再让按钮亮着等玩家把包下完才失败。`isAvailable()` 的同步语义不变（它只说端口在不在）；门控型 Feature 的启停仍不受平台能力影响（沿用 `48a82bc` 口径）。`toIoFailure` 增加 `ioCode=NO_EXTRACTOR → NO_EXTRACTOR` 映射。
+- 测试：新增 `tests/p5-jszip-source.test.mjs`（**先 RED**：`createJsZipSource` 当时是 `undefined`）——三级获取顺序、`get.zip` 实例取构造器、结果缓存（三次 `load()` 只探一次）、3.x 形状被拒、全断时 `ioCode=NO_EXTRACTOR` 且 `probe()` 给原因、本体不回调时 watchdog 落定（`settle` 的计时器是 `unref` 的，用例自己保持事件循环存活）、解压零写入、安装结果 `NO_EXTRACTOR@extracting` 且正式目录零落地 + 临时 zip 被清、`ready()` 三态。
+- 验证（**纯代码 / Node**）：187 个 JS/mjs `node --check` ✓；**十套**测试 ✓；verify-pack 881/0 ✓；check-skin-imports 37/0 ✓；`build-release.mjs --verify` 7 包 ✓；card-skin `--verify` 1016/20.5MB ✓；`pnpm build` ✓。
+- **台账更正**：P5 记录原写「ZIP 用本体自带 JSZip，加载方式与 `app.importPlugin` 完全一致」**是错的**——`importPlugin` 在 `noname/game/index.js` 里 grep 不到，我当初照抄的加载路径在本体里不存在。这条错误让我把"静态验证"当成"运行时可用"写了两个月，代价记在§五 16。
+- 待真机（§八 新增 R0，并改写 R1/R3 与注意事项）：**现在需要用户手动打开无名杀**。R0 先 `await decadeUI.packageInstaller.ready()`，再按 D 行用 `dist/release/baby-1.4.2.zip` 走一次真 `install()`。
+- 提交：`5c7b557` 一笔（A+C 一并，两件事同属"解压能力可用"这一条契约），与本条文档分开、不 squash。
 - **遗留边界（如实记）**：若 `card-skin` 包未装而某第三方扩展恰好用 `registerDecadeCardSkin({skinKey:'decade'})` 提供了自己的牌面，内置套的可用性仍是 `false`（按要求 2，第三方无权改它），因此该下拉项不出现——这是"内置资源没装上"与"别人借同名 key 供货"两种语义的交叉地带。仓库自带包在位时不会出现该组合；若今后要支持"借内置 key 供货"，需要单独设计（不属于本轮范围）。
