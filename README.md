@@ -2608,3 +2608,16 @@ P0 审计
 - 待实机第二轮：请再跑一次 `await decadeUI.packageInstaller.ready()`。若仍 `ok:false`，`reason` 现在会点名是哪一级（`window.JSZip 不存在或不是 2.x 形状` / `本体未提供 get.zip` / `get.zip 交出的实例不带 2.x 的 load()` / `本体未提供 lib.init.js`），把这几种分开的意义写进了 §八 R0——三种原因的修法完全不同。
 - 提交：`d296f9e` 一笔，与本条文档分开、不 squash。v1.13 的正文按"改了哪些文件"照旧保留，但其 A 方案描述已被本条更正，不要再照它实施。
 - **遗留边界（如实记）**：若 `card-skin` 包未装而某第三方扩展恰好用 `registerDecadeCardSkin({skinKey:'decade'})` 提供了自己的牌面，内置套的可用性仍是 `false`（按要求 2，第三方无权改它），因此该下拉项不出现——这是"内置资源没装上"与"别人借同名 key 供货"两种语义的交叉地带。仓库自带包在位时不会出现该组合；若今后要支持"借内置 key 供货"，需要单独设计（不属于本轮范围）。
+
+## v1.15（2026-09-28）R6 自验关闭 + §八 三条探针判据本身写错了
+
+真机首条 `install()` 通过后，剩余收尾项是 R1/R4/R5/R6。准备探针时读码发现：**其中三条的判据写得永远验不通**，照原样交给玩家逐条对照，会把正确行为读成失败。本轮零代码改动，只更正判据、自验 R6、修台账结构。
+
+- **R1「汇总行可安装 N 不为 0」是错的**：`summarize().installable` 数的是"存在**可用** install 动作的行"（`moduleAdmin.js:117`），而七包在仓库里全部已装且版本与索引一致 ⇒ 恒为 0。正确判据是"已独立安装 7（六样式 + `card-skin`）、可更新 0"，行上应带上索引给出的信息；想看非零"可安装"必须先卸掉一个包（正好是 R4 的前置）。
+- **R4「进度依次出现安装依赖」是错的**：全量 grep `emit(opts, { stage:` 只有 `downloading`/`extracting`/`done`/卸载 `done` 四处，`stage:"dependencies"` **只**出现在 `DEP_CYCLE`/`DEP_MISSING` 的失败返回里。`ensureDependencies` 对已在注册表的依赖直接 `continue`，而七包的依赖只有 `core`、`core` 恒在注册表 ⇒ 既不会下载 core，也不会出现 warning「已先安装依赖 core」（`packageInstaller.js:483` 那行只在依赖真被补装时才写）。**如实记下可达性边界**：现有产物走不到"依赖补装真发生"那一支（`core` 无包形态），要看它必须临时造一个依赖另一个合成包的合成包；递归两支已由 `tests/p9-release-index.test.mjs` 覆盖。
+- **R5「装 20MB 过程中点取消」在回环上做不成**：`127.0.0.1` 上下完 21,627,755 字节远快于人反应，取消按钮没有可点窗口，这条探针实际长期不可执行。给 `tmp/dev-release-server.mjs` 加 `--chunk/--throttle`（64KB×40ms，实测 card-skin **15.4 秒**；index 33ms、baby 54ms 不受影响，目录穿越仍 404），并把探针换成**不删文件**的同版本 force 重装：`update("card-skin", {index, indexUrl, force:true, signal})` + `setTimeout(()=>c.abort(), 6000)`，预期 `{ok:false, code:"CANCELLED"}` 且 `modules/card-skin/1.4.2/` 对 git 零 diff（发布在校验之后，取消不该碰正式目录）。写的服务第一版有 bug：`res.write()` 返回 false 后先 `sleep(40)` 再等 `drain`，而 drain 在那 40ms 里早已发过 ⇒ 永久挂起（实测 baby 112KB 挂满 120 秒）。改成"一次只压一块、用 write 回调落定"后正常。
+- **R6 已由我方在命令行关闭（不需要游戏）**：`tmp/r6-tamper.mjs` 造五类篡改——zip 追加字节、zip 删条目、index 改 `sha256`、index 删条目、index 改 `size`。`build-release --verify` **五类全部 `exit=1`** 且理由点名（如「baby：索引 size=1 与 zip 实际字节 112079 不符」「索引缺少 codename」），未篡改时 `exit=0`；随后重新生成，zip 与 index 摘要**逐字节回到基线**（再次证明产物确定）。
+- **台账结构缺陷修复（`129ea2b`）**：§四 历史块顺序被早期一次跨行锚点编辑打乱——`## 四、进行中（当前任务指针）` 出现两处、`### 历史：P3 第一子任务记录` 的 5 条正文落在自己标题前 23 行、标题又在 P2 记录前重复出现且无正文。按整块搬移修回 `四包拆分 → P3-1 → 历史：P3 → P2`，正文一字未改：写前后都用**行多重集**断言（结果只少 4 行结构行：2 空行 + 1 重复 h2 + 1 孤立标题，新增 0 行），并把该脚本的断言写成"任何一条不成立就不落盘"。这轮自己又踩了一次同类坑：追加 §三 行时 `old_string` 只锚到行尾**不含**结尾的 ` |`，替换后残留成 4 列行，由列数审计当场抓出并修掉——**追加行必须把行尾 ` |` 一起锚进 `old_string`**。
+- **记一次可疑工具返回**：读 §五 时两次拿到当前文件里根本不存在的内容（一段声称「构建产物防篡改校验已闭环，见 `851298d`」的条目）。实测 `git cat-file -e 851298d^{commit}` → no such object，全仓库 59 笔提交无 `851298` 前缀，HEAD 与工作区里"防篡改"只出现 1 次（我自己写的那行）。处置：不采信、不据此把 R6 当已验，仍按未验项自验后再标已过。
+- 验证：227 个 JS/mjs `node --check` ✓；**十套**测试 ✓；verify-pack 881/0 ✓；check-skin-imports 37/0 ✓；`build-release --verify` 7 包 ✓；card-skin `--verify` 1016/20.5MB ✓；`pnpm build` ✓；`modules/installed.json` 的真机安装痕迹已 `git checkout` 回滚（七条目、无 `sha256/hashVerified/installedAt/source:"local"`），工作区 clean。
+- 提交：本轮两笔文档分开——`f47d680`（R3 真机证据写回）、`129ea2b`（台账结构修复），本条 v1.15 另起一笔；均不与代码 squash。推送由用户执行。
