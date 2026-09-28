@@ -2368,20 +2368,19 @@ Online 1.1 → 1.2
 # 六十七、当前任务指针
 
 ```text
-当前阶段：P8（Feature Pack）第一刀 ✅ 代码完成（同日两处修复已并入）
-当前任务：featureRuntime 已建立（Feature 声明 / 门控 / 寻址委托 / 能力归属），
-          kill-effect 定性为门控型 Feature（不搬资源，pack 恒 false），
-          门控边界已按原版语义收窄——killEffect 只管 decadeUI.effect.kill，
-          技能特效/划线/dialog/ghost 与原版一样无条件在；
-          P6 模块管理界面支持 Feature 行与启用/禁用，且安装端口缺失时
-          只置灰安装/更新/卸载，不再整窗拒绝
+当前阶段：P8（Feature Pack）两刀 ✅ 代码完成
+当前任务：第一刀 featureRuntime + kill-effect 门控（门控型，pack 恒 false，
+          只门控 decadeUI.effect.kill，技能特效/划线/dialog/ghost 与原版一样在）；
+          第二刀 card-skin 拆包——第一个 pack:true：五套内置卡面 1016 文件
+          已 git mv 进 modules/card-skin/1.4.2/；双根寻址（内置→包根、
+          玩家自建→单体根、第三方→别人的扩展根），可用性由扫描结果说话，
+          开关语义仍归既有配置 cardPrettify 的 off（未新增状态源）
 状态：纯代码 / Node 验证通过；游戏内实测与 Android 真机项并入收尾清单
-      （docs/PROGRESS.md §八「P8 部分」P~Y），不阻塞推进
+      （docs/PROGRESS.md §八「P8 部分」P~Z6），不阻塞推进
 
-下一步：P8 第二刀 card-skin 拆包（第一个 pack:true 的 Feature）。
-        动手前须确认"双根扫描"设计：包内皮肤集 + 玩家手工丢进
-        image/card-skins/ 的文件夹都要继续可用。
-        其后 P10 最小 module-index（没有索引就没有真正的"可安装"）。
+下一步候选：P10 最小 module-index（§四十七前置；card-skin 进了索引，
+            P6 的"安装"按钮才第一次真能点亮）
+          或 P9 模块化构建（§四十六；六个样式包 + card-skin 的统一产物与校验）
 
 注：本指针自 v1.1 起长期失更，历次阶段结论以
 「六十八、变更记录」与 docs/PROGRESS.md 为准。
@@ -2535,3 +2534,19 @@ P0 审计
 - 验证（**纯代码 / Node，未进游戏**）：182 个 JS/mjs `node --check` ✓；七套测试（P1/P2/P3/P5/P6/P8×2）全过 ✓；verify-pack 881 可达 / 0 未知缺失 ✓；check-skin-imports 37 / 0 ✓；`pnpm build` ✓。
 - 游戏内必须复核（`docs/PROGRESS.md` §八「P8 部分」新增/改写 R、T、V、W2、Y 五行）：禁用击杀特效并重载后 `typeof decadeUI.effect.skill` 仍为 `"function"`、`.skill-name` 计算字号仍为 `55px`、发动技能的特效应**照常出现**（不该白等 2.5 秒）；无文件端口平台的窗口仍应列出 Feature 行并可启停。
 - 提交：`48a82bc`（P6 平台能力降级）与 `d31ab7e`（P8 门控边界）各一笔，与本条文档分开，均未 squash。
+
+## v1.10（2026-09-28）P8 第二刀：card-skin 拆包（第一个 `pack:true` 的 Feature）
+
+范围三项由用户批准：一次搬完（P3/P4 惯例）、未装包时内置五项从下拉消失、`switchKey:null` 只资源门控。
+
+- **Feature 声明**：`BUILT_IN_FEATURES += { id:"card-skin", name:"卡牌皮肤", capabilities:["card-skin"], switchKey:null, defaultEnabled:true, pack:true }`。`active = 已声明 × 包真的装上了 × (无开关→真)`。**没有新增布尔开关**：要不要用卡面、用哪套，本来就归 `cardPrettify`（取 `off` 即关闭）——再造一个开关就是第二套状态源，还会与"卸载包"互相矛盾（v1.9 的教训直接落在这里）。
+- **单一决策点 `resourceLoader.getModuleRel(id)`**：模块根**相对扩展根**的 POSIX 路径（未独立安装返回 `""`）。`getModuleBase()` 改为 `扩展根 + getModuleRel()`，于是"给 DOM 的 URL 根"与"给 `game.getFileList` 的目录扫描根"来自同一个判断——之前两处各拼一套的可能性从结构上堵掉。
+- **双根的真实形状**（与"扫两个根再合并"不同）：内置五套的根 = `getModuleRel("card-skin")`（装包→`modules/card-skin/1.4.2/`；未装→扩展根，而单体副本已迁走 ⇒ 扫到空 ⇒ 不可用）；玩家自建的文件夹**永远**只扫单体根 `image/card-skins/`（"丢进去重启即可用"是原版行为，保留）。`discoverDynamicSkins()` 与第三方 `window.registerDecadeCardSkin({extensionName,…})`（皮肤根在别人扩展的目录里）**一字未动**。
+- **可用性唯一来源＝扫描结果**：`statics.registerSkins()` 顺带发布 `setCardSkinAvailable(key, 牌面数>0)`；配置层不再自行判断装没装包。未扫描过时乐观视为可用，防止菜单在异步扫描完成前把皮肤整体抹掉。消费端：外观页下拉改用 `getAvailableCardSkinPresets()`（未装包时内置五项自然消失，只剩「关闭」+ 玩家自建）；`skin-loader.buildSkinUrl()` 对不可用皮肤返回**空串**（不产生必 404 的地址），并顺手删掉 `window.decadeUI?.extensionName || "十周年UI-Stars"` 这个硬编码扩展名回落；`getFallbackKey()` 要求回退目标真有牌面；`skin-applier` 把"选中但无牌面"等同 `isOff`。**不改写玩家的 `cardPrettify` 值**——升级不顺手清设置。
+- **文件搬迁**：`git mv` 五套（online 85 / caise 380 / decade 241 / bingkele 44 / gold 266 = **1016 文件、21,500,762 字节 ≈ 20.5MB**）进 `modules/card-skin/1.4.2/image/card-skins/`；git 侧 **1016 条 rename@100%、零增删**，历史可追。`image/card-skins/.gitkeep` 保留（该层从此只放玩家自建皮肤）。
+- **包 manifest**：`type:"feature"`、`entry:{js:[],css:[]}`（卡面是数据，牌名由运行时列目录得出，无可登记入口——延续 v1.9"登记了却不加载就是双重语义"的结论）、`size` 记字节、`cardSkins[]` 存每套文件数/字节数快照、`note` 写双根约定。`modules/installed.json` 增加 `card-skin` 条目 → `registerInstalledModules()` 以 `source:"installed"` 覆盖内置登记 → 寻址自动切包根。
+- **脚本**：新增 `scripts/build-card-skin-pack.mjs`（幂等；`--verify` 供门禁复跑）。校验点：每套非空、**单体根不得残留同名目录**（否则双根互相复活）、manifest 与实盘计数一致、`installed.json` 已登记、`.gitkeep` 在场。
+- 测试：新增 `tests/p8-card-skin-pack.test.mjs` —— 用与本体同签名的假 `game.getFileList(dir, success(folders, files))` 目录表驱动**真实**的 `createStaticsModule()` 扫描，断言未装/已装两态下的扫描根与 URL 落点、可用性发布、下拉列表、`buildSkinUrl` 空串降级、第三方注册根不变、P6 行的动作集（未装只`安装`、已装只`卸载`、无启停按钮）。`p1-smoke` 注册数 8→9 与 feature 计数 1→2、`p8-feature-runtime` 的 `list()` 顺序补 `card-skin`。
+- 验证（**纯代码 / Node，未进游戏**）：184 个 JS/mjs `node --check` ✓；**八套**测试全过 ✓；数量守恒逐套一致 ✓；verify-pack 881 可达 / 0 未知缺失 ✓；check-skin-imports 37 / 0 ✓；`pnpm build` ✓（`dist/modules/card-skin` 内 1017 文件，`dist/image/card-skins` 仅剩 `.gitkeep`，无重复副本）。
+- **未验证 / 待游戏内实测**（`docs/PROGRESS.md` §八 新增 X、Z1~Z6）：删包后下拉只剩「关闭」+ 自建、牌面回落本体默认且无 404；取图请求确实落在 `modules/card-skin/1.4.2/…`；`getModuleRel` 与 `getModuleBase` 同源；玩家丢文件夹仍可发现并选用；老配置值不背刺；卸载/重装回路（当前无索引，"安装"钮仍灰，只能手工 zip 走 `install()`）。
+- 提交：`28e1092`（双根寻址与可用性）与 `0e890c7`（1016 文件搬迁）各一笔，与本条文档分开，均未 squash。

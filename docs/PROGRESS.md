@@ -14,7 +14,7 @@
 | Stars 仓库 | https://github.com/zziyoo/decadeUi-Stars （本仓库，**独立开发仓库，已迁入源码**） |
 | 原版扩展（玩家在用，不动） | `zziyoo/decadeUi`，本地路径 `C:\Users\32360\Desktop\无名杀-win32-x64\resources\app\extension\十周年UI` |
 | 总路线 | P0审计 → P1模块基础设施 → P2公共依赖解耦 → P3十周年Pack → P4移动版Pack → P5下载器 → P6模块管理界面 → P7全部Style → P8 Feature Pack → P9模块化构建 → P10 Release → P11自动更新 → P12回滚 → P13旧版本迁移 → P14全量测试 |
-| 当前阶段 | **P8 Feature Pack 第一刀完成（代码 / Node 验证）**：`src/core/featureRuntime.js` 建立正式 Feature API，`kill-effect` 定性为**门控型 Feature**（用户决定：不搬资源，`pack` 恒 false）；P6 模块管理界面同步支持 Feature 行与启用/禁用（`16c398d`）。待游戏内验收。P5/P6/P8 的真机（Android/SAF）与游戏内实测统一并入§八收尾清单，不阻塞推进。 |
+| 当前阶段 | **P8 Feature Pack 两刀全部完成（代码 / Node 验证）**：第一刀 Feature API + `kill-effect` 门控（门控型，`pack` 恒 false，只门控 `effect.kill`）；**第二刀 `card-skin` 拆包**——第一个 `pack:true`：五套内置卡面 1016 文件 / 20.5MB 已 `git mv` 进 `modules/card-skin/1.4.2/`，双根寻址、可用性由扫描说话。待游戏内实测。P5/P6/P8 的真机（Android/SAF）与游戏内实测统一并入§八收尾清单，不阻塞推进。 |
 
 ## 二、环境备忘（本机关键信息）
 
@@ -54,19 +54,39 @@
 | 2026-09-28 | **P8 Feature 运行时 + kill-effect 门控完成**（任务书§45/§16，`b4d8db5` + 定性修正 `8f89e43`，详见§四"P8 记录"）：新增 `src/core/featureRuntime.js`（声明/门控矩阵/CSS 由 manifest 驱动/能力归属）；`moduleSystem` 把 P1 起悬空的 `isModuleEnabled` 钩子接到 `switchOn`；`builtInModules` 按声明注册 feature 模块（entry.css 备单体/包内两套路径）；`setupEffects()` 改为门控装载，Core 调用点全部可选链降级（`decadeUI.effect?.kill?.()`）；`layout.css` 的 `@import "effect.css"` 移除，改由 Feature 激活时 `resourceLoader.loadCSS` 加载。**用户决定**：kill-effect 不搬资源，定性为**门控型 Feature**（`pack:false` 恒久），"幻影出牌"不受它管辖（自有开关 `cardGhostEffect`）。**注：本行的"CSS 由 Feature 激活时加载"与"kill/skill 一起门控"已由 `d31ab7e` 按原版语义修正，见下一行与§四"P8 修复记录"** | 182 JS/mjs 语法 ✓；P1/P2/P3/P5/P6/**P8×2** 七套测试 ✓；verify-pack 881/0、skin-imports 37/0 ✓；构建 ✓（未进游戏实测） |
 | 2026-09-28 | **P6 扩展：Feature 行与启用/禁用**（`16c398d`）：`buildRows` 新增 `featureStates` 入参——门控型出「内置功能」行并只给启用/禁用（动作带 `switchKey`，写外观页同一个配置键，不另立状态源），拆包型走安装/卸载通道、装上后才给启停；不传该参数时行为逐字不变。窗口侧 `collectFeatureStates()` 由 `featureRuntime.list()+switchOn()` 得出，启停后提示需重载；顺带把 `manifest.core` 传给行模型（离线时"兼容性"列不再一律"未声明 Core 要求"） | 182 JS/mjs 语法 ✓；七套测试 ✓（P6 新增 6 类行断言 + 真实接线用例；P8 锁定声明字段集）；verify-pack/skin-imports ✓；构建 ✓ |
 | 2026-09-28 | **P8/P6 两处修复**（`48a82bc` + `d31ab7e`，详见§四"P8 修复记录"）：①`moduleManagerWindow.refresh()` 不再在 `isAvailable()===false` 时整窗提前 return——门控型 Feature 的启停不碰文件系统，任何平台都必须可用；改为 `buildRows` 新增 `installBlocker`，只置灰 `install/update/uninstall`（附加平台理由、保留 §19 原理由与 `spec`）。②按**原版语义**收窄门控：`killEffect` 只管击杀那一路，`effect.skill`/`effect.line`/`dialog`/`ghost` 恢复无条件注册，`effect.css` 回 `layout.css` 的 `@import`（内含技能特效用的 `.skill-name`），`kill-effect` 的 capabilities 去掉 `skill-effect`、manifest `entry.css` 置空，技能特效调用点去掉可选链回到原版直调 | 182 JS/mjs 语法 ✓；七套测试 ✓（P6 新增 4 块平台降级断言；P8 重写门控接线用例并锁住调用点边界）；verify-pack 881/0、skin-imports 37/0 ✓；构建 ✓ |
+| 2026-09-28 | **P8 第二刀：card-skin 拆包完成**（任务书§45/§60，`28e1092` 寻址与门控 + `0e890c7` 文件搬迁，详见§四"P8 card-skin 记录"）：`card-skin` 成为第一个 `pack:true` 的 Feature，`switchKey:null`（开关语义仍归 `cardPrettify` 的 `off`，不造第二套状态源）；`resourceLoader` 新增 `getModuleRel()` 让"URL 根"与"目录扫描根"共用同一决策；`statics` 按皮肤归属定根（内置五套→包根、玩家自建→单体根、第三方 `registerDecadeCardSkin` 一字未动）；`registerSkins` 顺带发布可用性（扫到 0 张即不可用），`skin-loader.buildSkinUrl` 不可用时返回空串并去掉硬编码扩展名回落，`skin-applier` 把"选中但无牌面"等同 `off`，外观页下拉改用 `getAvailableCardSkinPresets()`。五套卡面 1016 文件 / 21,500,762 字节经 `git mv` 进 `modules/card-skin/1.4.2/`（git 侧 1016 条 rename@100%、零增删），`image/card-skins/.gitkeep` 保留玩家皮肤根 | 184 JS/mjs 语法 ✓；P1/P2/P3/P5/P6/**P8×3** 八套测试 ✓（新增 `tests/p8-card-skin-pack.test.mjs`：假 `game.getFileList` 驱动真实扫描）；数量守恒逐套一致 ✓；verify-pack 881/0、skin-imports 37/0 ✓；构建 ✓（dist 包内 1017 文件、单体侧仅剩 .gitkeep） |
 
 ## 四、进行中（当前任务指针）
 
-**当前任务：P8 Feature Pack —— 第一刀（Feature API + kill-effect 门控）+ P6 Feature 行已代码完成，同日两处修复完毕（`48a82bc` 平台能力降级、`d31ab7e` 门控边界收窄），待游戏内实测**（首个功能提交 `b4d8db5` / 定性 `8f89e43` / Feature 行 `16c398d`，详见§四"P8 记录"与"P8 修复记录"）。
-下一阶段：**P8 第二刀 card-skin 拆包**（用户已定为第二个包）——动手前需确认"双根扫描"设计：包根 `modules/card-skin/<ver>/image/card-skins/` 与单体 `image/card-skins/` 并存，保住"玩家自己丢一个皮肤文件夹进目录即可用"的既有行为（触点 `src/core/statics.js:162,169,209,247,249`、`src/overrides/card/skin-loader.js:70`，收益 23.4MB）。
+**当前任务：P8 Feature Pack —— 两刀全部代码完成，待游戏内实测**。第一刀：Feature API + `kill-effect` 门控（`b4d8db5`/`8f89e43`/`16c398d` + 两处修复 `48a82bc`/`d31ab7e`）。第二刀：**`card-skin` 拆包**（`28e1092` 双根寻址与可用性 + `0e890c7` 五套卡面 1016 文件迁入包），详见§四"P8 card-skin 记录"。
+下一阶段候选：**P9 模块化构建**（任务书§46：把"包"纳入构建与发布产物）或 **P10 最小 module-index**（任务书§47 前置；`card-skin` 已进入 `installed.json`，但要能被"下载/安装"就必须先进索引——P6 的在线分支至今仍在等这个文件）。
 上一阶段 **P6 模块管理界面 —— ✅ 已验收通过（2026-09-27 用户游戏内实测：窗口可开、布局正常、"已独立安装 6"读取正确）**。P5（任务书§42 + §17/§18/§19/§11/§24/§20）已完成：`6c76534` + `f4a69ac` + `df2afea` + `29a69e3` + P6 实测暴露的 fs 锚点修复 `40149bf`；**P5/P6/P8 的 Android/SAF 真机实测并入§八收尾清单，不阻塞推进**。
+
+### P8 card-skin 记录（第二刀：第一个 `pack:true` 的 Feature）
+
+| 项 | 内容 |
+|---|---|
+| 范围决定（用户批准） | ①一次做完（真搬文件 + 删单体副本，P3/P4 惯例）；②未装包时内置五套**从外观页下拉消失**（与 P3"未装就不可选"同语义，不留"选了坏图"的路）；③`switchKey: null` 只资源门控——开关语义已在 `cardPrettify`（`off`=关闭），不再造第二套状态源 |
+| Feature 声明 | `BUILT_IN_FEATURES += { id:"card-skin", name:"卡牌皮肤", capabilities:["card-skin"], switchKey:null, defaultEnabled:true, pack:true }` ⇒ `active = 已声明 × getInstallState("card-skin").independent × (无开关→真)`。P6 行自动为：未装→只有`安装`（无源时置灰并说明）、已装→只有`卸载`，**不冒出启用/禁用** |
+| 单一决策点 | `resourceLoader` 新增 `getModuleRel(id)`：模块根**相对扩展根**的 POSIX 路径（未独立安装返回 `""`）。`getModuleBase(id)` 改为 `base()+getModuleRel(id)`，于是"给 DOM 的 URL 根"与"给 `game.getFileList` 的目录根"从此同一个判断，不许各处再拼一次 `modules/<id>/<version>`。`getModuleBase` 的注入覆盖仍只服务 P3 的切换实验 |
+| 双根形状 | 内置五套的根 = `getModuleRel("card-skin")`（装包→`modules/card-skin/1.4.2/`；未装→扩展根，而单体副本已迁走 ⇒ 扫到空 ⇒ 不可用）；玩家自建文件夹**永远**扫单体根 `image/card-skins/`（"丢进去重启即可用"是原版行为，实测点见§八）。`discoverDynamicSkins()` 与第三方 `window.registerDecadeCardSkin({extensionName,…})`（皮肤根在别人扩展目录）**一字未动** |
+| 可用性单一来源 | `statics.registerSkins()` 发布 `setCardSkinAvailable(key, cardNames.length > 0)` —— **扫描结果是唯一真相**，配置层不再自行判断装没装包（避免 kill-effect 那类"两处各存一套"的错）。未扫描过（`undefined`）时乐观视为可用，防菜单在扫描完成前把皮肤全抹掉 |
+| 消费端 | `config/utils.getAvailableCardSkinPresets()` 供下拉过滤（`cardPrettify.get item()` 改用，`off` 仍由定义侧补）；`skin-loader.buildSkinUrl()` 对不可用皮肤返回**空串**（不产生必 404 的地址）、内置套经 `getModuleBase("card-skin")` 解析、并删掉了 `window.decadeUI?.extensionName \|\| "十周年UI-Stars"` 这个硬编码回落；`getFallbackKey()` 要求回退目标真有牌面；`skin-applier.getSkinConfig()` 把"选中但无牌面"等同 `isOff` |
+| 遗留配置值 | 玩家原先选 `decade` 而本次没装包：**不改写他的配置**（不许偷改玩家设置），由消费端等同 `off` 走本体默认卡面；重新装上即恢复 |
+| 文件搬迁 | `git mv` 五套（online 85 / caise 380 / decade 241 / bingkele 44 / gold 266 = 1016 文件，21,500,762 字节 ≈ 20.5MB）→ `modules/card-skin/1.4.2/image/card-skins/`。git 侧 **1016 条 rename@100%、零增删**，历史可追。`image/card-skins/.gitkeep` 保留（这一层从此只放玩家自建皮肤） |
+| 包 manifest | `type:"feature"`、`entry:{js:[],css:[]}`（卡面是数据，牌名由运行时列目录得出，没有入口文件可登记）、`size` 记字节、`cardSkins[]` 存**每套的文件数与字节数快照**、`note` 写双根约定。`normalizeManifest` 用 `...raw` 合并，自定义字段不会被剥掉（与 P4 `deadRefs` 同一机制） |
+| 脚本 | `scripts/build-card-skin-pack.mjs`（幂等：已搬过自动转校验；`--verify` 供门禁复跑）。校验点：每套非空、**单体根不得残留同名目录**（否则双根互相复活）、manifest 与实盘计数一致、`installed.json` 已登记、`.gitkeep` 在场 |
+| 接线 | `modules/installed.json += card-skin` → `registerInstalledModules()` 以 `source:"installed"` 覆盖内置登记 → `getModuleRel` 切包根。对外仍只有 §57 的既有面（`decadeUI.feature`/`resource`/`moduleManager`），无新增公开 API |
+| 测试 | 新增 `tests/p8-card-skin-pack.test.mjs`：用**假 `game.getFileList` 目录表**（与本体 `success(folders, files)` 签名一致）驱动真实 `createStaticsModule()` 扫描，断言未装/已装两态下的扫描根、缓存 URL、可用性、下拉列表、`buildSkinUrl` 空串、第三方根、P6 行动作集；`p1-smoke` 注册数 8→9 与 feature 计数 1→2；`p8-feature-runtime` 的 `list()` 顺序补 `card-skin` |
+| 门禁 | 184 个 JS/mjs `node --check` ✓；**八套**测试全过 ✓；数量守恒逐套一致 ✓；verify-pack 881 可达 / 0 未知缺失 ✓；check-skin-imports 37 / 0 ✓；`pnpm build` ✓（`dist/modules/card-skin` 内 1017 文件，`dist/image/card-skins` 仅剩 `.gitkeep`，无重复副本） |
+| 未做（边界） | `dynamic-skin`（动态皮肤）与 `progress-bar` 尚未成为 Feature；未产出 `module-index.json`，所以 P6 里 card-skin 的"安装"仍置灰（只能靠仓库自带包 + 手工装）；皮肤选择 UI 与 `cardPrettify` 键名未动；未做包内皮肤的去重/共享改造 |
 
 ### P8 记录
 
 | 项 | 内容 |
 |---|---|
 | 分层 | `src/core/featureRuntime.js`（纯逻辑：不 import noname、不碰 DOM，Node 全量可测）+ 接线在 `moduleSystem.js`（单例装配，晚绑定）+ 门控点在调用方（`src/effects/index.js`、`src/skills/animate.js`、`src/overrides/player/animations.js`） |
-| Feature 形态 | 两种，由声明里的 `pack` 区分：**门控型**（`pack:false`，资源随 Core 发布，kill-effect 即此类，用户决定**永不拆包**）；**拆包型**（`pack:true`，资源装在 `modules/<id>/<version>/`，未装上即不可用——与 P3 样式包"不可用而 Core 正常"同一语义）。card-skin 将成为第一个拆包型 Feature |
+| Feature 形态 | 两种，由声明里的 `pack` 区分：**门控型**（`pack:false`，资源随 Core 发布，kill-effect 即此类，用户决定**永不拆包**）；**拆包型**（`pack:true`，资源装在 `modules/<id>/<version>/`，未装上即不可用——与 P3 样式包"不可用而 Core 正常"同一语义）。card-skin 已于同第二刀成为第一个**拆包型** Feature（见上方"P8 card-skin 记录"） |
 | 声明 | `BUILT_IN_FEATURES = [{ id:"kill-effect", name:"击杀特效", capabilities:["kill-effect"], switchKey:"killEffect", defaultEnabled:true, pack:false }]`；字段集由 `tests/p8-feature-runtime.test.mjs` 锁定（P6 界面 `collectFeatureStates` 直接读 `id/pack/switchKey`，改名会红）。**capabilities 不含 `skill-effect`**——技能特效原版没有开关，不许借 Feature 之名造第二个状态源（`d31ab7e`） |
 | 门控矩阵 | `active(id) = 已声明 × 资源在场(hasResources) × 开关为真(switchOn)`；配置未播种（`undefined`）回落 `defaultEnabled`，绝不当成"关"；无 `switchKey` 的 Feature 只看资源；未声明/未注册的 id 一律 false 且不抛错 |
 | 状态源 | **不新增**：开关就是既有 `extension_十周年UI-Stars_killEffect`（外观页"击杀特效"同一个键）。`moduleSystem` 把 P1 起悬空的 `moduleManager.isModuleEnabled` 钩子接到 `switchOn` → `moduleManager.isEnabled("kill-effect")` 从此真实，`core`/样式不被误伤 |
@@ -298,13 +318,22 @@
     - 门控型 Feature 的行不显示"未安装"（它随扩展发布），只有"内置功能 / 内置 <版本>"加一个启停按钮；若看到"未安装 + 安装按钮"，说明 `featureStates` 没传到（`decadeUI.feature` 未挂载或 content 未跑完），是接线问题不是数据问题。
     - **无文件/解压端口的平台**（`48a82bc` 之后）：列表仍出、Feature 仍可启停，只有安装/更新/卸载三钮置灰。若窗口又变成"整窗空白 + 不支持安装"，也是回归。
 
+12. **【P8 card-skin 已知边界，需游戏内实测】内置卡面已不在单体根**：五套卡面搬进 `modules/card-skin/1.4.2/` 之后，运行时的可用与否完全由"`installed.json` 有没有登记 + 目录扫得到吗"决定，因此有几个必须实测的点：
+    - **仓库自带包能被注册**全靠 `registerInstalledModules()` 读到 `modules/installed.json` 并探到包内 manifest。若这条链在任何平台断了（文件读不到、Cordova 下 `getFileList` 列不出中文路径等），表现是"外观页卡牌美化下拉里内置五项整体消失、卡面回落本体默认"——那不是皮肤坏了，是注册没跑成，先按§八 Z1/Z2 两条探针定位。
+    - **玩家自建皮肤根未变**：`image/card-skins/` 这一层现在只剩 `.gitkeep`。若玩家把整个包目录（含 `decade/`）又丢回单体根，会被 `discoverDynamicSkins()` 的同名过滤跳过（沿用原版行为，不产生两份真相），但**不要**这样发布皮肤。
+    - 老配置值指向未装包的 key 时等同 `off`，**代码不会替玩家改写配置**（避免"升级顺手清设置"）。
+    - 卸载 `card-skin` 后包目录被删，内置五项即时不可选；重启前 `getAvailableCardSkinPresets()` 仍按上次扫描结果给列表（可用性由扫描发布，运行中不再重扫），属预期。
+
 ## 六、下一步
 
-1. ~~P0~~ ✅ ~~P1~~ ✅ ~~P2（含阻塞修复）~~ ✅ ~~P3/P4~~ ✅ ~~四包批量拆分（`33da307`）~~ ✅ ~~P5 下载器/安装器 + 可靠性审查修复 + 两笔补充修复（`f4a69ac`/`df2afea`/`29a69e3`）~~ ✅ ~~P6 模块管理界面（`2bae45e` + 实测暴露的 `40149bf`）~~ ✅ ~~P8 第一刀：Feature API + kill-effect 门控（`b4d8db5`/`8f89e43`）+ P6 Feature 行（`16c398d`）~~ ✅（2026-09-28，**纯代码 / Node 验证**）。
+1. ~~P0~~ ✅ ~~P1~~ ✅ ~~P2（含阻塞修复）~~ ✅ ~~P3/P4~~ ✅ ~~四包批量拆分（`33da307`）~~ ✅ ~~P5 下载器/安装器 + 可靠性审查修复 + 两笔补充修复（`f4a69ac`/`df2afea`/`29a69e3`）~~ ✅ ~~P6 模块管理界面（`2bae45e` + 实测暴露的 `40149bf`）~~ ✅ ~~P8 第一刀：Feature API + kill-effect 门控（`b4d8db5`/`8f89e43`）+ P6 Feature 行（`16c398d`）+ 两处修复（`48a82bc`/`d31ab7e`）~~ ✅ ~~P8 第二刀：card-skin 拆包（`28e1092`/`0e890c7`）~~ ✅（2026-09-28，**纯代码 / Node 验证**）。
 2. **无阶段阻塞**：P5/P6/P8 的 Android/SAF 真机与游戏内实测按用户决定**不再阻塞推进**，统一并入§八「项目收尾验证清单」，在收尾（P14 全量测试）阶段一次性执行。
-3. **推送**：`origin/main` = `3569feb`（v1.8 台账，用户已推送；`git ls-remote origin main` 于 2026-09-28 核实）；本地领先 3 笔：`48a82bc`（P6 平台能力降级）、`d31ab7e`（P8 门控边界收窄）、`d11d66e`（v1.9 台账）+ 本次更正，**推送由用户本人执行**。另一份克隆 `extension/decadeUi-Stars` 落后，别在它上面开发。
+3. **推送**：`origin/main` = `cc928e0`（`git ls-remote origin main` 于 2026-09-28 再次核实，用户已把 v1.9 台账与两处修复推上去）；本地领先 2 笔：`28e1092`（card-skin 双根寻址与可用性）、`0e890c7`（1016 文件迁入包）+ 本次 v1.10 台账，**推送由用户本人执行**。另一份克隆 `extension/decadeUi-Stars` 落后，别在它上面开发。
 4. ~~P6 模块市场/管理界面（任务书§43）~~ ✅ 已完成（2026-09-27）：独立窗口 + 纯逻辑行模型 + 模块源配置键；入口 `decadeUI.showModuleManager` / `Ctrl+Shift+M` / 配置窗口按钮。详见§四"P6 记录"。
-5. **下一步：P8 第二刀 card-skin 拆包**（用户已定为第二个包，`pack:true` 的第一个 Feature）。**动手前需确认的设计**：卡牌皮肤是"双根扫描"模型——内置皮肤集进包（`modules/card-skin/<ver>/image/card-skins/`），而玩家手工丢进 `image/card-skins/` 的文件夹必须继续可用（现有行为，单体根保留扫描）。触点：`src/core/statics.js:162,169,209,247,249`、`src/overrides/card/skin-loader.js:70`；收益约 23.4MB。
+5. **下一阶段候选（二选一，待你定）**：
+   - **P10 最小 module-index**（任务书§47 前置）：产出 `module-index.json` + 分包 zip + 上传方式。**现在它比之前更值钱了**——`card-skin` 这类"仓库自带包"只有进了索引，P6 的"安装"按钮才第一次真能点亮，§42/§43 的在线分支才算验完。
+   - **P9 模块化构建**（任务书§46）：把七个包（6 样式 + card-skin）纳入统一构建与发布产物、`dist` 布局与校验编排（现在只有 `build-decade-pack.mjs` + `vite-plugin-static-copy` 两条路拼起来的）。
+6. ~~P8 第二刀 card-skin 拆包~~ ✅ 已完成（2026-09-28）：双根寻址、可用性由扫描说话、五套卡面 1016 文件进包。详见§四"P8 card-skin 记录"。
 6. **P10 最小 module-index**（任务书§47 的前置）：产出 `module-index.json` 与分包 zip 及上传方式。P6 的"可安装/可更新"链路只有在有索引后才真正可用（当前只有离线分支与手工填 URL）；card-skin 拆包后必须进索引才谈得上"下载"。
 7. **P7 剩余官方样式包**已随 `33da307` 完成；任务书§44"每完成一个单独 PR"未按字面执行（四包一次提交），验收时按样式逐个切换确认。
 
@@ -324,6 +353,7 @@
 | 2026-09-28 | **P6 游戏内实测通过 + fs 锚点修复**：用户实测窗口可开后报"文字挤压在一块"→ 根因本体 `div{position:absolute}`，显式 `position:static` 修复（`f41c524`）；再报"已独立安装 0"→ 根因 `moduleIo` 桌面分支把扩展根相对路径交给裸 `fs`（基准是 `process.cwd()`，而本体用归一化后的 `window.__dirname`），`fs.stat` ENOENT 被 `kind()` 当"不存在" → 空台账且无错误；新增 `fsRoot()/fsAbs()` 并让桌面分支一律走绝对基准（`40149bf`，TDD RED→GREEN，复核显示"已独立安装 6"） |
 | 2026-09-28 | **P8 第一刀完成（纯代码验证，`b4d8db5`/`8f89e43`/`16c398d`）**：新增 `src/core/featureRuntime.js`（Feature 声明 + 门控矩阵 + `cssOf`/`asset` 委托 resourceLoader + 能力归属）；`moduleSystem` 把 P1 起悬空的 `isModuleEnabled` 钩子真实接到 `switchOn`；`builtInModules` 按声明注册 `kill-effect` 为 `type:"feature"`（entry 备单体/包内两套路径）；`setupEffects()` 改门控装载、Core 调用点全部可选链降级、`layout.css` 去掉 `@import "effect.css"`。**用户两项决定**：①kill-effect **不搬资源**，定性为**门控型 Feature**（`pack:false` 恒久），拆包那一刀撤掉；②第二个包做 **card-skin**。据此补齐 P6 的 Feature 行：`buildRows` 新增 `featureStates`（门控型出"内置功能"+启用/禁用，拆包型走安装/卸载且装上后才给启停，缺省时行为逐字不变），窗口 `collectFeatureStates()` + `toggleFeature()` 写外观页同一个 `killEffect` 配置键并提示需重载。新增 `tests/p8-feature-runtime.test.mjs`/`tests/p8-effects-gate.test.mjs`，`p6` 加 6 类 Feature 行 + 真实接线用例。门禁：182 语法 ✓、七套测试 ✓、verify-pack 881/0 ✓、skin-imports 37/0 ✓、`pnpm build` ✓ |
 | 2026-09-28 | **用户指出两处问题 → 修复（`48a82bc`/`d31ab7e`）**：①`refresh()` 在 `isAvailable()===false` 时整窗提前 return，把"只写配置键"的门控型 Feature 启停一起挡掉了——改为 `buildRows` 新增 `installBlocker`，只置灰 `install/update/uninstall`（保留 §19 原理由与 `spec`），列表/台账/模块源照常。②P8 把 `kill/skill/line` 一起门控是**改变旧行为**：对照原版 `setupEffects()` 无条件注册、`killEffect` 全库只被击杀技能 `filter()` 读取，且 `playerSkill()` 会白等 2.5 秒——门控收窄到 `effect.kill` 一路，技能特效调用点恢复原版直调，`effect.css` 回 `layout.css` 的 `@import`（内含 `.skill-name`），`kill-effect` 的 capabilities 去掉 `skill-effect`、`entry.css` 置空并删掉 `FEATURE_ENTRY`。两处都先写 RED 再改绿，未新增第二套配置、未做动态 import/运行时卸载/card-skin 预拆。门禁：182 语法 ✓、七套测试 ✓、verify-pack 881/0 ✓、skin-imports 37/0 ✓、`pnpm build` ✓ |
+| 2026-09-28 | **P8 第二刀：card-skin 拆包完成（`28e1092` + `0e890c7`）**：按批准的三项范围做——一次搬完、未装包时内置五项从下拉消失、`switchKey:null` 只资源门控（开关语义仍归 `cardPrettify` 的 `off`，不造第二套状态源）。`resourceLoader` 新增 `getModuleRel()` 使"URL 根"与"目录扫描根"共用同一决策；`statics` 按归属定根（内置五套→包根、玩家自建→单体根、第三方 `registerDecadeCardSkin` 一字未动）；可用性由 `registerSkins` 的扫描结果发布，`buildSkinUrl` 对不可用皮肤返回空串（不产生必 404 的地址）并顺手删掉硬编码扩展名回落，`getFallbackKey`/`skin-applier` 同步收紧。五套卡面 1016 文件 / 20.5MB 经 `git mv` 进包（git 侧 1016 条 rename@100%、零增删），`image/card-skins/.gitkeep` 保留玩家根，包 manifest 存每套数量快照 + `--verify` 门禁复跑。新增 `tests/p8-card-skin-pack.test.mjs`（假 `game.getFileList` 驱动真实扫描）。门禁：184 语法 ✓、八套测试 ✓、数量守恒 ✓、verify-pack 881/0 ✓、skin-imports 37/0 ✓、`pnpm build` ✓（dist 包内 1017 文件、单体侧只剩 .gitkeep） |
 
 ## 八、项目收尾验证清单（真机 / 游戏内，收尾阶段统一执行）
 
@@ -359,7 +389,7 @@
 
 | # | 目的 | 操作 | 预期 |
 |---|---|---|---|
-| I | 入口可达 | 游戏内按 `Ctrl+Shift+M`；或控制台 `decadeUI.showModuleManager()`；或"扩展设置 → 小小玩楞 → 模块管理界面 → 打开"；配置窗口（`Ctrl+Shift+C`）"模块管理"分组里也有按钮 | 三种入口都能打开窗口；标题"模块管理"，汇总行形如"共 8 个模块 · 已独立安装 6 · 可更新 0 · 可安装 0"（P8 起注册表多出 `kill-effect` 行：core + 六样式 + kill-effect = 8；若你看到 9 说明模块源里另有条目）；窗口不遮挡操作、可滚动 |
+| I | 入口可达 | 游戏内按 `Ctrl+Shift+M`；或控制台 `decadeUI.showModuleManager()`；或"扩展设置 → 小小玩楞 → 模块管理界面 → 打开"；配置窗口（`Ctrl+Shift+C`）"模块管理"分组里也有按钮 | 三种入口都能打开窗口；标题"模块管理"，汇总行形如"共 9 个模块 · 已独立安装 7 · 可更新 0 · 可安装 0"（注册表 = core + 六样式 + `kill-effect` + `card-skin`；`card-skin` 已进 `installed.json`，所以"已独立安装"从 6 变 7）；窗口不遮挡操作、可滚动 |
 | J | 离线语义 | 不填模块源地址直接看列表 | 六个样式包显示"已安装"；`core` 显示"核心组件（随扩展发布）"且无按钮；模块源提示"未配置模块源"；"可更新/可安装"计数为 0（不误报） |
 | K | 卸载边界（§19） | 当前样式为十周年时，看十周年行的"卸载" | 按钮置灰，悬停提示"正在使用中，请先切换到其他样式再卸载"；被别的模块依赖的行提示"被以下模块依赖…" |
 | L | 卸载 → 重载 → 重装回路 | 切到移动版并重载 → 在窗口里对十周年执行"卸载"（需点两次：第一次变"确认卸载"）→ 点"重载游戏"→ 回到窗口 | 卸载后该行变"未安装"，`modules/decade/1.4.2/` 消失且 `modules/installed.json` 不含 decade；十周年样式不可用而其他样式正常；有索引时该行出现"安装" |
@@ -387,7 +417,13 @@
 | V | 技能特效不受击杀开关牵连 | 禁用并重载后，发动一个带特效的技能（如界定军类技能） | **技能全屏特效照常出现**，且在 `decadeUI.delay(2500)` 之后播放（原版语义：`playerSkill()` 不读 `killEffect`）。若出现"等 2.5 秒什么都不发生"，就是门控边界又被扩大了 |
 | W | 幻影出牌不受管辖 | 禁用 kill-effect 并重载后出牌 | 拖尾仍在（`!!decadeUI.effect.ghost.add` 为 `true`，`cardGhostEffect` 是独立开关；`decadeUI.effect.dialog` 也仍在）——**若幻影出牌被一起关掉，那是 bug** |
 | W2 | 击杀那一路安全降级 | 禁用并重载后击杀一个角色 | 无击杀窗口，Console **不得**出现 `Cannot read properties of undefined (reading 'kill')`（击杀调用点是 `decadeUI.effect?.kill?.()`；`src/skills/animate.js` 的 `filter()` 也会直接挡住，连延迟都不产生） |
-| X | 拆包型 Feature 的语义（card-skin 落地后再验） | 手工把 `modules/card-skin/<ver>/` 移走 → 重载 | 行显示"未安装"、卡牌皮肤回落默认、Core 与其他样式正常（`pack:true` 且包未装 → 不激活，与 P3 样式包同语义） |
+| X | 拆包型 Feature 的"删包即不可用" | 手工把 `modules/card-skin/1.4.2/` 改名移走 → 重载 → 开外观页看"卡牌美化"下拉 → 再改回来重载 | 移走后：下拉里 `OL卡牌/彩色卡牌/原十周年/哈基米哦/手杀金卡` **整体消失**，只剩「关闭」+ 玩家自建文件夹；牌面回落本体默认、无 404 请求、Console 无报错。恢复后五项回来且卡面正常（`decadeUI.feature.active("card-skin")` 由 `false` 变回 `true`） |
+| Z1 | 包内注册链是否跑通 | 控制台 `await decadeUI.packageInstaller.listInstalled()` 后看 `items` 里 `card-skin` | 有一条 `id:"card-skin"`、`independent:true`、`version:"1.4.2"`；若没有，说明 `modules/installed.json` 没读到或包内 `manifest.json` 没探到（内置皮肤会因此整体不可选，属注册问题不是皮肤丢失） |
+| Z2 | 双根寻址落点 | 控制台 `decadeUI.resource.getModuleRel("card-skin")` 与 `decadeUI.resource.getModuleBase("card-skin")` | 前者 `"modules/card-skin/1.4.2/"`、后者以它结尾的完整 URL；两者必须同源（若 rel 空而 base 指向包内，就是两处各算了一套） |
+| Z3 | 实际取图走包根 | 选「彩色卡牌」后，任取一张牌 `getComputedStyle(ui.cards?[0])`… 或直接看 Network 面板过滤 `card-skins` | 请求路径含 `modules/card-skin/1.4.2/image/card-skins/caise/*.webp`；**不得**出现 `extension/十周年UI-Stars/image/card-skins/caise/…`（单体根已无该目录） |
+| Z4 | 玩家自建皮肤仍可加（既有行为） | 往 `image/card-skins/` 里丢一个自建文件夹（内含若干 `sha.png` 等）→ 重启 | 下拉出现该文件夹名（或 `meta.json` 里的 `label`），选用后生效；它与包内五套互不影响（同名者按原版被内置跳过） |
+| Z5 | 老配置值不背刺 | 选「原十周年」→ 按 X 行把包移走 → 重载 | 不报错、牌面走本体默认；配置值仍是 `decade`（代码不替玩家改写设置）；把包放回并重载后立刻恢复原样 |
+| Z6 | 卸载/重装回路 | 窗口里对 `card-skin` 行点"卸载"（两次确认）→ 重载 → 再按§八 D 行的方式装回来 | 卸载后行变"未安装"、`modules/card-skin/` 消失、`installed.json` 不含该条、表现同 X 行；重装后恢复。**注意**：目前无模块索引，"安装"按钮是灰的——只能用 D 行的手工 zip 走 `install()` |
 | Y | 无安装能力平台的降级边界（真机） | 在 `await decadeUI.packageInstaller.isAvailable()` 返回 `available:false` 的平台打开窗口 | **列表仍出**：门控型 Feature 行可点"禁用/启用"并生效（写配置，不碰文件）；`安装/更新/卸载` 三钮置灰，悬停理由含"本平台不支持安装/卸载（缺少：…）"且保留原有"使用中/被依赖"理由；汇总行显示"· 本平台不支持安装/卸载" |
 
 **注意事项（P8）**
