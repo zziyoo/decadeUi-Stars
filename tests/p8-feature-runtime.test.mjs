@@ -59,6 +59,11 @@ function makeEnv({ installed = [], builtin = [], config = {}, bases = {}, css = 
 	assert.ok(kill.capabilities.includes("kill-effect"), "能力声明供§15 的能力查询");
 	assert.equal(typeof kill.pack, "boolean", "必须显式声明资源是否已拆进包（与样式侧 STYLES[].pack 同构）");
 	assert.equal(kill.css, undefined, "CSS 路径只在 manifest.entry.css 里，runtime 不重复登记第二份");
+	assert.equal(kill.pack, false, "kill-effect 定性为门控型 Feature：资源随 Core 发布，不走拆包通道");
+
+	// P6 模块管理界面（collectFeatureStates）按这三个字段出行，改动字段名要同步界面
+	const shape = makeEnv({ builtin: ["kill-effect"] }).runtime.list()[0];
+	assert.deepEqual(Object.keys(shape).sort(), ["capabilities", "defaultEnabled", "id", "name", "pack", "switchKey"], `声明字段即界面契约：${Object.keys(shape).join(", ")}`);
 }
 
 // ------------------------------------------------------------------ 门控矩阵

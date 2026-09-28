@@ -4,8 +4,10 @@
  * Feature = 有独立开关与独立资源、可选装载的功能块（kill-effect / card-skin / …）。
  * 与样式包的分工：样式包换的是"长什么样"，Feature 决定"这项功能要不要在"。
  *
- * 本轮拆分深度（用户已定）：**JS 仍打进 bundle，资源拆包 + 注册/启停门控**。
- * 所以这里只做三件事：声明 Feature、判定它该不该装载、把它的资源路径解析到正确的模块根
+ * 本轮拆分深度（用户已定）：**JS 仍打进 bundle，注册/启停门控优先，资源按 Feature 形态决定是否拆包**。
+ * 于是有两种形态：门控型（kill-effect，资源随 Core 发布，pack:false）与拆包型（card-skin，
+ * pack:true，资源装在 modules/<id>/<version>/，未装上即不可用）。
+ * 这里只做三件事：声明 Feature、判定它该不该装载、把它的资源路径解析到正确的模块根
  * （委托 resourceLoader.getAsset → getModuleBase，不建第二套寻址）。
  *
  * 启停不新增状态源：Feature 的开关就是它声明的 switchKey（kill-effect 用既有的 killEffect
@@ -25,7 +27,8 @@ export const BUILT_IN_FEATURES = [
 		// 复用既有开关（src/config/definitions/appearance.js 的 killEffect），不另立状态源
 		switchKey: "killEffect",
 		defaultEnabled: true,
-		// 资源是否已拆进 modules/kill-effect/：拆包那一刀翻成 true（与样式侧 STYLES[].pack 同构）。
+		// 门控型 Feature（用户已定）：特效资源本就随 Core 发布，不拆包，pack 恒为 false。
+		// 拆包型（card-skin 这类）才走安装器，pack 为 true 时资源根解析到 modules/<id>/<version>/。
 		// CSS/图片的实际路径只在模块 manifest.entry 里登记一份，runtime 不重复持有。
 		pack: false,
 	},
