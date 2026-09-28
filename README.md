@@ -2633,3 +2633,19 @@ P0 审计
 - **顺手核清一处"看着像 bug"**：所有包 `dependencies` 都是 `["core"]`，行上却显示「依赖: 无」——`moduleAdmin` 的 `shownDeps` 刻意滤掉 core（core 恒随扩展在，不作为缺失依赖提示），已写进 §八 R1 免得下次有人去追。
 - 验证：十套测试 ✓；改动文件 `node --check` ✓；verify-pack 881/0、skin-imports 37/0、build-release `--verify` 7 包 ✓；`pnpm build` ✓ 且新 CSS 已进 `dist/src/features/`。
 - **待重测**：重载游戏后再卸再装一次 `codename`，预期一次成功、不再出现 EPERM。CSS 那处我方**无法**在浏览器里验（本项目此前已确认浏览器打开不可取），只做了静态核对与产物落盘确认，视觉效果以他游戏里看到的为准。
+
+## v1.17（2026-09-28）P9 收口：能力要么说出来、要么在下载前拒绝
+
+按用户的任务书收尾两件事（HEAD `c61882d`）。**P9 至此最终完成，可以进 P10。**
+
+- **问题一：`isAvailable()` 与 `ready()` 语义不一致（`cc6ee72`）**。旧实现 `available: !!io && !!extractArchive` 只说"端口对象挂没挂"，而真正能不能解压要看 `createZipExtractor().probe()` 能不能取到本体 JSZip ⇒ 存在"`isAvailable().available === true` 但 `await ready()` 返回 `ok:false`"的理论可能；更糟的是 `installInner` 要到解压阶段才发现，等于**白下 20MB 才失败**。
+- **修法：把 probe 的结论变成安装器里的唯一真值。** 新增 `extractorReadiness` / `extractorProbe` 缓存——成功失败都缓存、并发复用同一次探测（`Promise.all([ready(),ready(),ready()])` 只 probe 一次）、重载游戏重建实例即自然清空、**不提供 reset**（任务书§四）。`ready()` 只读这份缓存；界面与安装路径共用同一次探测，没有第三套检测。
+- **`isAvailable()` 现在是同步能力快照**：端口缺失 → `available:false` + `missing*`；端口在但未探测 → `ready:false` 且 `available:false`（**未知 ≠ 可用**）；探测过 → `available` 就是 probe 的结论，失败时多带 `reason`。只新增 `ready` 一个字段。
+- **安装前早拒**：`installInner` 在端口检查之后、解析规格之前插能力门，探不过即 `NO_EXTRACTOR @ stage="resolving"`，**零下载 / 零落盘 / 台账不写**；`update` 走同一道门。SHA 判据、临时目录、发布回滚、台账事务、依赖解析一字未改。
+- **一处必须记住的坑（照任务书示例会踩）**：任务书 §六 给的"探测前 `available:false` + `missingExtractor:true`"若原样实现，`moduleManagerWindow` 会因为 `if (!installBlocker)` 直接跳过 `ready()`，于是**首次打开窗口就永久误报"本平台不支持安装/卸载"**、再也不会去探测。所以窗口改成按**端口是否缺失**判定 blocker，能力问题由 `ready()` 的失败原因承担（仍是原来的"本机取不到解压能力（ZIP）：<原因>"）。`missing*` 保持端口语义，这条已写进台账§四，免得后人"照示例改回去"。
+- **问题二：台账基线（`3d316d2`）**。`modules/installed.json` 逐字恢复为 `1322767` 的版本（schema 1 + 七条目只留 `version`），清掉真机测试写入的 `installedAt` / `source:"local"` / `size` / `sha256` / `hashVerified`；不删文件、不改 schema、不删模块记录、不给内置记录补 sha256。恢复后 7 个包目录与台账条目一一对应。
+- **JSZip 接线零改动**：`moduleIo.js` 本轮没动——三级获取、**按实例交付**（不重新引入 `instance.constructor`）、每次解压现取实例、失败缓存、3.x 被拒，全部保持 `d296f9e` 的形状。
+- 测试（**全部先 RED**）：`p5-jszip-source` 五块（未注入 extractor 时 `isAvailable()` 与 `ready()` 两侧一致、probe 通过时探测前 unknown → 探测后 available+ready、probe 失败被缓存且不翻供、三次并发只探一次、无 probe 方法的替身端口按既有事实可用），并把"下完才在 extracting 失败"的旧用例改写为"resolving 早拒 + `download` 次数为 0"；`p5-installer` 两块（能力缺失时 `install`/`update` 都是 `NO_EXTRACTOR` 且 `download===0`、`files` 为空、台账未创建；尚未探测时 `install` 先探一次再照常下载且只探一次）。
+- **如实记的边界**：①probe **抛错**过去会让 `ready()` reject（窗口自己 try/catch），现在收敛成 `{ok:false, reason:"探测解压能力时抛错：…"}`；配合"失败也缓存"，**一次瞬时失败要重载游戏才会重试**（任务书要的就是这个行为）。②未探测前 `available:false` 是刻意的，调用方要么先 `await ready()`，要么按 `missing*` 判端口。
+- 门禁：227 JS/mjs `node --check` ✓；十套测试 ✓；verify-pack 881/0、check-skin-imports 37/0 ✓；`pnpm build` ✓；`build-release --verify` exit=0 ✓。提交 `cc6ee72` + `3d316d2`，本条台账另起一笔；推送由用户执行。
+- 范围确认：未动 P9 构建架构、ZIP 格式、`module-index.json` 结构、Feature/Style Runtime、card-skin 架构、P10 自动发布、noname 本体。
