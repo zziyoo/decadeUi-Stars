@@ -2676,3 +2676,16 @@ P0 审计
 - 顺带记一笔盘上证据：用户此前在游戏里装了 `mobile`/`online`/`yjcm`，台账里三条都是 `source:"local"` + `hashVerified:true`、无 `previousVersion`、7 个包目录文件数全对、无事务残留 ⇒ **P5 的 EPERM 有界重试 + 能力门之后的安装链路真机通过**（§八 R4 只剩界面观感待他确认）。
 - 门禁：231 JS/mjs `node --check` ✓；**十二套**测试 ✓；verify-pack 881/0、check-skin-imports 37/0 ✓；`pnpm build` ✓；`build-release --verify` exit=0 ✓（整包随源码增至 3592 文件 / 112,104,844 字节 / `fe14797f5834…`；分包与索引自 P9 起未变——**发布时以 `RELEASE-NOTES.md` 里的数字为准**）。
 - 范围：未动 P9 构建架构、ZIP 格式、`module-index.json` 结构、Feature/Style Runtime、card-skin 架构、安装事务；未做 CI 自动发布与自动下载更新（用户决定只提示）。P12 回滚的地基已在（`update()` 保留旧版本目录 + 台账 `previousVersion`）。
+
+## v1.20（2026-09-28）P12 回滚：坏了就自己退回去，退不了就说清楚
+
+任务书§49："当前模块损坏 → 自动恢复上一版本；最少保留当前版本与上一版本。" 四个决定（用户批）：**结构级四项判据**、**启动自动回退**、**坏目录改名 `.corrupt-*` 留证**、**无可用上一版则提示重装**（不自动下载）。
+
+- **判据是纯逻辑（`src/core/moduleHealth.js`）**：`assessModule` 判四项——包目录缺失 / `manifest.json` 缺失或解析失败 / `manifest.id`、`version` 与台账不符 / 清单声明的 `entry.js`、`entry.css` 不存在；`planRepair` 决定怎么修：当前坏 + 上一版健康 ⇒ `restore`；上一版也坏或没记 ⇒ `reinstall`（**绝不把坏的换上来**）。
+- **两条硬边界**：①**IO 错误不算损坏**——判据只吃"探测结果"，调用方负责把"读盘失败"与"文件不存在"分开（沿用 P5 的"IO 异常 ≠ 不存在"）。这是自动回退最危险的失败模式：一次读盘抖动把好包判死、玩家莫名其妙被降级。②回退目标自己也要过同一套判据。
+- **安装器（`a091286`）**：`probeModuleVersion`（IO 错误抛出转 `IO_FAILED`）、`verifyInstalled(id)`（只探测、不写状态）、`rollback(id)`（验上一版健康 → 当前坏目录改名 `modules/<id>/.corrupt-<版本>-<随机>` → 台账 `version` 指回上一版并清 `previousVersion`；台账写失败 ⇒ 把坏目录改回原位 + `ROLLBACK_FAILED` + residual）。`localVersions` 排除 `.corrupt-*`；`INSTALL_CODES` 新增 `NO_ROLLBACK`（只增不改既有码的含义）。
+- **接线**：`registerInstalledModules()` 在注册每个模块前先做健康检查——损坏且有健康上一版就**自动回退并重注册**；没有可用上一版只警告"需要重装"，**启动阶段绝不自动下载**。修复结果经 `takeRepairNotes()` 交给 P11 的提示窗（琥珀色块：`baby：1.4.3 → 1.4.2` 或 `需要重装`），**有修复但没更新时也弹**，关掉"启动时检查更新"也弹——回退已经发生了，玩家有权知道。无更新时不显示"忽略此版本"。
+- **测试（`tests/p12-repair.test.mjs`，全部先 RED）**：判据四类逐个；修复计划五种组合（正常 / 回退 / 目标也坏 / 无上一版 / 版本号相同）；安装器八块（健康时不许动文件、损坏给出计划、回退成功验目录与台账、目标不健康拒回退且零移动、无上一版与未安装各自的码、台账写失败 ⇒ `ROLLBACK_FAILED` 且坏目录改回、`localVersions` 排除事务目录）。
+- **写测试时踩到的坑**："注入写台账失败"一开始打不中——原子写台账是 temp → rename，在 `writeText` 上注入根本不会被触发，测试假绿了一阵；改成注入"改名失败"（假 io 加 `failMoves`）才对。这类"注入点打偏"值得单记。
+- **如实标注未验**：接线层（fetch + DOM）没有 Node 测试，只有纯逻辑与 CSS 静态不变量覆盖；`registerInstalledModules` 现在每个模块启动都做一次健康探测（桌面 7 个包约 40 次小 IO），开销与"误判导致误回退"的风险留待真机观察。§八"P12 部分"给了四条探针，**P12-4"什么都不造 ⇒ 不许有任何动作"是最重要的一条**。
+- 门禁：233 JS/mjs `node --check` ✓；**十三套**测试 ✓；verify-pack 881/0、check-skin-imports 37/0 ✓；`pnpm build` ✓；`build-release --verify` exit=0 ✓。提交 `a091286`（代码）+ 本笔（台账），推送由用户执行。
