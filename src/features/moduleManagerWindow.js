@@ -26,6 +26,14 @@ let currentOverlay = null;
 let busy = false;
 let controller = null;
 let notice = null;
+/**
+ * 最近一次成功读取的模块源地址与索引内容。
+ * indexUrl 是索引内相对 url 的解析基准（安装器只解析一次且对绝对地址幂等）；
+ * index 让安装器§11 的"缺依赖先按索引装依赖"在界面上真正可用——此前窗口从未把索引交给安装器，
+ * 该分支只有 Node 测试跑得通。
+ */
+let indexBaseUrl = null;
+let indexSnapshot = null;
 
 const STAGE_TEXT = {
 	resolving: "解析",
@@ -123,10 +131,14 @@ async function refresh() {
 
 	const sourceUrl = String(lib.config[indexKey()] || "").trim();
 	let index = null;
+	indexBaseUrl = null;
+	indexSnapshot = null;
 	if (sourceUrl) {
 		const fetchResult = await installer.fetchIndex(sourceUrl, { timeoutMs: 10000 });
 		if (fetchResult.ok) {
 			index = fetchResult.index;
+			indexSnapshot = index;
+			indexBaseUrl = fetchResult.indexUrl || sourceUrl;
 			notes.push(`模块源已连接（索引 schema ${index?.schema ?? "?"}）`);
 		} else {
 			notes.push(`模块源不可用：${resultText(fetchResult)}`);
@@ -262,9 +274,9 @@ async function runAction(row, action, rowEl) {
 	let result;
 	try {
 		if (action.kind === "install") {
-			result = await installer.install(action.spec, { onProgress, signal: controller.signal });
+			result = await installer.install(action.spec, { onProgress, signal: controller.signal, index: indexSnapshot, indexUrl: indexBaseUrl });
 		} else if (action.kind === "update") {
-			result = await installer.update(row.id, { spec: action.spec, onProgress, signal: controller.signal });
+			result = await installer.update(row.id, { spec: action.spec, onProgress, signal: controller.signal, index: indexSnapshot, indexUrl: indexBaseUrl });
 		} else {
 			result = await installer.uninstall(row.id, { onProgress });
 		}

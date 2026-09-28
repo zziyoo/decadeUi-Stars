@@ -29,6 +29,29 @@
 import { validateManifest, normalizeManifest, checkCoreRequirement } from "./manifest.js";
 import { downloadBuffer, sha256Hex, DownloadError } from "./downloader.js";
 
+/**
+ * 索引/调用方给的相对地址 → 绝对下载地址（任务书§46/§47：P9 产物与发布共用一条解析）
+ *
+ * 解析点**只在这里一个**：`installInner` 在校验之前调用它，所以
+ *   - 直接给的规格、索引里的依赖条目、依赖递归再进来时，走的是同一份逻辑；
+ *   - 对绝对地址幂等（`new URL(绝对, base)` 返回绝对本身），重复解析没有副作用。
+ * 必须在 `checkSpec` 之前调用——那里只收 `http(s)` 绝对地址，相对条目会被当成 INVALID_SPEC。
+ *
+ * 不传 `indexUrl` 时原样返回，保持引入本参数之前的行为（调用方自己给绝对地址的用法不受影响）。
+ * @param {string} url - 索引条目里的 url（可为裸文件名、子路径或绝对地址）
+ * @param {string} [indexUrl] - 索引文件自身的绝对地址（fetchIndex 回带），作为解析基准
+ * @returns {string} 解析后的地址；无法解析时原样交回，由下载器给出 INVALID_URL
+ */
+export function resolveModuleUrl(url, indexUrl) {
+	if (typeof url !== "string" || !url) return "";
+	if (typeof indexUrl !== "string" || !indexUrl) return url;
+	try {
+		return new URL(url, indexUrl).href;
+	} catch {
+		return url;
+	}
+}
+
 /** 安装器结果码（P6 管理界面按 code 出文案，任务书§6） */
 export const INSTALL_CODES = {
 	NO_IO: "NO_IO",
@@ -413,6 +436,8 @@ export function createPackageInstaller(deps = {}) {
 
 		// 信任来源只能是外部安装目标（索引条目/调用方），不能是包内自述：见 externalTarget()
 		const spec = externalTarget(rawSpec);
+		// 索引条目常写裸文件名，先按索引地址解析再校验（checkSpec 只收 http(s) 绝对地址）
+		spec.url = resolveModuleUrl(spec.url, opts.indexUrl);
 		const checked = checkSpec(spec);
 		if (!checked.ok) return checked;
 
@@ -760,7 +785,7 @@ export function createPackageInstaller(deps = {}) {
 					return failure(INSTALL_CODES.STRUCTURE_INVALID, `索引 JSON 解析失败: ${error.message}`, { stage: "index" });
 				}
 				if (!parsed || typeof parsed !== "object") return failure(INSTALL_CODES.STRUCTURE_INVALID, "索引内容不是对象", { stage: "index" });
-				return success({ index: parsed, bytes, attempts });
+				return success({ index: parsed, indexUrl: url, bytes, attempts });
 			} catch (error) {
 				return toDownloadFailure(error);
 			}
