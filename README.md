@@ -2550,3 +2550,13 @@ P0 审计
 - 验证（**纯代码 / Node，未进游戏**）：184 个 JS/mjs `node --check` ✓；**八套**测试全过 ✓；数量守恒逐套一致 ✓；verify-pack 881 可达 / 0 未知缺失 ✓；check-skin-imports 37 / 0 ✓；`pnpm build` ✓（`dist/modules/card-skin` 内 1017 文件，`dist/image/card-skins` 仅剩 `.gitkeep`，无重复副本）。
 - **未验证 / 待游戏内实测**（`docs/PROGRESS.md` §八 新增 X、Z1~Z6）：删包后下拉只剩「关闭」+ 自建、牌面回落本体默认且无 404；取图请求确实落在 `modules/card-skin/1.4.2/…`；`getModuleRel` 与 `getModuleBase` 同源；玩家丢文件夹仍可发现并选用；老配置值不背刺；卸载/重装回路（当前无索引，"安装"钮仍灰，只能手工 zip 走 `install()`）。
 - 提交：`28e1092`（双根寻址与可用性）与 `0e890c7`（1016 文件搬迁）各一笔，与本条文档分开，均未 squash。
+
+## v1.11（2026-09-28）P8 card-skin 验收修复：第三方注册不再污染内置皮肤可用性
+
+- **问题**：`statics.registerSkins()` 里无条件执行 `setCardSkinAvailable(skinKey, cardNames.length > 0)`，而 `registerSkins` 同时服务三条路径——内置 `card-skin` 包的扫描、第三方 `registerDecadeCardSkin()` 带 `cardNames` 的注册、第三方不带 `cardNames` 时由它去扫**自己扩展目录**的结果。原版 API 明确允许复用已有 `skinKey`（文档示例就是 `registerDecadeCardSkin({extensionName:'我的扩展', skinKey:'decade'})`），于是状态污染路径成立：内置 `decade` 扫到 241 张（可用）→ 某第三方注册同名 key 但它的目录为空 → 用 `[]` 再调一次 `registerSkins` → `isCardSkinAvailable("decade")` 被写成 `false` → `skin-applier` 把整套内置皮肤当 `off`。**这是对 §57 兼容 API 的行为回归**（P1 时期该 API 就允许这么做）。
+- **修法（最小）**：`registerSkins(skinKey, baseUrl, cardNames, ext, { publishAvailability = false } = {})`；只有 `loadBuiltinSkins()` 的内部扫描传 `{ publishAvailability: true }`，第三方两条调用点保持四参、**不写** `cardSkinAvailability`。于是 availability 只描述内置 `card-skin` 资源本身；未新增第二套状态源；第三方的 URL 根仍是 `lib.assetURL + extension/<extensionName>/image/card-skins/...`；同名条目的去重优先级（内置条目先到先占）与 `READ_OK` 语义一字未改；保留第三方复用 `decade` 等已有 key 的兼容性。
+- 测试：`tests/p8-card-skin-pack.test.mjs` 新增四态并先取 RED（实际失败信息 `B：第三方的空目录不许把内置 decade 整体标成不可用 —— false !== true`）—— A 装包后内置 `decade` 可用；B 第三方用 `skinKey:'decade'` 注册空目录后 `decade` 仍可用且下拉里仍在；C 第三方带 `cardNames` 时它补的牌面指向**它的**扩展根、内置同名条目不被覆盖、可用性不变；D 第三方新 key 完全不参与发布（空目录也不写出一条"不可用"，因为"不写"才等价于乐观可用），且 `READ_OK` 未被搭车改写。
+- 验证（**纯代码 / Node**）：184 个 JS/mjs `node --check` ✓；八套测试全过 ✓；verify-pack 881 可达 / 0 未知缺失 ✓；check-skin-imports 37 / 0 ✓；`build-card-skin-pack.mjs --verify` 1016 文件 / 20.5MB 数量守恒 ✓；`pnpm build` ✓（确认 `dist/src/core/statics.js` 为当次重新产出）。
+- 范围守护：未改双根设计、未改 card-skin 安装模型、未提前进入 P9/P10。
+- 提交：`64719f3`，与 `28e1092`/`0e890c7` 分开、不 squash。
+- **遗留边界（如实记）**：若 `card-skin` 包未装而某第三方扩展恰好用 `registerDecadeCardSkin({skinKey:'decade'})` 提供了自己的牌面，内置套的可用性仍是 `false`（按要求 2，第三方无权改它），因此该下拉项不出现——这是"内置资源没装上"与"别人借同名 key 供货"两种语义的交叉地带。仓库自带包在位时不会出现该组合；若今后要支持"借内置 key 供货"，需要单独设计（不属于本轮范围）。
