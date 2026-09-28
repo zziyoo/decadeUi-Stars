@@ -138,3 +138,45 @@ export function registerDynamicSkin(skin) {
 export function getAllCardSkinPresets() {
 	return [...cardSkinPresets, ...dynamicCardSkinPresets];
 }
+
+/**
+ * 是否内置皮肤套（内置的根随 card-skin 包的安装状态切换，玩家自建的永远在单体根）
+ * @param {string} key
+ * @returns {boolean}
+ */
+export function isBuiltinCardSkin(key) {
+	return cardSkinPresets.some(skin => skin.key === key);
+}
+
+/**
+ * 皮肤可用性：由 statics 扫描完成后发布（扫描是唯一真相，不在这里重复判断装没装包）
+ * 未扫描过（undefined）时乐观视为可用，避免菜单在扫描完成前把皮肤一律抹掉。
+ * @type {Map<string, boolean>}
+ */
+const cardSkinAvailability = new Map();
+
+/**
+ * 发布某个皮肤的可用性
+ * @param {string} key - 皮肤键名
+ * @param {boolean} available - 是否扫到了牌面
+ */
+export function setCardSkinAvailable(key, available) {
+	cardSkinAvailability.set(key, Boolean(available));
+}
+
+/**
+ * 该皮肤当前有没有牌面可用（内置五套在 card-skin 包未装时即为不可用）
+ * @param {string} key - 皮肤键名
+ * @returns {boolean}
+ */
+export function isCardSkinAvailable(key) {
+	return cardSkinAvailability.get(key) !== false;
+}
+
+/**
+ * 当前可选的皮肤列表（供配置下拉使用；`off` 由调用方自己补）
+ * @returns {Array<{key: string, dir: string, label: string, extension: string}>}
+ */
+export function getAvailableCardSkinPresets() {
+	return getAllCardSkinPresets().filter(skin => isCardSkinAvailable(skin.key));
+}

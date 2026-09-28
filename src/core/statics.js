@@ -2,7 +2,8 @@
  * @fileoverview 静态资源模块，管理卡牌皮肤等静态资源的加载和缓存
  */
 import { lib, game, ui, get, ai, _status } from "noname";
-import { cardSkinPresets, registerDynamicSkin, getAllCardSkinPresets } from "../config.js";
+import { cardSkinPresets, registerDynamicSkin, getAllCardSkinPresets, isBuiltinCardSkin, setCardSkinAvailable } from "../config/utils.js";
+import { getModuleSystem } from "./moduleSystem.js";
 
 /**
  * 全局卡牌皮肤注册队列
@@ -128,6 +129,8 @@ export function createStaticsModule() {
 			skinCache[name] = { url: `${baseUrl}${name}.${ext}`, name, loaded: true };
 		}
 		cards.READ_OK[skinKey] = true;
+		// 可用性由扫描结果说话：扫到 0 张牌面就是不可用（card-skin 包未装时的内置五套即属此类）
+		setCardSkinAvailable(skinKey, cardNames.length > 0);
 	};
 
 	/**
@@ -241,12 +244,18 @@ export function createStaticsModule() {
 	const loadBuiltinSkins = async () => {
 		await discoverDynamicSkins();
 
+		// 内置五套的根随 card-skin 包的安装状态切换（决策唯一来源：resourceLoader.getModuleRel）；
+		// 未装包时回落扩展根，而单体副本已迁进包 → 扫到空 → 如实不可用。
+		// 玩家自己丢进 image/card-skins/ 的文件夹永远仍扫单体根（"丢进去就能用"是既有行为）。
+		const packRel = getModuleSystem().resourceLoader.getModuleRel("card-skin");
+
 		const allPresets = getAllCardSkinPresets();
 		const tasks = allPresets.map(async skin => {
 			const folder = skin.dir || skin.key;
-			const dir = `extension/${decadeUIName}/image/card-skins/${folder}`;
+			const rel = isBuiltinCardSkin(skin.key) ? packRel : "";
+			const dir = `extension/${decadeUIName}/${rel}image/card-skins/${folder}`;
 			const ext = skin.extension ? `.${skin.extension.toLowerCase()}` : ".png";
-			const baseUrl = `${decadeUIPath}image/card-skins/${folder}/`;
+			const baseUrl = `${decadeUIPath}${rel}image/card-skins/${folder}/`;
 
 			const files = await scanDirectory(dir);
 			const names = extractCardNames(files, ext);

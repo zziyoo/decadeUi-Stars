@@ -40,22 +40,33 @@ export function createResourceLoader({ getBasePath, moduleManager, getModuleBase
 	};
 
 	/**
-	 * 模块根路径解析（P3正式实现）
-	 * @param {string} moduleId - 模块ID（core/decade/mobile/online/yjcm/baby/codename/...）
-	 * @returns {string} 模块资源根目录（以 / 结尾）
+	 * 模块根**相对扩展根**的路径（P3 决策的唯一实现）
+	 *
+	 * getModuleBase 给的是可直接落进 DOM 的 URL，而目录扫描/读文件走的是本体那套
+	 * "扩展根相对 POSIX 路径"——两处必须来自同一个决策，否则装没装包会各说一套。
+	 * 未独立安装（内置/未知/缺版本）返回 ""，调用方直接拼在扩展根后面即可。
+	 * 注：`getModuleBase` 的注入覆盖仅供 P3 的切换实验，不参与本函数的判定。
+	 * @param {string} moduleId - 模块ID（core/decade/mobile/online/yjcm/baby/codename/card-skin/...）
+	 * @returns {string} 以 / 结尾的相对路径，或空串
 	 */
-	const resolveModuleBase = moduleId => {
-		const root = toDir(base());
+	const getModuleRel = moduleId => {
 		if (moduleManager && typeof moduleId === "string" && moduleId) {
 			const state = moduleManager.getInstallState(moduleId);
 			if (state && state.independent && state.version) {
 				// core 的独立安装根为 core/（任务书§60），其余模块为 modules/<id>/<version>/
-				return toDir(state.type === "core" ? `${root}core/` : `${root}modules/${moduleId}/${state.version}/`);
+				return state.type === "core" ? "core/" : `modules/${moduleId}/${state.version}/`;
 			}
 		}
 		// 兼容阶段 / 内置模块 / 未知模块：回落扩展根
-		return root;
+		return "";
 	};
+
+	/**
+	 * 模块资源根 URL（以 / 结尾）
+	 * @param {string} moduleId
+	 * @returns {string}
+	 */
+	const resolveModuleBase = moduleId => toDir(`${toDir(base())}${getModuleRel(moduleId)}`);
 
 	const getModuleBase = moduleId => {
 		if (typeof getModuleBaseOverride === "function") return toDir(getModuleBaseOverride(moduleId));
@@ -64,6 +75,7 @@ export function createResourceLoader({ getBasePath, moduleManager, getModuleBase
 
 	return {
 		getModuleBase,
+		getModuleRel,
 
 		/**
 		 * 解析模块内相对资源的完整URL

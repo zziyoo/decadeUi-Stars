@@ -4,7 +4,7 @@
  * @module overrides/card/skin-applier
  */
 import { lib, get } from "noname";
-import { cardSkinMeta } from "../../config/utils.js";
+import { cardSkinMeta, isCardSkinAvailable } from "../../config/utils.js";
 import {
 	getCardResources,
 	getSkinCache,
@@ -25,7 +25,9 @@ import {
  */
 function getSkinConfig() {
 	const skinKey = lib.config["extension_十周年UI-Stars_cardPrettify"];
-	const isOff = !skinKey || skinKey === "off";
+	// 选中的皮肤没有牌面（card-skin 包未装时内置五套即如此）等同"关闭"，
+	// 不许拿空缓存去拼背景，也不许产生一个必 404 的请求
+	const isOff = !skinKey || skinKey === "off" || !isCardSkinAvailable(skinKey);
 	return { skinKey, isOff };
 }
 

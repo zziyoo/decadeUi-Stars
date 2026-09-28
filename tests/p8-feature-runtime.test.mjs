@@ -149,8 +149,8 @@ function makeEnv({ installed = [], builtin = [], config = {}, bases = {}, css = 
 	assert.equal(runtime.capabilityOwner("no-such-cap"), null);
 	assert.deepEqual(
 		runtime.list().map(item => item.id),
-		["kill-effect", "my-feature"],
-		"list 按 define 顺序，内置声明在前"
+		["kill-effect", "card-skin", "my-feature"],
+		"list 按 define 顺序，内置声明在前（kill-effect 门控型 → card-skin 拆包型）"
 	);
 	assert.deepEqual(runtime.cssOf("ghost-feature"), [], "未声明的 id 不得抛错");
 	assert.equal(runtime.active("ghost-feature"), false);

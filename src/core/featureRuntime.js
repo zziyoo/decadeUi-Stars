@@ -33,6 +33,17 @@ export const BUILT_IN_FEATURES = [
 		// entry.css 不登记：effect.css 里的 .skill-name 属技能特效，随 Core 的 @import 链无条件加载。
 		pack: false,
 	},
+	{
+		id: "card-skin",
+		// 第一个拆包型 Feature：五套内置卡面（约23MB/1016文件）装在 modules/card-skin/<version>/ 下。
+		name: "卡牌皮肤",
+		capabilities: ["card-skin"],
+		// 开关语义已经在既有配置里：cardPrettify 取 "off" 即关闭、取皮肤 key 即选用。
+		// 这里再造一个布尔开关就是第二套状态源，且会与"卸载包"互相矛盾——所以没有开关。
+		switchKey: null,
+		defaultEnabled: true,
+		pack: true,
+	},
 ];
 
 const asArray = value => (value === undefined || value === null ? [] : Array.isArray(value) ? value : null);

@@ -3,7 +3,7 @@
  * @description 纯配置数据，不包含业务逻辑
  * @module config/definitions/card
  */
-import { createCollapseTitle, createCollapseEnd, getAllCardSkinPresets } from "../utils.js";
+import { createCollapseTitle, createCollapseEnd, getAvailableCardSkinPresets } from "../utils.js";
 import { onCardGhostEffectClick, onAutoSelectClick, onAutoSelectUpdate, onHandTipHeightBlur, onHandTipHeightUpdate, onCardScaleBlur, onCardScaleUpdate, onDiscardScaleBlur, onDiscardScaleUpdate, onHandFoldMinBlur, onHandFoldMinUpdate, onCardPrettifyClick, onCardkmhClick, onCardkmhUpdate, onChupaizhishiUpdate, onCardAlternateNameClick } from "../handlers/card-handlers.js";
 
 /**
@@ -104,7 +104,7 @@ export const cardPrettify = {
 	name: "卡牌美化",
 	init: "decade",
 	get item() {
-		return getAllCardSkinPresets().reduce(
+		return getAvailableCardSkinPresets().reduce(
 			(options, skin) => {
 				options[skin.key] = skin.label;
 				return options;

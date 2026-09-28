@@ -4,7 +4,8 @@
  * @module overrides/card/skin-loader
  */
 import { lib, get } from "noname";
-import { cardSkinMeta } from "../../config/utils.js";
+import { cardSkinMeta, isBuiltinCardSkin, isCardSkinAvailable } from "../../config/utils.js";
+import { getModuleSystem } from "../../core/moduleSystem.js";
 
 /**
  * 皮肤回退映射表
@@ -51,23 +52,26 @@ export function isSkinPreloaded(skinKey) {
  */
 export function getFallbackKey(skinKey) {
 	const fallbackKey = FALLBACK_MAP[skinKey];
-	return fallbackKey && cardSkinMeta[fallbackKey] ? fallbackKey : null;
+	// 回退目标也必须真有牌面，否则会拼出一个不存在的地址去 new Image()
+	return fallbackKey && cardSkinMeta[fallbackKey] && isCardSkinAvailable(fallbackKey) ? fallbackKey : null;
 }
 
 /**
  * 构建皮肤URL
  * @param {string} skinKey - 皮肤键名
  * @param {string} filename - 文件名
- * @returns {string} 完整URL
+ * @returns {string} 完整URL，皮肤不可用时返回空串
  */
 export function buildSkinUrl(skinKey, filename) {
 	const skin = cardSkinMeta[skinKey];
-	if (!skin) return "";
+	// 不可用（含 card-skin 包未装的内置五套）就什么地址都不给，让它等价 off 走本体默认卡面
+	if (!skin || !isCardSkinAvailable(skinKey)) return "";
 
-	const decadeUIName = window.decadeUI?.extensionName || "十周年UI-Stars";
 	const folder = skin.dir || skinKey;
 	const extension = skin.extension || "png";
-	return `${lib.assetURL}extension/${decadeUIName}/image/card-skins/${folder}/${filename}.${extension}`;
+	// 内置五套的根随 card-skin 包切换；玩家自建文件夹永远在扩展根下（两处同一决策，不另算路径）
+	const root = isBuiltinCardSkin(skinKey) ? getModuleSystem().resourceLoader.getModuleBase("card-skin") : decadeUIPath;
+	return `${root}image/card-skins/${folder}/${filename}.${extension}`;
 }
 
 /**

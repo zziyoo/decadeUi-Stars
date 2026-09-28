@@ -17,13 +17,14 @@ registerBuiltInModules(registry, { version: "1.4.2" });
 const moduleManager = createModuleManager({ registry });
 
 // 任务书§36验收接口（P8 起内置清单还含 Feature，声明源见 core/featureRuntime.BUILT_IN_FEATURES）
-assert.equal(registry.size, 8, "core + 6 styles + 1 feature");
+assert.equal(registry.size, 9, "core + 6 styles + 2 features（kill-effect 门控型、card-skin 拆包型）");
 assert.equal(moduleManager.isInstalled("core"), true);
 assert.equal(moduleManager.isInstalled("decade"), true);
 assert.equal(moduleManager.isInstalled("kill-effect"), true, "P8：Feature 也进注册表，否则资源寻址与门控都无从判断");
-assert.equal(moduleManager.list().length, 8);
+assert.equal(moduleManager.isInstalled("card-skin"), true, "P8 第二刀：card-skin 作为拆包型 Feature 内置登记（未装包时由它提供类型与回落根）");
+assert.equal(moduleManager.list().length, 9);
 assert.equal(moduleManager.list({ type: "style" }).length, 6);
-assert.equal(moduleManager.list({ type: "feature" }).length, 1);
+assert.equal(moduleManager.list({ type: "feature" }).length, 2);
 assert.deepEqual(moduleManager.getManifest("kill-effect").entry.css, [], "kill-effect 的样式与技能特效共用 effect.css（内含 .skill-name），留在 layout.css 的 @import 链里，不在 Feature 入口登记——否则会出现登记了却不加载、或加载了却随击杀开关卸载的双重语义");
 assert.deepEqual(moduleManager.getManifest("kill-effect").capabilities, ["kill-effect"], "能力声明不得含 skill-effect：killEffect 开关不管辖技能特效（原版只在击杀技能 filter 里读它）");
 
@@ -42,7 +43,7 @@ assert.equal(moduleManager.get("mobile").meta.skin, "shousha");
 assert.equal(moduleManager.register({ schema: 1, id: "BAD_ID", name: "x", version: "1.0.0", type: "style" }).ok, false, "非法id拒绝");
 assert.equal(moduleManager.register({ schema: 1, id: "good-mod", name: "x", version: "1.0.0", type: "feature" }).ok, false, "非core缺core声明拒绝");
 assert.equal(moduleManager.register({ schema: 1, id: "good-mod", name: "x", version: "1.0.0", type: "feature", core: ">=1.0.0" }).ok, true, "合法feature注册");
-assert.equal(registry.size, 9, "内置 8 个（core+6样式+1功能）+ 上面注册的 good-mod");
+assert.equal(registry.size, 10, "内置 9 个（core+6样式+2功能）+ 上面注册的 good-mod");
 
 // 重复注册：同版本幂等，异版本拒绝
 assert.doesNotThrow(() => registry.register(moduleManager.getManifest("decade")));
