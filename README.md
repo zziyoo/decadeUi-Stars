@@ -2585,7 +2585,7 @@ P0 审计
 用户给出真机验证链（构建 → 7 个 zip → 真机 `packageInstaller.install()` → 本体 JSZip 2.x 解压 → 装 `card-skin`/`decade` → 重载 → 看资源可用）。我先把**不需要客户端**的部分做完，结果一好一坏，坏的按批准的 A+C 当场修掉（`5c7b557`）。
 
 - **✓ 已证（v1.12 的 §五 13 未知量消掉）**：用本体**真正 import 的那份** JSZip 跑探针——`noname/get/index.js`、`optionsMenu.js` 都 `import JSZip from "../../_virtual/index2.js"`（内部 `jszip@2.7.0`）。它读遍 `dist/release/`：条目数 `27/1017/32/50/44/70/45` 与源目录一致、根位 `manifest.json` 全在、**1285 个条目 `asNodeBuffer()` 逐字节一致**、非 ASCII 条目名 0。探针刻意喂 `ArrayBuffer`（与下载器给运行时的类型一致）并用 `new JSZip()` + `zip.load()`（与本体 optionsMenu 同读法）。
-- **✗ 真因不是格式，是取不到库（A 修）**：`noname.js` 里 `window.JSZip`/`globalThis.JSZip` 出现 **0 次**，`resources/app/game/` 下**没有 `jszip.js`** —— 旧 `defaultLoadJsZip` 的两条路（全局 / `lib.init.js(game/jszip)`）在真机上全断，`install()` 必败于解压。新增 `createJsZipSource()`：`window.JSZip` → **`get.zip(cb)`**（本体公开 API，实现就是 `callback(new JSZip())`，从实例取 `constructor`）→ `lib.init.js(game/jszip)`；每级过"必须有 2.x `load()`"的形状校验；结果连失败一起缓存（探测带加载副作用，界面每次刷新不该再白等一次 watchdog）；解压改 `new Ctor()` + `zip.load(buffer)`。**不 vendor、不改本体、不 import 打包器内部路径**（§56禁止1）。
+- **✗ 真因不是格式，是取不到库（A 修）**【本条描述的"从实例取 constructor"已被实机证伪，现实现见 v1.14】：`noname.js` 里 `window.JSZip`/`globalThis.JSZip` 出现 **0 次**，`resources/app/game/` 下**没有 `jszip.js`** —— 旧 `defaultLoadJsZip` 的两条路（全局 / `lib.init.js(game/jszip)`）在真机上全断，`install()` 必败于解压。新增 `createJsZipSource()`：`window.JSZip` → **`get.zip(cb)`**（本体公开 API，实现就是 `callback(new JSZip())`，从实例取 `constructor`）→ `lib.init.js(game/jszip)`；每级过"必须有 2.x `load()`"的形状校验；结果连失败一起缓存（探测带加载副作用，界面每次刷新不该再白等一次 watchdog）；解压改 `new Ctor()` + `zip.load(buffer)`。**不 vendor、不改本体、不 import 打包器内部路径**（§56禁止1）。
 - **顺手堵掉一个侥幸**：`拖拽读取` 扩展 vendor 的 JSZip 是 **3.6.0**，静态看只有 `loadAsync`、没有 `load`。若把它当"可用"接受，`new Ctor(buffer)` 不载入数据、`.files` 为空，症状会退化成"包结构非法/`ENTRY_MISSING`"这种更难查的假象——形状校验正是为此。（这条是静态判断 + 我们代码路径的推演，未执行第三方代码。）
 - **✗ 第二个必败点（端口形状）**：`moduleSystem` 注入的是 `createZipExtractor()` 的 `{extract, probe}` **对象**，而安装器一路 `await extractZip(...)` 当**函数**调 ⇒ 真机 `TypeError: extractZip is not a function`，且它不带 ioCode，于是被解压步的 catch 误报成 `STRUCTURE_INVALID「解压失败」`，看起来像下载的包坏了。现在工厂里归一两种形状（函数仍受支持，P5 既有测试用的就是函数替身），归一不了即 `NO_EXTRACTOR`。
 - **C：能力诚实化**：端口暴露 `probe()`、安装器新增 `ready()`、窗口 `refresh()` 额外 `await ready()`；探不过就把 `安装/更新/卸载` 置灰并显示"本机取不到解压能力（ZIP）：…"，不再让按钮亮着等玩家把包下完才失败。`isAvailable()` 的同步语义不变（它只说端口在不在）；门控型 Feature 的启停仍不受平台能力影响（沿用 `48a82bc` 口径）。`toIoFailure` 增加 `ioCode=NO_EXTRACTOR → NO_EXTRACTOR` 映射。
@@ -2594,4 +2594,17 @@ P0 审计
 - **台账更正**：P5 记录原写「ZIP 用本体自带 JSZip，加载方式与 `app.importPlugin` 完全一致」**是错的**——`importPlugin` 在 `noname/game/index.js` 里 grep 不到，我当初照抄的加载路径在本体里不存在。这条错误让我把"静态验证"当成"运行时可用"写了两个月，代价记在§五 16。
 - 待真机（§八 新增 R0，并改写 R1/R3 与注意事项）：**现在需要用户手动打开无名杀**。R0 先 `await decadeUI.packageInstaller.ready()`，再按 D 行用 `dist/release/baby-1.4.2.zip` 走一次真 `install()`。
 - 提交：`5c7b557` 一笔（A+C 一并，两件事同属"解压能力可用"这一条契约），与本条文档分开、不 squash。
+
+## v1.14（2026-09-28）实机第一轮反馈：JSZip 获取改为"按实例交付"（v1.13 的 A 假设被证伪）
+
+用户在真机跑 `await decadeUI.packageInstaller.ready()`，得到 `ok:false`，reason 为
+「get.zip 交出的实例不带 2.x 的 load()（JSZip 版本或形状不符）；加载 game/jszip 无响应：本体回调未触发」。
+
+- **根因不是本体，是我在 v1.13 里的一个未验证假设**：A 方案当时写成"从 `get.zip` 交出的实例上取 `constructor`，缓存构造器"。实际 `jszip@2.7.0` 用 `JSZip.prototype = {…}` **整体替换原型**，prototype 上没有 `constructor` 属性 ⇒ `instance.constructor === Object`（Node 里 import 本体那份 `_virtual/index2.js` 复核：`Object.getOwnPropertyNames(JSZip.prototype).includes("constructor") === false`），`new Object()` 当然没有 `load()`，于是三级选型全部判定失败。**教训**：从别人库的对象反推构造器之前，先确认它的 prototype 是不是对象字面量替换的。
+- **修法（`d296f9e`）**：端口的交付单位从"构造器"换成"**实例**"。`createJsZipSource().createInstance()` —— 全局路径自己 `new`；`get.zip` 路径**每次向本体要一份新实例**（其实现本就是 `callback(new JSZip())`）；脚本路径只负责装上、装完回查全局。**选型**（哪一级可用）连失败一起缓存，实例每次解压现取 —— 因为 2.x 的 `load()` 是**原地写入**，复用实例会把上一个包的条目带进下一个。解压体改 `const zip = await jsZip.createInstance(); zip.load(buffer);`，与本体 `optionsMenu` 的读法一字不差。
+- **顺带修掉一个控制流错误**：`viaScript` 原先在脚本回调里无条件 `err()`，会把"脚本其实成功装上了 JSZip"的构建也判死。改为只负责装载，可用性由 `attempt()` 回查全局决定。
+- 测试（`tests/p5-jszip-source.test.mjs` 重写，**先 RED**：`createInstance` 当时是 `undefined`）：新增**实机形状回归锁**——夹具复刻 2.7（实例有 `load`、`constructor` 却是 `Object`）必须可用；两次 `createInstance()` 拿到互不污染的不同实例；选型只验一次（`issued` = 1 次选型 + 每次解压一份）；失败缓存后第二次几乎零耗时；只有 `loadAsync` 的 3.x 仍被拒；`get.zip` 不回调时 watchdog 落定且归为 `NO_EXTRACTOR`；函数形状的旧端口仍可用。
+- 验证：**十套**测试 ✓；187 个 JS/mjs `node --check` ✓；verify-pack 881/0 ✓；check-skin-imports 37/0 ✓；`build-release --verify` 7 包 ✓；`pnpm build` ✓。
+- 待实机第二轮：请再跑一次 `await decadeUI.packageInstaller.ready()`。若仍 `ok:false`，`reason` 现在会点名是哪一级（`window.JSZip 不存在或不是 2.x 形状` / `本体未提供 get.zip` / `get.zip 交出的实例不带 2.x 的 load()` / `本体未提供 lib.init.js`），把这几种分开的意义写进了 §八 R0——三种原因的修法完全不同。
+- 提交：`d296f9e` 一笔，与本条文档分开、不 squash。v1.13 的正文按"改了哪些文件"照旧保留，但其 A 方案描述已被本条更正，不要再照它实施。
 - **遗留边界（如实记）**：若 `card-skin` 包未装而某第三方扩展恰好用 `registerDecadeCardSkin({skinKey:'decade'})` 提供了自己的牌面，内置套的可用性仍是 `false`（按要求 2，第三方无权改它），因此该下拉项不出现——这是"内置资源没装上"与"别人借同名 key 供货"两种语义的交叉地带。仓库自带包在位时不会出现该组合；若今后要支持"借内置 key 供货"，需要单独设计（不属于本轮范围）。
