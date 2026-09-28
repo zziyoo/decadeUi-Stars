@@ -269,4 +269,32 @@ const fakeApi = ({ index = null, fail = false, throwError = false, modules = [] 
 	assert.equal(laterClosed, true, "欢迎窗中途关掉也要能等到");
 }
 
+// -------------------------------------------------- 本体 div{position:absolute} 漏网检查
+// 真机踩过：只给一部分类写了 position，漏掉的那几个 div 被本体全局规则带走、全部叠在
+// 对话框左上角（截图里"扩展本体…"与"欢乐三国杀样式…"叠印在一起）。这条测试直接对着
+// 源码扫：**JS 里用到的每个 decade-update-* 类，CSS 里都必须有一处显式 position**。
+
+{
+	const fs = await import("node:fs");
+	const css = fs.readFileSync(new URL("../src/features/updateNotice.css", import.meta.url), "utf8");
+	const jsSource = fs.readFileSync(new URL("../src/features/updateNoticeWindow.js", import.meta.url), "utf8");
+
+	const used = new Set();
+	// 只扫 el("类名", …) 的第一参数：<link> 的 id（decade-update-styles）不是类名，别混进来
+	for (const match of jsSource.matchAll(/\bel\(\s*"([^"]*decade-update-[^"]*)"/g)) {
+		for (const cls of match[1].split(/\s+/)) if (cls.startsWith("decade-update-")) used.add(cls);
+	}
+	assert.ok(used.size >= 8, `至少要扫到 8 个类名，实际 ${used.size}`);
+
+	const blocks = [...css.matchAll(/([^{}]+)\{([^}]*)\}/g)].map(([, selector, body]) => ({ selector, body }));
+	const hasExplicitPosition = cls =>
+		blocks.some(block => {
+			const hit = block.selector.split(",").some(part => part.trim().split(/\s+/).includes(`.${cls}`));
+			return hit && /position\s*:/.test(block.body);
+		});
+
+	const missing = [...used].filter(cls => !hasExplicitPosition(cls));
+	assert.deepEqual(missing, [], `这些类没有显式 position，会被本体 div{position:absolute} 带走：${missing.join("、")}`);
+}
+
 console.log("P11 update-check tests: all passed ✓");

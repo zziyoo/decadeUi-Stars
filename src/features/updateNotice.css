@@ -151,10 +151,16 @@
 
 /* ------------------------------------------------------------ 本体 div 默认样式的覆盖
    本体 layout/default/layout.css 里有 `div { display: inline-block; position: absolute; transition: all .5s }`，
-   凡是要参与文档流的盒子必须显式声明 position（窗口最初就是被这条挤成一团的）。 */
+   凡是要参与文档流的盒子必须显式声明 position（窗口最初就是被这条挤成一团的）。
+   **真机踩过的坑**：漏掉三个类（row-name / row-version / core-note）→ 它们被带走成绝对定位、
+   全部叠在对话框左上角，截图里"扩展本体…"与"欢乐三国杀样式…"叠印在一起。
+   新增元素时务必把类名加进这一组——tests/p11-update-check.test.mjs 有一条静态测试盯着这件事。 */
 .decade-update-title,
 .decade-update-row,
 .decade-update-core,
+.decade-update-row-name,
+.decade-update-row-version,
+.decade-update-core-note,
 .decade-update-actions,
 .decade-update-btn,
 .decade-update-close {
