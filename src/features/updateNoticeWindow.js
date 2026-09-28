@@ -133,13 +133,35 @@ export function createUpdateNotice(data) {
 	return close;
 }
 
+/**
+ * 与"欢迎窗口"错开。两个都是启动弹窗，而欢迎窗层级更高（`z-index` 99999 vs 99998），
+ * 同时弹会把更新提示整个压在下面——真机上就是这么撞的（看到的是欢迎窗的更新日志，
+ * 里面恰好也有"欢乐三国杀"字样，于是以为更新提示少了按钮）。
+ * 等欢迎窗关掉再弹；一直不关（玩家在看日志）就放弃这一次，绝不叠两个弹窗。
+ * @returns {Promise<boolean>} true=可以弹；false=这次算了（下次启动还会查）
+ */
+export function waitForWelcome({ hasWelcome = () => Boolean(document.querySelector(".decade-welcome-overlay")), intervalMs = 1000, maxTries = 30 } = {}) {
+	return new Promise(resolve => {
+		let checked = 0;
+		const tick = () => {
+			if (checked >= maxTries) return resolve(false);
+			checked++;
+			if (!hasWelcome()) return resolve(true);
+			setTimeout(tick, intervalMs);
+		};
+		tick();
+	});
+}
+
 /** 接线：content 阶段调用。延迟一点再查，避免和进场动画/欢迎窗抢注意力 */
 export function setupUpdateNotice() {
 	if (!shouldAutoCheck()) return;
 	setTimeout(() => {
 		checkForUpdates()
-			.then(data => {
-				if (data) createUpdateNotice(data);
+			.then(async data => {
+				if (!data) return;
+				if (!(await waitForWelcome())) return;   // 欢迎窗一直开着：这次不打扰
+				createUpdateNotice(data);
 			})
 			.catch(() => {});
 	}, SHOW_DELAY_MS);

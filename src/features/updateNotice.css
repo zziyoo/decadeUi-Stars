@@ -37,6 +37,7 @@
 .decade-update-head {
 	position: relative;
 	z-index: 2;
+	flex: 0 0 auto;   /* 标题行与按钮行都不许被长列表挤扁（P6 提示条就是被挤掉过） */
 	display: flex;
 	align-items: center;
 	gap: 10px;
@@ -118,6 +119,7 @@
 .decade-update-actions {
 	position: relative;
 	z-index: 2;
+	flex: 0 0 auto;   /* 同上：按钮行必须始终可见，"忽略此版本"不能被列表挤到视野外 */
 	display: flex;
 	flex-wrap: wrap;
 	gap: 8px;

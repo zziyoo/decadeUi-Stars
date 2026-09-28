@@ -171,7 +171,7 @@ const entry = (id, latest, extra = {}) => [id, { name: id, type: "style", latest
 // -------------------------------------------------- 启动检查的接线（静默失败是硬要求）
 
 const notice = await import("../src/features/updateNoticeWindow.js");
-const { checkForUpdates, shouldAutoCheck, updateConfigKeys } = notice;
+const { checkForUpdates, shouldAutoCheck, updateConfigKeys, waitForWelcome } = notice;
 
 const URL_KEY = updateConfigKeys.index();
 const AUTO_KEY = updateConfigKeys.auto();
@@ -244,6 +244,29 @@ const fakeApi = ({ index = null, fail = false, throwError = false, modules = [] 
 		index: { schema: 1, core: { latest: "1.4.2" }, modules: { decade: { name: "十周年", type: "style", latest: "1.5.0" } } },
 	});
 	assert.equal(await checkForUpdates({ api, config: { [URL_KEY]: "https://x/index.json" } }), null);
+}
+
+// -------------------------------------------------- 与欢迎窗口抢窗（真机上真撞过）
+
+{
+	// 欢迎窗在 ⇒ 等它关掉再弹；一直不关（超过上限）就这次不弹，绝不叠两个弹窗
+	let open = true;
+	let calls = 0;
+	const gone = await waitForWelcome({ hasWelcome: () => (calls++, open), intervalMs: 1, maxTries: 5 });
+	assert.equal(gone, false, "欢迎窗一直开着就放弃这次提示（下次启动还会查）");
+	assert.equal(calls, 5, `最多检查 maxTries 次，实际 ${calls}`);
+
+	open = false;
+	const closed = await waitForWelcome({ hasWelcome: () => (++calls, open), intervalMs: 1, maxTries: 5 });
+	assert.equal(closed, true, "欢迎窗已关闭就该放行");
+
+	let seen = 0;
+	const laterClosed = await waitForWelcome({
+		hasWelcome: () => { seen++; return seen < 3; },
+		intervalMs: 1,
+		maxTries: 10,
+	});
+	assert.equal(laterClosed, true, "欢迎窗中途关掉也要能等到");
 }
 
 console.log("P11 update-check tests: all passed ✓");
