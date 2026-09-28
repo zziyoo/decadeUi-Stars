@@ -135,6 +135,16 @@ export const moduleIndexUrl = {
 };
 
 /**
+ * 启动时检查模块更新（P11，任务书§48）
+ * @type {Object}
+ */
+export const autoCheckUpdate = {
+	name: "启动时检查模块更新",
+	intro: "启动后异步查一次模块源，有新版本时弹一个可关闭的提示窗（只提示，不会自动下载）。关掉后仍可在模块管理窗口里手动检查。",
+	init: true,
+};
+
+/**
  * 小小玩楞折叠结束标记
  * @type {Object}
  */
@@ -157,5 +167,6 @@ export const miscConfigs = {
 	enableEquipCopy,
 	rightLayout,
 	moduleIndexUrl,
+	autoCheckUpdate,
 	stuff_title_end,
 };

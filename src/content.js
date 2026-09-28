@@ -28,6 +28,7 @@ import { setupDisableBrowserShortcuts } from "./features/disableBrowserShortcuts
 import { setupWelcomeDialog } from "./features/welcomeDialog.js";
 import { setupConfigWindow } from "./features/configWindow.js";
 import { setupModuleManagerWindow } from "./features/moduleManagerWindow.js";
+import { setupUpdateNotice } from "./features/updateNoticeWindow.js";
 
 // 音频模块
 import { setupSkillDieAudio, setupAudioHooks, setupEnhancedAudio, setupCharacterAudio } from "./audio/index.js";
@@ -99,6 +100,8 @@ export const finalizeDecadeUICore = (decadeUI, config) => {
 	setupCharacterAudio();
 	setupDynamicSkin();
 	setupWelcomeDialog(lib.extensionPack[decadeUIName]);
+	// P11：启动后异步查一次模块更新（未配置模块源/离线/超时一律静默，不阻塞进游戏）
+	setupUpdateNotice();
 
 	console.timeEnd(decadeUIName);
 	return decadeUI;
