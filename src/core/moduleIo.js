@@ -24,7 +24,7 @@
  * 路径约定：端口接受**扩展根相对**的 POSIX 路径（如 `modules/decade/1.5.0/manifest.json`），
  * 调用期拼 `extension/<decadeUIName>/` 前缀。禁止在模块求值期引用 decadeUIName（P2 规则）。
  */
-import { lib as nonameLib, game as nonameGame } from "noname";
+import { lib as nonameLib, game as nonameGame, get as nonameGet } from "noname";
 
 /** IO 失败带 code，供安装器区分"卡死兜底"与"真实错误" */
 export class IoError extends Error {
@@ -533,19 +533,118 @@ export function createNonameIo(options = {}) {
 	return io;
 }
 
-/** 本体自带 JSZip 的就绪（与 app.importPlugin 同一加载路径，避免第二套解压方案） */
-function defaultLoadJsZip({ lib = nonameLib, stallMs = DEFAULT_STALL_MS } = {}) {
-	return settle(
-		(ok, err) => {
-			if (typeof window !== "undefined" && window.JSZip) return ok(window.JSZip);
-			if (typeof lib?.init?.js !== "function") return err(new Error("无法加载 JSZip（lib.init.js 不可用）"));
-			lib.init.js(`${lib.assetURL ?? ""}game`, "jszip", () => {
-				if (window.JSZip) return ok(window.JSZip);
-				err(new Error("JSZip 加载后仍不可用"));
-			});
+/**
+ * 取到本体那份可用的 JSZip 构造器（任务书§56禁止1：不另建解压系统、不 vendor 副本）
+ *
+ * 取证（2026-09-28 读本体源码）：jszip@2.7.0 在本体里是**内联 ES 模块**
+ * （`noname/get/index.js`、`ui/create/menu/pages/optionsMenu.js` 都写
+ * `import JSZip from "../../_virtual/index2.js"`），`noname.js` 里
+ * `window.JSZip`/`globalThis.JSZip` 出现 0 次，`resources/app/game/jszip.js` 也不存在。
+ * 旧实现只认「window.JSZip」和「lib.init.js 载 game/jszip」两条路，因此在真机上必然取不到，
+ * 症状还会被安装器误报成 STRUCTURE_INVALID（像是包自己的问题）。
+ *
+ * 获取顺序（三条都试过才算失败）：
+ *   1. `window.JSZip`——确实把 JSZip 挂过全局的环境；
+ *   2. `get.zip(cb)`——**本体的公开 API**（实现就是 `callback(new JSZip())`），
+ *      从交出来的实例上取 `constructor`；
+ *   3. `lib.init.js(assetURL+"game", "jszip")`——仅某些把 jszip.js 放在 game 目录的构建。
+ *
+ * 每级都要过 `isUsableCtor` 的形状校验：**必须有 2.x 的 `load()`**。这既保证我们用的
+ * `new Ctor()` + `zip.load(buffer)` 与本体 optionsMenu 的用法一致，也顺手堵掉
+ * "别的扩展 vendor 了 3.x 挂到 window 上"这种侥幸——3.x 没有 `load`，若当可用接受，
+ * `zip.files` 会是空，最后变成"包结构非法"这种更难查的假象。
+ *
+ * 结果连失败一起缓存：探测本身带加载副作用，不许每个包解压都重来一遍；
+ * 任何一级都不许永久 pending（settle 的 watchdog 兜底），最终失败统一落定为
+ * `ioCode=NO_EXTRACTOR`，让界面能诚实置灰而不是让玩家白下一遍包。
+ * @param {Object} [deps]
+ * @param {Object} [deps.win] - 全局对象（测试注入点）
+ * @param {Object} [deps.get] - 本体的 get 命名空间（提供 zip）
+ * @param {Object} [deps.lib] - 本体的 lib 命名空间（提供 assetURL 与 init.js）
+ * @param {number} [deps.stallMs] - 单级探测的兜底超时
+ * @returns {{load: () => Promise<Function>, probe: () => Promise<{ok: boolean, reason: string}>}}
+ */
+export function createJsZipSource({ win, get = nonameGet, lib = nonameLib, stallMs = DEFAULT_STALL_MS } = {}) {
+	const globalScope = win !== undefined ? win : typeof window !== "undefined" ? window : {};
+
+	/** 只认带 2.x `load()` 的构造器 */
+	const isUsableCtor = Ctor => {
+		if (typeof Ctor !== "function") return false;
+		try {
+			return typeof new Ctor()?.load === "function";
+		} catch {
+			return false;
+		}
+	};
+
+	const viaGlobal = () => (isUsableCtor(globalScope?.JSZip) ? globalScope.JSZip : null);
+
+	const viaGetZip = () =>
+		settle(
+			(ok, err) => {
+				if (typeof get?.zip !== "function") return err(new Error("本体未提供 get.zip"));
+				get.zip(instance => {
+					const Ctor = instance?.constructor;
+					if (!isUsableCtor(Ctor)) return err(new Error("get.zip 交出的实例不带 2.x 的 load()（JSZip 版本或形状不符）"));
+					ok(Ctor);
+				});
+			},
+			{ label: "get.zip 取 JSZip", stallMs }
+		);
+
+	const viaScript = () =>
+		settle(
+			(ok, err) => {
+				if (typeof lib?.init?.js !== "function") return err(new Error("本体未提供 lib.init.js"));
+				lib.init.js(`${lib.assetURL ?? ""}game`, "jszip", () => {
+					const Ctor = viaGlobal();
+					if (Ctor) return ok(Ctor);
+					err(new Error("jszip 脚本加载后仍取不到可用的 JSZip"));
+				});
+			},
+			{ label: "加载 game/jszip", stallMs }
+		);
+
+	const attempt = async () => {
+		const globalCtor = viaGlobal();
+		if (globalCtor) return globalCtor;
+		const reasons = [];
+		for (const step of [viaGetZip, viaScript]) {
+			try {
+				return await step();
+			} catch (error) {
+				reasons.push(String(error?.message ?? error));
+			}
+		}
+		throw new IoError("NO_EXTRACTOR", `[ModuleIo] 取不到可用的 JSZip（需要 2.x 的 load 接口）：${reasons.join("；") || "三条获取路径均不可用"}`);
+	};
+
+	/**
+	 * 结果缓存（**失败也缓存**）：探测本身带加载副作用，且 watchdog 兜底最长要等 stallMs，
+	 * 每次都重探会让界面每刷新一次就白等一次。真机修好 JSZip 需要重载页面，重载时
+	 * 本模块重新求值、缓存自然清空，所以不提供 reset。
+	 */
+	let cached = null;
+	const load = () => {
+		if (!cached) {
+			cached = attempt();
+			cached.catch(() => {});
+		}
+		return cached;
+	};
+
+	return {
+		load,
+		/** 给界面用的诚实探测口：可用 / 不可用 + 原因 */
+		async probe() {
+			try {
+				await load();
+				return { ok: true, reason: "" };
+			} catch (error) {
+				return { ok: false, reason: String(error?.message ?? error) };
+			}
 		},
-		{ label: "加载 JSZip", stallMs }
-	);
+	};
 }
 
 /**
@@ -570,25 +669,33 @@ export function normalizeZipEntry(entryName) {
  * 创建 ZIP 解压端口
  * @param {Object} [options]
  * @param {Object} [options.io] - 落地用的文件系统端口（缺省新建）
- * @param {Function} [options.loadJsZip] - JSZip 装载函数
- * @returns {{extract: (buffer: ArrayBuffer, targetRelDir: string, onEntry?: Function) => Promise<string[]>}}
+ * @param {Object} [options.jsZip] - JSZip 获取源（createJsZipSource 的返回值；缺省新建）
+ * @returns {{extract: (buffer: ArrayBuffer, targetRelDir: string, onEntry?: Function) => Promise<string[]>, probe: () => Promise<{ok: boolean, reason: string}>}}
  */
 export function createZipExtractor(options = {}) {
 	const io = options.io ?? createNonameIo(options);
-	const loadJsZip = options.loadJsZip ?? (async () => defaultLoadJsZip(options));
+	const jsZip = options.jsZip ?? createJsZipSource(options);
 
 	return {
+		/** 解压能力是否真的可用（界面据此置灰，不再只看端口对象存不存在） */
+		probe: () => jsZip.probe(),
+
 		/**
 		 * 解压到扩展根下的目标目录，返回落地的相对路径列表。
-		 * JSZip 2.x 用法与 app.importPlugin 保持一致（new JSZip(data) + files[i].asNodeBuffer/asArrayBuffer）。
+		 * 用 `new Ctor()` + `zip.load(buffer)`——与本体 optionsMenu 的读法一字不差，
+		 * 比依赖 `new JSZip(data)` 的构造重载更稳（那是 2.x 的便利写法，3.x 直接不吃）。
+		 * @param {ArrayBuffer} buffer - 下载落盘后回读到的包字节
+		 * @param {string} targetRelDir - 扩展根相对目标目录
+		 * @param {(done: number, total: number) => void} [onEntry]
 		 */
 		async extract(buffer, targetRelDir, onEntry) {
-			const JSZip = await loadJsZip();
-			if (!JSZip) throw new Error("[ModuleIo] JSZip 不可用，无法解压模块包");
-			const zip = new JSZip(buffer);
+			const JSZip = await jsZip.load();
+			const zip = new JSZip();
+			zip.load(buffer);
 			const entries = Object.keys(zip.files || {})
 				.filter(raw => !/\/$/.test(raw) && !zip.files[raw].dir)
 				.map(raw => ({ raw, rel: normalizeZipEntry(raw) }));
+			if (!entries.length) throw new IoError("STRUCTURE_INVALID", "[ModuleIo] 包内没有任何文件条目（解压结果为空）");
 			const isNode = !!io.capabilities?.desktop;
 			let done = 0;
 

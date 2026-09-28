@@ -114,7 +114,7 @@ export function externalTarget(raw) {
  * @param {Object} [deps.registry] - 模块注册表（unregister 用于版本切换）
  * @param {Object} [deps.moduleManager] - 模块管理器（register / getInstallState）
  * @param {Object} [deps.io] - 文件系统端口（createNonameIo 或测试替身）
- * @param {(buffer: ArrayBuffer, targetRelDir: string, onEntry?: Function) => Promise<string[]>} [deps.extractZip]
+ * @param {(buffer: ArrayBuffer, targetRelDir: string, onEntry?: Function) => Promise<string[]>|{extract: Function, probe?: Function}} [deps.extractZip] - 解压端口（函数或 createZipExtractor() 返回的对象）
  * @param {Function} [deps.download] - 传输端口（downloader.downloadBuffer）
  * @param {(data: Uint8Array) => Promise<string>} [deps.hash]
  * @param {() => string|null} [deps.getCoreVersion] - 当前 Core（扩展本体）版本
@@ -138,6 +138,22 @@ export function createPackageInstaller(deps = {}) {
 		...rest
 	} = deps;
 	const paths = { ...DEFAULTS, ...rest };
+
+	/**
+	 * 解压端口的两种合法形状：函数 `(buffer, target, onEntry) => Promise`，
+	 * 或 `createZipExtractor()` 返回的 `{ extract, probe }` 对象。
+	 *
+	 * 这里必须归一：moduleSystem 注入的是对象，而安装器一路当函数调，
+	 * 真机上会得到 `extractZip is not a function` 的 TypeError——它不带 ioCode，
+	 * 于是被下面第 5 步误报成 `STRUCTURE_INVALID「解压失败」`，看着像包坏了。
+	 * 归一之后没有可用形状就是 `NO_EXTRACTOR`，不再伪装成包结构问题。
+	 */
+	const extractArchive =
+		typeof extractZip === "function"
+			? extractZip
+			: extractZip && typeof extractZip.extract === "function"
+				? (...args) => extractZip.extract(...args)
+				: null;
 
 	const packDir = (id, version) => `${paths.modulesRoot}/${id}/${version}`;
 	const emit = (opts, info) => {
@@ -417,7 +433,11 @@ export function createPackageInstaller(deps = {}) {
 	/** IO 端口异常 → 结构化结果；IO_STALL 单列，便于区分"本体回调未触发的兜底失败"与真实错误 */
 	function toIoFailure(error, stage, extra = {}) {
 		const code =
-			error?.ioCode === "IO_STALL" ? INSTALL_CODES.IO_STALL : error?.ioCode === "IO_UNSAFE_PATH" ? INSTALL_CODES.INVALID_SPEC : INSTALL_CODES.IO_FAILED;
+			error?.ioCode === "IO_STALL" ? INSTALL_CODES.IO_STALL
+				: error?.ioCode === "IO_UNSAFE_PATH" ? INSTALL_CODES.INVALID_SPEC
+				// 解压能力取不到不是包的问题：报 NO_EXTRACTOR，别让它伪装成 STRUCTURE_INVALID
+				: error?.ioCode === "NO_EXTRACTOR" ? INSTALL_CODES.NO_EXTRACTOR
+				: INSTALL_CODES.IO_FAILED;
 		return failure(code, String(error?.message ?? error), { stage, ...extra });
 	}
 
@@ -432,7 +452,7 @@ export function createPackageInstaller(deps = {}) {
 
 	async function installInner(rawSpec, opts = {}, chain = new Set()) {
 		if (!io) return failure(INSTALL_CODES.NO_IO, "未注入文件系统端口，安装器不可用");
-		if (!extractZip) return failure(INSTALL_CODES.NO_EXTRACTOR, "未注入解压端口（ZIP），安装器不可用");
+		if (!extractArchive) return failure(INSTALL_CODES.NO_EXTRACTOR, "未注入可用的解压端口（ZIP），安装器不可用");
 
 		// 信任来源只能是外部安装目标（索引条目/调用方），不能是包内自述：见 externalTarget()
 		const spec = externalTarget(rawSpec);
@@ -553,7 +573,7 @@ export function createPackageInstaller(deps = {}) {
 		// 5. 解压到临时目录
 		emit(opts, { stage: "extracting", id, message: `解压 ${id}` });
 		try {
-			await extractZip(landed, tempDir, (done, total) => emit(opts, { stage: "extracting", id, bytes: done, total, ratio: total ? done / total : 0 }));
+			await extractArchive(landed, tempDir, (done, total) => emit(opts, { stage: "extracting", id, bytes: done, total, ratio: total ? done / total : 0 }));
 		} catch (error) {
 			await cleanup();
 			if (error?.ioCode) return toIoFailure(error, "extracting", { message: `解压落地失败: ${error?.message ?? error}` });
@@ -741,11 +761,28 @@ export function createPackageInstaller(deps = {}) {
 		 */
 		isAvailable() {
 			return {
-				available: !!io && !!extractZip,
+				available: !!io && !!extractArchive,
 				missingIo: !io,
-				missingExtractor: !extractZip,
+				missingExtractor: !extractArchive,
 				atomicRename: io?.capabilities?.atomicRename ?? false,
 			};
+		},
+
+		/**
+		 * 异步能力探测（界面置灰用）。
+		 *
+		 * `isAvailable()` 只能说明"端口对象在"，而解压能力真正的条件是
+		 * "运行时取得到一份可用的 JSZip"——本体把它内联成 ES 模块、不挂全局，
+		 * 所以端口在但取不到库是完全可能的（历史上正是这一情形，症状还被误报成包结构非法）。
+		 * 端口没提供 probe 时（注入的替身/单测）按既有事实报可用，绝不凭空判死。
+		 * @returns {Promise<{ok: boolean, reason: string}>}
+		 */
+		async ready() {
+			if (!io) return { ok: false, reason: "未注入文件系统端口" };
+			if (!extractArchive) return { ok: false, reason: "未注入解压端口（ZIP）" };
+			if (typeof extractZip.probe !== "function") return { ok: true, reason: "" };
+			const probed = await extractZip.probe();
+			return { ok: probed?.ok === true, reason: probed?.reason || "" };
 		},
 
 		/** 读取 installed.json（结构化，不抛错） */

@@ -120,7 +120,20 @@ async function refresh() {
 	// 端口缺失只剥夺"安装/更新/卸载"这三条落盘通道，不剥夺整窗浏览，
 	// 更不剥夺门控型 Feature 的启用/禁用（它只写一个配置键，任务书§16 第一阶段就要它）。
 	const missing = [available.missingIo ? "文件系统端口" : null, available.missingExtractor ? "解压端口" : null].filter(Boolean);
-	const installBlocker = available.available ? null : `本平台不支持安装/卸载（缺少：${missing.join("、") || "未知能力"}）`;
+	let installBlocker = available.available ? null : `本平台不支持安装/卸载（缺少：${missing.join("、") || "未知能力"}）`;
+
+	// 端口对象在 ≠ 解压能力在：本体把 JSZip 当内联 ES 模块用、不挂全局，
+	// 真机上完全可能"能下载却解不开"。这里异步探一次，探不过就同样置灰三个动作
+	// （以前只看 isAvailable()，于是按钮是亮的、包下完了才失败）。
+	if (!installBlocker && typeof installer.ready === "function") {
+		let readiness = { ok: true, reason: "" };
+		try {
+			readiness = await installer.ready();
+		} catch (error) {
+			readiness = { ok: false, reason: String(error?.message ?? error) };
+		}
+		if (!readiness.ok) installBlocker = `本机取不到解压能力（ZIP）：${readiness.reason || "原因未知"}`;
+	}
 
 	// 提示行可能同时有"台账读取失败"与"模块源状态"两条，不能互相覆盖
 	const notes = [];
