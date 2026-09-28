@@ -420,4 +420,81 @@ const fRow = (result, id) => {
 	assert.deepEqual(fRow(off, "kill-effect").actions.map(action => action.kind), ["enable"], "关掉开关后按钮要翻成启用（同一份配置，两个入口同步）");
 }
 
+// ------------------------------------------------------------------ 安装器不可用（无文件系统/解压端口的平台）
+
+{
+	// 语义边界：installBlocker 只剥夺"安装/更新/卸载"能力，
+	// 绝不允许连带把门控型 Feature 的启用/禁用一起挡掉（任务书§16 第一阶段就要启停）
+	const blocker = "本平台不支持安装/卸载（缺少：文件系统端口）";
+	const result = buildRows({
+		installed: { decade: { version: "1.4.2" }, "card-skin": { version: "1.0.0" } },
+		index: featureIndex,
+		modules: featureModules,
+		currentStyleId: null,
+		coreVersion: "1.4.2",
+		featureStates,
+		installBlocker: blocker,
+	});
+
+	const gate = fRow(result, "kill-effect");
+	assert.deepEqual(gate.actions.map(action => action.kind), ["disable"], "安装器不可用仍要生成门控型 Feature 的启停行");
+	assert.equal(gate.actions[0].enabled, true, "启停不碰文件系统，不许被平台能力挡掉");
+	assert.equal(gate.actions[0].switchKey, "killEffect");
+
+	const packOn = fRow(result, "card-skin");
+	assert.deepEqual(packOn.actions.map(action => action.kind), ["uninstall", "disable"], "已装的拆包型 Feature 仍出卸载+禁用，只是卸载置灰");
+	assert.equal(packOn.actions[0].enabled, false, "没有文件端口就不能删目录");
+	assert.match(packOn.actions[0].reason, /文件系统端口/);
+	assert.equal(packOn.actions[1].enabled, true, "禁用照旧可点");
+
+	const decade = fRow(result, "decade");
+	assert.equal(decade.actions.find(action => action.kind === "uninstall").enabled, false);
+	assert.match(decade.actions.find(action => action.kind === "uninstall").reason, /文件系统端口/);
+
+	assert.equal(result.summary.installed, 2, "台账读取本身不受影响时计数不变");
+}
+
+// 未安装的拆包型 Feature：安装按钮存在但灰掉，spec 必须原样保留（灰≠没有得装）
+{
+	const result = buildRows({
+		installed: {},
+		index: featureIndex,
+		modules: featureModules,
+		currentStyleId: null,
+		coreVersion: "1.4.2",
+		featureStates,
+		installBlocker: "本平台不支持安装/卸载（缺少：解压端口）",
+	});
+	const pack = fRow(result, "card-skin");
+	assert.deepEqual(pack.actions.map(action => action.kind), ["install"], "拆包型未装仍只给安装，不给启停");
+	assert.equal(pack.actions[0].enabled, false);
+	assert.match(pack.actions[0].reason, /解压端口/);
+	assert.equal(pack.actions[0].spec.url, "https://test/card-skin-1.0.0.zip", "禁用理由不能顺手清掉安装规格");
+}
+
+// 原有禁用理由要保留，不能只留平台理由（§19 的"使用中"这类信息更靠近玩家）
+{
+	const result = buildRows({
+		installed: { decade: { version: "1.4.2" } },
+		index,
+		modules,
+		currentStyleId: "decade",
+		coreVersion: "1.4.2",
+		installBlocker: "本平台不支持安装/卸载",
+	});
+	const uninstall = fRow(result, "decade").actions.find(action => action.kind === "uninstall");
+	assert.match(uninstall.reason, /使用中/);
+	assert.match(uninstall.reason, /本平台不支持/);
+	// 可更新的样式：更新按钮同样被平台能力挡住
+	const update = fRow(result, "decade").actions.find(action => action.kind === "update");
+	assert.equal(update.enabled, false, "没有文件端口就落不了盘");
+	assert.match(update.reason, /本平台不支持/);
+}
+
+// 不传 installBlocker：行为与引入该参数之前逐字一致（上方所有断言即基准）
+{
+	const result = buildRows({ installed: {}, index: featureIndex, modules: featureModules, currentStyleId: null, coreVersion: "1.4.2", featureStates });
+	assert.equal(fRow(result, "card-skin").actions[0].enabled, true, "缺省（可用）时安装按钮照旧点亮");
+}
+
 console.log("P6 module-admin tests: all passed ✓");

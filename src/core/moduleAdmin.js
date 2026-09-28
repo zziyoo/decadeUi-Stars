@@ -130,9 +130,14 @@ export function summarize(rows = []) {
  * @param {Object} [input.featureStates] - Feature 模块的状态（featureRuntime.list() + switchOn）：
  *   `{ id: { pack: 资源是否已拆成独立包, switchKey: 开关配置键, enabled: 当前是否开启 } }`。
  *   缺省（空对象）时 Feature 行按通用规则处理，行为与引入本参数之前完全一致。
+ * @param {string|null} [input.installBlocker] - 平台剥夺安装能力时给玩家看的一句话
+ *   （如"本平台不支持安装/卸载（缺少：文件系统端口）"）；null/空表示能力齐备。
+ *   它只把 `install/update/uninstall` 三个动作置灰并**附加**到既有理由之前，
+ *   不许影响 Feature 的启用/禁用（启停不碰文件系统，任务书§16 第一阶段就要它），
+ *   也不许顺手清掉 `spec`（置灰不等于没有可装的东西）。
  * @returns {{rows: Array, summary: Object}}
  */
-export function buildRows({ installed = {}, index = null, modules = [], currentStyleId = null, coreVersion = null, featureStates = {} } = {}) {
+export function buildRows({ installed = {}, index = null, modules = [], currentStyleId = null, coreVersion = null, featureStates = {}, installBlocker = null } = {}) {
 	const ledger = installed && typeof installed === "object" ? installed : {};
 	const registry = asArray(modules).filter(item => item && item.id);
 	const registryIds = new Set(registry.map(item => item.id));
@@ -230,6 +235,15 @@ export function buildRows({ installed = {}, index = null, modules = [], currentS
 			installed: "已安装",
 			not_installed: "未安装",
 		};
+
+		// 平台剥夺安装能力：只挡落盘/删目录那三个动作，Feature 的启停不受影响
+		if (installBlocker) {
+			for (const action of actions) {
+				if (action.kind !== "install" && action.kind !== "update" && action.kind !== "uninstall") continue;
+				action.enabled = false;
+				action.reason = action.reason ? `${installBlocker}；${action.reason}` : String(installBlocker);
+			}
+		}
 
 		return {
 			id: item.id,

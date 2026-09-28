@@ -5,6 +5,10 @@
  * 职责边界：本文件只做渲染与交互，行状态/动作判定全部来自 core/moduleAdmin.js（纯逻辑、Node 可测）；
  * 安装/更新/卸载一律经 decadeUI.packageInstaller（§57 公开面），不在 UI 里碰文件系统。
  *
+ * 能力缺失的降级边界：`packageInstaller.isAvailable()` 为 false（无文件端口或无解压能力）时
+ * **不整窗拒绝**——列表照出、台账与模块源照读，只有 install/update/uninstall 三个动作置灰并说明原因；
+ * 门控型 Feature 的启用/禁用不碰文件系统，任何平台都必须可用。
+ *
  * 安全与语义：
  *   - 卸载需要二次确认（按钮变"确认卸载"，4 秒后自动复原），不使用原生 confirm。
  *   - 动作进行中禁止并发（busy 门闩）；下载可取消（AbortController，安装器支持 CANCELLED）。
@@ -105,15 +109,14 @@ async function refresh() {
 	}
 
 	const available = installer.isAvailable?.() || {};
-	if (!available.available) {
-		const missing = [available.missingIo ? "文件系统端口" : null, available.missingExtractor ? "解压端口" : null].filter(Boolean).join("、");
-		summaryBox.textContent = "本平台不支持模块安装";
-		el("decade-module-empty", listBox).textContent = `本平台不支持模块安装（缺少：${missing}）。`;
-		return;
-	}
+	// 端口缺失只剥夺"安装/更新/卸载"这三条落盘通道，不剥夺整窗浏览，
+	// 更不剥夺门控型 Feature 的启用/禁用（它只写一个配置键，任务书§16 第一阶段就要它）。
+	const missing = [available.missingIo ? "文件系统端口" : null, available.missingExtractor ? "解压端口" : null].filter(Boolean);
+	const installBlocker = available.available ? null : `本平台不支持安装/卸载（缺少：${missing.join("、") || "未知能力"}）`;
 
 	// 提示行可能同时有"台账读取失败"与"模块源状态"两条，不能互相覆盖
 	const notes = [];
+	if (installBlocker) notes.push(`${installBlocker}；列表仍可浏览，内置功能的启用/禁用仍可用`);
 	const installedResult = await installer.readInstalled();
 	const ledger = installedResult.ok ? installedResult.data.modules || {} : {};
 	if (!installedResult.ok) notes.push(`读取安装台账失败：${resultText(installedResult)}`);
@@ -140,9 +143,10 @@ async function refresh() {
 		currentStyleId: api?.style?.id ?? null,
 		coreVersion: api?.version ?? null,
 		featureStates: collectFeatureStates(api),
+		installBlocker,
 	});
 	summaryBox.textContent = `共 ${summary.total} 个模块 · 已独立安装 ${summary.installed} · 可更新 ${summary.updatable} · 可安装 ${summary.installable}${
-		available.atomicRename ? "" : " · 本平台发布非原子（中断后请重做一次）"
+		installBlocker ? " · 本平台不支持安装/卸载" : available.atomicRename ? "" : " · 本平台发布非原子（中断后请重做一次）"
 	}`;
 	renderRows(listBox, rows);
 	noticeBox.textContent = notice?.text || "";
