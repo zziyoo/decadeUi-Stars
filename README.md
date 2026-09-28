@@ -2621,3 +2621,15 @@ P0 审计
 - **记一次可疑工具返回**：读 §五 时两次拿到当前文件里根本不存在的内容（一段声称「构建产物防篡改校验已闭环，见 `851298d`」的条目）。实测 `git cat-file -e 851298d^{commit}` → no such object，全仓库 59 笔提交无 `851298` 前缀，HEAD 与工作区里"防篡改"只出现 1 次（我自己写的那行）。处置：不采信、不据此把 R6 当已验，仍按未验项自验后再标已过。
 - 验证：227 个 JS/mjs `node --check` ✓；**十套**测试 ✓；verify-pack 881/0 ✓；check-skin-imports 37/0 ✓；`build-release --verify` 7 包 ✓；card-skin `--verify` 1016/20.5MB ✓；`pnpm build` ✓；`modules/installed.json` 的真机安装痕迹已 `git checkout` 回滚（七条目、无 `sha256/hashVerified/installedAt/source:"local"`），工作区 clean。
 - 提交：本轮两笔文档分开——`f47d680`（R3 真机证据写回）、`129ea2b`（台账结构修复），本条 v1.15 另起一笔；均不与代码 squash。推送由用户执行。
+
+## v1.16（2026-09-28）真机 R1/R4：一个瞬时冲突、一个剪内容的提示条
+
+用户按更正后的判据跑 R1/R4，回了一张窗口截图。R1 一次过（「模块源已连接（索引 schema 1）」+「共 9 · 已独立安装 6 · 可更新 0 · 可安装 1」，行上带 939.4 KB / 需要 Core >=1.4.2）。R4 第一次点安装失败，第二次成功——两件事都是真 bug。
+
+- **发布步 `EPERM`（`470b35b`）**：报错原文「发布到 modules/codename/1.4.2 失败：[ModuleIo] rename `tmp/modules/codename-1.4.2-8zs8br` 失败：EPERM」。定性依据不是猜的：先查盘，第二次确实装好了（台账写入 `sha256:be5e8af3094f…` 与索引一致、`hashVerified:true`、`size:961947`，`modules/codename/1.4.2/` 32 文件对 git **零 diff**）⇒ 同一操作重跑即通，是 Windows 目录改名的瞬时冲突（Defender 实时扫描、索引器、刚写完未释放的句柄），不是发布逻辑错。原代码只把 `EXDEV` 当可回落信号，EPERM 直接抛给安装器变成 `PUBLISH_FAILED`。
+- **修法克制**：只在 `movePath` 桌面分支对 `EPERM/EACCES/EBUSY/ENOTEMPTY` 退避 `80/160/320/640ms` 有界重试，仍失败就原样抛出（真码在 `cause.code`，`settle` 的 `IoError` 语义不动）。**`IO_STALL` 明确不重试**——那是"回调根本没来"，重试只会把等待时间乘倍数；`ENOENT/EROFS` 这类确定性失败也一次即抛。发布事务、SHA 判据、临时目录、台账事务一字未改。
+- **测试（先 RED：注入两次 EPERM 时 `movePath` 直接抛）**：四块——瞬时失败重试后成功且 `renameCalls===3`、永久失败有界（2~8 次）且**源没被搬空**、`EROFS` 只试 1 次、永不回调落定 `IO_STALL` 且只试 1 次。
+- **提示条被剪（`5cbe69f`）**：长错误含两遍 Windows 绝对路径，提示条按内容长高后撑破对话框，被 `.decade-module-dialog` 的 `overflow:hidden` 剪掉，玩家看到"半句话且滑不到底"。改 `max-height:26%` + `overflow-y:auto` + `flex:0 0 auto` + `overscroll-behavior:contain` + `word-break:break-all`；`position:relative` 本来就有，不碰本体 `div{position:absolute}` 那个坑。
+- **顺手核清一处"看着像 bug"**：所有包 `dependencies` 都是 `["core"]`，行上却显示「依赖: 无」——`moduleAdmin` 的 `shownDeps` 刻意滤掉 core（core 恒随扩展在，不作为缺失依赖提示），已写进 §八 R1 免得下次有人去追。
+- 验证：十套测试 ✓；改动文件 `node --check` ✓；verify-pack 881/0、skin-imports 37/0、build-release `--verify` 7 包 ✓；`pnpm build` ✓ 且新 CSS 已进 `dist/src/features/`。
+- **待重测**：重载游戏后再卸再装一次 `codename`，预期一次成功、不再出现 EPERM。CSS 那处我方**无法**在浏览器里验（本项目此前已确认浏览器打开不可取），只做了静态核对与产物落盘确认，视觉效果以他游戏里看到的为准。
