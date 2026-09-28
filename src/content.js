@@ -156,12 +156,14 @@ export async function content(config) {
 	window.decadeUI = decadeUI;
 
 	// P1：挂载模块系统公开API（任务书§57兼容API策略）
-	const { registry, moduleManager, styleRuntime, resourceLoader, packageInstaller } = getModuleSystem();
+	const { registry, moduleManager, styleRuntime, resourceLoader, packageInstaller, featureRuntime } = getModuleSystem();
 	decadeUI.modules = registry;
 	decadeUI.moduleManager = moduleManager;
 	decadeUI.resource = resourceLoader;
 	decadeUI.style = styleRuntime;
 	decadeUI.packageInstaller = packageInstaller;
+	// P8：Feature 运行时（声明/门控/资源寻址），特效等功能的装载由它决定
+	decadeUI.feature = featureRuntime;
 	decadeUI.version = lib.extensionPack?.[decadeUIName]?.version || null;
 
 	decadeUI.config = {

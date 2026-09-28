@@ -6,6 +6,7 @@
  * capabilities 为从现有配置与代码分支归纳的初版，P2再细化（任务书§15）。
  */
 import { normalizeManifest } from "./manifest.js";
+import { BUILT_IN_FEATURES } from "./featureRuntime.js";
 
 /** 核心CSS：所有样式共用，由 decadeModule 固定加载 */
 const CORE_CSS = [
@@ -31,6 +32,15 @@ const STYLES = [
 	{ id: "baby", name: "欢乐三国杀", value: "babysha", skin: "baby", player: 5, pack: true, capabilities: ["player-frame", "lbtn"] },
 	{ id: "codename", name: "名将杀", value: "codename", skin: "codename", player: 6, pack: true, capabilities: ["player-frame", "lbtn"] },
 ];
+
+/**
+ * Feature 的 entry 路径（P8，任务书§45）。
+ * "资源是否已拆进包"只在 featureRuntime 的声明里维护一份，这里备两种位置：
+ * 未拆包 → 单体路径；已拆包 → 包根相对路径（modules/<id>/<version>/）。
+ */
+const FEATURE_ENTRY = {
+	"kill-effect": { monolith: ["src/styles/effect.css"], pack: ["effect.css"] },
+};
 
 /**
  * 向注册表注册全部内置模块
@@ -80,6 +90,25 @@ export function registerBuiltInModules(registry, { version = "0.0.0" } = {}) {
 			}),
 			// 样式别名，供 StyleRuntime/安装器反查（P2使用）
 			{ styleValue: style.value, skin: style.skin, playerCssIndex: style.player }
+		);
+	}
+
+	// Feature 模块（P8）：开关与 pack 状态取自 featureRuntime 的声明，避免两处各存一份
+	for (const feature of BUILT_IN_FEATURES) {
+		const entry = FEATURE_ENTRY[feature.id] || { monolith: [], pack: [] };
+		registry.register(
+			normalizeManifest({
+				id: feature.id,
+				name: feature.name,
+				version,
+				type: "feature",
+				core: `>=${version}`,
+				dependencies: ["core"],
+				entry: { css: feature.pack ? entry.pack : entry.monolith },
+				capabilities: [...feature.capabilities],
+				author: "子右",
+			}),
+			{ featureSwitch: feature.switchKey }
 		);
 	}
 }

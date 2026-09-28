@@ -11,14 +11,17 @@ import { createStyleRuntime } from "./styleRuntime.js";
 import { createResourceLoader } from "./resourceLoader.js";
 import { createPackageInstaller } from "./packageInstaller.js";
 import { createNonameIo, createZipExtractor } from "./moduleIo.js";
+import { createFeatureRuntime, BUILT_IN_FEATURES } from "./featureRuntime.js";
 import { normalizeManifest } from "./manifest.js";
 
 /** @type {Object|null} 模块系统单例 */
 let instance = null;
+/** @type {Object|null} Feature 运行时；晚绑定给 moduleManager 的启停钩子用 */
+let featureRuntime = null;
 
 /**
  * 获取模块系统单例（首次调用时装配）
- * @returns {{registry: Object, moduleManager: Object, styleRuntime: Object, resourceLoader: Object, packageInstaller: Object}}
+ * @returns {{registry: Object, moduleManager: Object, styleRuntime: Object, resourceLoader: Object, packageInstaller: Object, featureRuntime: Object}}
  */
 export function getModuleSystem() {
 	if (instance) return instance;
@@ -28,10 +31,25 @@ export function getModuleSystem() {
 		version: lib.extensionPack?.[decadeUIName]?.version || "0.0.0",
 	});
 
-	const moduleManager = createModuleManager({ registry });
+	const moduleManager = createModuleManager({
+		registry,
+		// P8：接上 P1 起悬空的启停钩子。Feature 的开关就是它声明的配置键（不另立状态源）；
+		// 未声明为 Feature 的 id 恒真，不会误伤 core/style。runtime 晚绑定以免构造期互相引用。
+		isModuleEnabled: id => (featureRuntime ? featureRuntime.switchOn(id) : true),
+	});
 	// P3：resourceLoader 经 moduleManager.getInstallState 查询模块安装状态，
 	// 内置模块回落扩展根（单体兼容），独立安装模块解析 modules/<id>/<version>/
 	const resourceLoader = createResourceLoader({ moduleManager });
+	featureRuntime = createFeatureRuntime({
+		moduleManager,
+		resourceLoader,
+		configKey: key => `extension_${decadeUIName}_${key}`,
+		readConfig: key => lib.config[key],
+	});
+	for (const definition of BUILT_IN_FEATURES) {
+		const declared = featureRuntime.define(definition);
+		if (!declared.ok) console.warn(`[十周年UI-Stars] Feature 声明被拒绝: ${definition.id}`, declared.errors);
+	}
 	const styleRuntime = createStyleRuntime({
 		moduleManager,
 		resourceLoader,
@@ -49,7 +67,7 @@ export function getModuleSystem() {
 		isInUse: id => id === "core" || styleRuntime.id === id,
 	});
 
-	instance = { registry, moduleManager, styleRuntime, resourceLoader, packageInstaller };
+	instance = { registry, moduleManager, styleRuntime, resourceLoader, packageInstaller, featureRuntime };
 	return instance;
 }
 

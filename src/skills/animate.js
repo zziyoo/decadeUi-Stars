@@ -99,7 +99,8 @@ export const animateSkill = {
 			if (!trigger.source || !trigger.player) return;
 			game.broadcastAll(
 				(source, player) => {
-					if (window.decadeUI) decadeUI.effect.kill(source, player);
+					// P8：kill-effect 是 Feature，未装载时这里安全降级为本体默认表现
+					if (window.decadeUI) decadeUI.effect?.kill?.(source, player);
 				},
 				trigger.source,
 				trigger.player
