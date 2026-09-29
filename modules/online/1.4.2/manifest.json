@@ -30,7 +30,9 @@
 	],
 	"capabilities": [
 		"player-frame",
-		"lbtn"
+		"lbtn",
+		"online-chat",
+		"online-gift"
 	],
 	"platform": [
 		"desktop",

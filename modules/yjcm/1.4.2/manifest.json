@@ -31,7 +31,8 @@
 	],
 	"capabilities": [
 		"player-frame",
-		"lbtn"
+		"lbtn",
+		"border-style"
 	],
 	"platform": [
 		"desktop",

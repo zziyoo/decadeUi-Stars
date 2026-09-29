@@ -115,6 +115,16 @@ for (const style of STYLES) {
 	}
 
 	// 3. manifest + installed.json
+	// 能力声明必须与 src/core/builtInModules.js 一字不差：清单是发布契约，
+	// build-release 会原样写进 module-index.json 给客户端读。这里曾经把四个样式
+	// 一律写成 ["player-frame","lbtn"]，于是 yjcm 丢了 border-style、online 丢了
+	// online-chat/online-gift（P14 批1 真机探针才发现，tests/p14-capability-drift.test.mjs 现在盯住）。
+	const STYLE_CAPABILITIES = {
+		yjcm: ["player-frame", "lbtn", "border-style"],
+		online: ["player-frame", "lbtn", "online-chat", "online-gift"],
+		baby: ["player-frame", "lbtn"],
+		codename: ["player-frame", "lbtn"],
+	};
 	const manifest = {
 		schema: 1,
 		id: style.id,
@@ -128,7 +138,7 @@ for (const style of STYLES) {
 			css: cssMoves.map(([, packRel]) => packRel),
 		},
 		deadRefs: [...new Set(deadRefs)],
-		capabilities: ["player-frame", "lbtn"],
+		capabilities: STYLE_CAPABILITIES[style.id] ?? ["player-frame", "lbtn"],
 		platform: ["desktop", "mobile"],
 		author: info.author || "子右",
 	};
