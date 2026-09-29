@@ -79,13 +79,24 @@ const el = (className, parent, tagName = "div") => {
 	return node;
 };
 
-/** 画出提示窗。返回移除函数（测试与"关闭"都用同一个出口） */
-export function createUpdateNotice(data, repairs = []) {
+/**
+ * 画出提示窗。返回移除函数（测试与"关闭"都用同一个出口）
+ * @param {Object} [data] - P11 更新检查结果
+ * @param {Array} [repairs] - P12 启动期自动修复记录
+ * @param {Array} [legacy] - P13 旧版本处置记录（不传则行为与之前逐字一致）
+ */
+export function createUpdateNotice(data, repairs = [], legacy = []) {
 	loadStyles();
 	// 同一时刻只留一个（重复触发时先清掉旧的）
 	document.querySelector(".decade-update-overlay")?.remove();
 
 	const list0 = Array.isArray(repairs) ? repairs.filter(Boolean) : [];
+	// 唯一需要玩家动手的是「导入」，所以把它排到列表最前：列表超过 46vh 会自己滚，
+	// 按钮掉到折叠线以下就等于没有（P11 真机就报过一次"没看到忽略此版本按钮"）。
+	const list1 = (Array.isArray(legacy) ? legacy.filter(Boolean) : []).sort(
+		(a, b) => (a.kind === "importable" ? 0 : 1) - (b.kind === "importable" ? 0 : 1)
+	);
+	const hasLegacy = list1.length > 0;
 	const hasUpdates = Boolean(data?.updates?.length || data?.core?.behind);
 	const overlay = el("decade-update-overlay", document.body);
 	const close = () => overlay.remove();
@@ -93,8 +104,14 @@ export function createUpdateNotice(data, repairs = []) {
 	const dialog = el("decade-update-dialog", overlay);
 	const head = el("decade-update-head", dialog);
 	el("decade-update-title", head).textContent = hasUpdates
-		? (list0.length ? "模块更新与自动修复" : "发现可更新的模块")
-		: "已自动修复模块";
+		? (list0.length || hasLegacy ? "模块更新与自动修复" : "发现可更新的模块")
+		: list0.length && hasLegacy
+			? "模块修复与旧版本迁移"
+			: list0.length
+				? "已自动修复模块"
+				: hasLegacy
+					? "旧版本迁移"
+					: "提示";
 	const closeBtn = el("decade-update-close", head, "button");
 	closeBtn.textContent = "×";
 	closeBtn.addEventListener("click", close);
@@ -107,6 +124,26 @@ export function createUpdateNotice(data, repairs = []) {
 			? `${note.id}：${note.from} → ${note.to}`
 			: `${note.id}：需要重装`;
 		el("decade-update-core-note", row).textContent = note.message || "";
+	}
+	// P13：旧版本处置。关旧版与复制卡面是启动就做了的，配置迁移要点「导入」才写。
+	// 复用修复块的样式类，不新增 CSS 类（新增就得同步补 position/display，本体那条全局 div 规则会咬人）。
+	let importTarget = null;
+	for (const note of list1) {
+		const row = el("decade-update-repair", list);
+		const name = el("decade-update-row-name", row);
+		const detail = el("decade-update-core-note", row);
+		if (note.kind === "closed") {
+			name.textContent = `已关闭旧版 ${note.id}`;
+			detail.textContent = "两套 UI 同时启用会互相打架，已停用旧版；重载游戏后生效（这一局里旧版还在跑）";
+		} else if (note.kind === "skins") {
+			name.textContent = `已复制玩家自建卡面 ${note.count} 个`;
+			detail.textContent = `共 ${note.files} 张图片，已放进 image/card-skins/；重载游戏后生效`;
+		} else if (note.kind === "importable") {
+			name.textContent = `发现旧版设置：可导入 ${note.count} 项`;
+			detail.textContent = `${note.from ? `来自旧版十周年UI ${note.from}，` : ""}只补你在 Stars 里还没改过的项，改过的保持原样。`;
+			// 「导入」按钮不挂在这一行里（列表会滚，按钮滚进折叠区就等于没有），见下面的常驻按钮区
+			importTarget = { row, name, detail, apply: () => note.apply?.() };
+		}
 	}
 	if (data?.core?.behind) {
 		const core = el("decade-update-core", list);
@@ -125,6 +162,24 @@ export function createUpdateNotice(data, repairs = []) {
 	}
 
 	const actions = el("decade-update-actions", dialog);
+	// P13 的「导入」放常驻按钮区，不挂在行里：列表超过 46vh 会自己滚，按钮滚进折叠区就等于没有
+	// （P11 真机就报过一次"没看到忽略此版本按钮"）。
+	if (importTarget) {
+		const importBtn = el("decade-update-btn is-primary", actions, "button");
+		importBtn.textContent = "导入旧版设置";
+		importBtn.addEventListener("click", () => {
+			const result = importTarget.apply() ?? { kind: "migrate_failed", message: "导入动作丢失" };
+			if (result.kind === "migrated") {
+				importTarget.name.textContent = `已导入 ${result.count} 项旧版设置`;
+				importTarget.detail.textContent = "重载游戏后生效；Stars 里你已经改过的项没有被覆盖。";
+				importTarget.row.scrollIntoView({ block: "nearest" });
+				importBtn.remove();
+			} else {
+				importTarget.detail.textContent = `导入失败：${result.message || "原因未知"}（没有写入任何配置）`;
+				importTarget.row.scrollIntoView({ block: "nearest" });
+			}
+		});
+	}
 	const openBtn = el("decade-update-btn is-primary", actions, "button");
 	openBtn.textContent = "打开模块管理";
 	openBtn.addEventListener("click", () => {
@@ -169,16 +224,22 @@ export function waitForWelcome({ hasWelcome = () => Boolean(document.querySelect
 
 /**
  * 接线：content 阶段调用。
- * @param {{repairs?: Array}} [options] - P12 启动期自动修复的记录（moduleSystem.takeRepairNotes()）
- * 有修复记录时**即使关掉了"启动检查更新"也要弹**——回退已经发生了，玩家有权知道。
+ * @param {{repairs?: Array, legacy?: Array|{ready?: Promise}}} [options]
+ *   `repairs` 是 P12 启动期自动修复的记录（moduleSystem.takeRepairNotes()）；
+ *   `legacy` 是 P13 的迁移结果（runLegacyMigration() 的返回值，`ready` 等卡面复制完才解析）。
+ * 有修复/迁移记录时**即使关掉了"启动检查更新"也要弹**——回退已经发生了、旧版设置还等着点一下，玩家有权知道。
  */
-export function setupUpdateNotice({ repairs = [] } = {}) {
+export function setupUpdateNotice({ repairs = [], legacy = null } = {}) {
 	const notes = Array.isArray(repairs) ? repairs.filter(Boolean) : [];
+	const legacyReady = Array.isArray(legacy)
+		? Promise.resolve(legacy.filter(Boolean))
+		: Promise.resolve(legacy?.ready ?? []).then(list => (Array.isArray(list) ? list.filter(Boolean) : []));
 	setTimeout(() => {
 		const show = async data => {
-			if (!data && !notes.length) return;
+			const legacyNotes = await legacyReady.catch(() => []);
+			if (!data && !notes.length && !legacyNotes.length) return;
 			if (!(await waitForWelcome())) return;   // 欢迎窗一直开着：这次不打扰
-			createUpdateNotice(data, notes);
+			createUpdateNotice(data, notes, legacyNotes);
 		};
 		const probing = shouldAutoCheck() ? checkForUpdates() : Promise.resolve(null);
 		probing.then(show).catch(() => show(null));

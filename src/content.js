@@ -29,6 +29,7 @@ import { setupWelcomeDialog } from "./features/welcomeDialog.js";
 import { setupConfigWindow } from "./features/configWindow.js";
 import { setupModuleManagerWindow } from "./features/moduleManagerWindow.js";
 import { setupUpdateNotice } from "./features/updateNoticeWindow.js";
+import { runLegacyMigration } from "./features/legacyMigration.js";
 
 // 音频模块
 import { setupSkillDieAudio, setupAudioHooks, setupEnhancedAudio, setupCharacterAudio } from "./audio/index.js";
@@ -101,7 +102,9 @@ export const finalizeDecadeUICore = (decadeUI, config) => {
 	setupDynamicSkin();
 	setupWelcomeDialog(lib.extensionPack[decadeUIName]);
 	// P11：启动后异步查一次模块更新；P12：把启动期自动修复的记录一并告知（未配置/离线/超时一律静默）
-	setupUpdateNotice({ repairs: takeRepairNotes() });
+	// P13：旧版本（十周年UI）检测——仍启用就当场关掉，玩家自建卡面自动复制，旧配置等玩家点「导入」
+	const legacy = runLegacyMigration();
+	setupUpdateNotice({ repairs: takeRepairNotes(), legacy });
 
 	console.timeEnd(decadeUIName);
 	return decadeUI;

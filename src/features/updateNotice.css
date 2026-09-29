@@ -119,10 +119,14 @@
 	word-break: break-all;
 }
 
-/* P12：启动时自动修复的记录（回退成功 / 需要重装） */
+/* P12：启动时自动修复的记录（回退成功 / 需要重装）
+   P13 的旧版行也复用这个块。这里要显式关掉 transition：样式表是渲染时才追加的，
+   它加载完成算一次"样式变化"，本体那条 `div{transition:all .5s}` 会让这几行从
+   绝对定位滑回文档流（预览台实测第一帧 top/height 全是 0，半秒后才归位）。 */
 .decade-update-repair {
 	display: block;
 	position: relative;
+	transition: none;
 	background: rgba(245, 158, 11, 0.24);
 	border-radius: 10px;
 	padding: 10px 12px;
