@@ -91,11 +91,10 @@ export function createUpdateNotice(data, repairs = [], legacy = []) {
 	document.querySelector(".decade-update-overlay")?.remove();
 
 	const list0 = Array.isArray(repairs) ? repairs.filter(Boolean) : [];
-	// 唯一需要玩家动手的是「导入」，所以把它排到列表最前：列表超过 46vh 会自己滚，
-	// 按钮掉到折叠线以下就等于没有（P11 真机就报过一次"没看到忽略此版本按钮"）。
-	const list1 = (Array.isArray(legacy) ? legacy.filter(Boolean) : []).sort(
-		(a, b) => (a.kind === "importable" ? 0 : 1) - (b.kind === "importable" ? 0 : 1)
-	);
+	// 旧版相关行按接线给出的语义顺序渲染（界面被占用 → 已停用 → 可导入 → 卡面）；
+	// 不再把「可导入」顶到最前 —— 「导入」按钮已经在底部常驻区，按钮不会滚丢，
+	// 行序就让给"哪句最要紧"来定。
+	const list1 = Array.isArray(legacy) ? legacy.filter(Boolean) : [];
 	const hasLegacy = list1.length > 0;
 	const hasUpdates = Boolean(data?.updates?.length || data?.core?.behind);
 	const overlay = el("decade-update-overlay", document.body);
@@ -132,7 +131,10 @@ export function createUpdateNotice(data, repairs = [], legacy = []) {
 		const row = el("decade-update-repair", list);
 		const name = el("decade-update-row-name", row);
 		const detail = el("decade-update-core-note", row);
-		if (note.kind === "closed") {
+		if (note.kind === "occupied") {
+			name.textContent = "这一局界面仍归旧版";
+			detail.textContent = "两套 UI 不能同时运行，本扩展这局没有装载；已停用旧版，重载游戏后由 Stars 接管";
+		} else if (note.kind === "closed") {
 			name.textContent = `已关闭旧版 ${note.id}`;
 			detail.textContent = "两套 UI 同时启用会互相打架，已停用旧版；重载游戏后生效（这一局里旧版还在跑）";
 		} else if (note.kind === "skins") {

@@ -152,9 +152,12 @@ export async function content(config) {
 	// 两个扩展共用同一个全局名 `window.decadeUI`（原版 src/content.js:146 有同样的
 	// `if (window.decadeUI) return;`），谁先 content() 谁占住、后加载的整段不执行。
 	// 放在守卫之后，恰好就在"两套都在启用"这个唯一需要它的场景里不会运行。
+	const holder = window.decadeUI;
 	const legacy = runLegacyMigration();
-	if (window.decadeUI) {
-		// 这一局界面归旧版：本扩展不装载，但处置结果仍然要告诉玩家
+	if (holder) {
+		// 抢不到全局：旧版占着（已把它停用，重载后由 Stars 接管）或本扩展热重载。
+		// 只有前者值得说给玩家听——否则表现成"什么都没发生"。
+		if (!holder.isStars && legacy.entries.length) legacy.entries.unshift({ kind: "occupied" });
 		setupUpdateNotice({ legacy });
 		return;
 	}
@@ -163,6 +166,7 @@ export async function content(config) {
 	if (!bootstrapExtension()) return;
 
 	const decadeUI = createDecadeUIObject();
+	decadeUI.isStars = true;   // 全局名与原版共用，靠这个标记区分"是谁占的"
 	window.decadeUI = decadeUI;
 
 	// P1：挂载模块系统公开API（任务书§57兼容API策略）

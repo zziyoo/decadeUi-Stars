@@ -466,11 +466,15 @@ function fakeSkinIo({ legacy = {}, current = {} } = {}) {
 	const { readFileSync } = await import("node:fs");
 	const src = readFileSync(new URL("../src/content.js", import.meta.url), "utf8");
 	// 只认真正的代码行（制表符缩进 + 语句开头）：注释里也会引用这两句，indexOf 会被骗
+	const holderAt = src.search(/\n\tconst holder = window\.decadeUI;/);
 	const call = src.search(/\n\tconst legacy = runLegacyMigration\(\);/);
-	const guard = src.search(/\n\tif \(window\.decadeUI\) \{/);
-	assert.ok(call > -1 && guard > -1, `content.js 里找不到调用点(${call})或守卫(${guard})`);
+	const guard = src.search(/\n\tif \(holder\) \{/);
+	assert.ok(holderAt > -1 && call > -1 && guard > -1, `content.js 里找不到取全局(${holderAt})/调用点(${call})/守卫(${guard})`);
 	assert.ok(call < guard, "自动禁用必须排在 window.decadeUI 守卫之前");
-	assert.match(src.slice(guard, src.indexOf("return;", guard)), /setupUpdateNotice\(\{ legacy \}\)/, "守卫里提前退出时也要把处置结果告诉玩家");
+	const bail = src.slice(guard, src.indexOf("return;", guard));
+	assert.match(bail, /setupUpdateNotice\(\{ legacy \}\)/, "守卫里提前退出时也要把处置结果告诉玩家");
+	assert.match(bail, /holder\.isStars/, "本扩展热重载不该被谎报成「界面被旧版占用」");
+	assert.match(src, /\n\tdecadeUI\.isStars = true;/, "必须给自己打标记，否则上面那条判据无从判断");
 }
 
 console.log("p13-legacy-detector: OK");
