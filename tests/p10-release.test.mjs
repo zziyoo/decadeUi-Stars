@@ -193,5 +193,32 @@ const packs = [
 	assert.equal(mod.releaseTag("1.4.2"), "v1.4.2-stars");
 }
 
+{
+	// 整包不得夹带内部文档：精确路径与目录前缀两种都要挡。
+	// 为什么要判据化：排除表原本是"精确路径 Set"，P14 新增的 tests/modules/*.md 与
+	// docs/superpowers/plans/*.md 会照样打进 112MB 整包 —— 每改一次文档就 churn 一次整包 sha。
+	for (const rel of [
+		"README.md",
+		"docs/PROGRESS.md",
+		"docs/modularization-audit.md",
+		"docs/superpowers/plans/2026-09-29-p14-final-testing.md",
+		"tests/modules/mobile.md",
+		"tests/p14-module-tables.test.mjs",
+	]) {
+		assert.equal(mod.isPackagedFile(rel), false, `内部文档不该进整包：${rel}`);
+	}
+	for (const rel of ["info.json", "extension.js", "src/content.js", "modules/installed.json", "image/card-skins/.gitkeep", "ui/lbtn/base.js"]) {
+		assert.equal(mod.isPackagedFile(rel), true, `玩家要用的文件被误排了：${rel}`);
+	}
+	// distFiles 必须真的用上这条判据（否则排除表改了也白改）
+	fs.mkdirSync(path.join(distDir, "tests", "modules"), { recursive: true });
+	fs.writeFileSync(path.join(distDir, "tests", "modules", "mobile.md"), "# mobile\n");
+	fs.writeFileSync(path.join(distDir, "tests", "p14.test.mjs"), "//\n");
+	const listed = mod.distFiles(distDir);
+	assert.equal(listed.some(rel => rel.startsWith("tests/")), false, "distFiles 仍把 tests/ 打进整包");
+	assert.ok(listed.includes("info.json"), "distFiles 不该把玩家文件也剔掉");
+	fs.rmSync(path.join(distDir, "tests"), { recursive: true, force: true });
+}
+
 fs.rmSync(sandbox, { recursive: true, force: true });
 console.log("P10 release tests: all passed ✓");

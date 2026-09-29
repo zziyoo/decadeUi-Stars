@@ -46,7 +46,16 @@ const RELEASE_SUBDIR = "release";
  * 总任务书、交接台账、P0 审计报告。台账每次会话都在改，打进去会让 112MB 资产的
  * 摘要随文档变动——Release 上的 sha 与后续重建就对不上号了。
  */
-const FULL_PACKAGE_EXCLUDES = new Set(["README.md", "docs/PROGRESS.md", "docs/modularization-audit.md"]);
+/**
+ * 整包排除判据：精确路径 + 目录前缀。
+ *
+ * 原来是一个精确路径 Set —— 那样每新增一份内部文档（P14 的 `tests/modules/*.md`、
+ * 计划文档）都会照样打进 112MB 整包，改一个字就 churn 一次整包 sha。
+ * 判据只此一处：`distFiles` 与测试都用 `isPackagedFile`，不留第二份。
+ */
+const PACK_EXCLUDE_FILES = new Set(["README.md", "docs/PROGRESS.md", "docs/modularization-audit.md"]);
+const PACK_EXCLUDE_DIRS = ["docs/superpowers/", "tests/"];
+export const isPackagedFile = rel => !PACK_EXCLUDE_FILES.has(rel) && !PACK_EXCLUDE_DIRS.some(dir => rel.startsWith(dir));
 
 const VERIFY_ONLY = process.argv.includes("--verify");
 const LIST_ONLY = process.argv.includes("--list");
@@ -173,7 +182,7 @@ export async function zipFullPackage({ distDir = DIST_DIR, outZip, rootName }) {
 export function distFiles(distDir = DIST_DIR, excludeAbs = null) {
 	return listFiles(distDir)
 		.filter(rel => rel !== RELEASE_SUBDIR && !rel.startsWith(`${RELEASE_SUBDIR}/`))
-		.filter(rel => !FULL_PACKAGE_EXCLUDES.has(rel))
+		.filter(rel => isPackagedFile(rel))
 		.filter(rel => (excludeAbs ? path.resolve(distDir, rel) !== excludeAbs : true));
 }
 
