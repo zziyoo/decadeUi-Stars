@@ -172,7 +172,9 @@ export function detectLegacy({
 	currentName = DEFAULT_CURRENT_NAME,
 } = {}) {
 	const present = Array.isArray(installed) && installed.includes(legacyName);
-	const enabled = config?.[`${prefixOf(legacyName)}enable`] === true;
+	// 判据与本体装载扩展的那一条同形（game/index.js：`!lib.config['extension_<名>_enable']` 就 return）：
+	// 是**真值**就算在跑。写成 === true 会把 "true"/1 这类值漏掉——旧版照样 hook 着，我们却判"没冲突"。
+	const enabled = Boolean(config?.[`${prefixOf(legacyName)}enable`]);
 	const version = extensionPack?.[legacyName]?.version ?? null;
 	const legacyConfig = collectLegacyConfig({ config, legacyName });
 	const migratedFrom = config?.[`${prefixOf(currentName)}${MIGRATION_MARK_KEY}`] ?? null;

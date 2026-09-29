@@ -104,6 +104,9 @@ export const finalizeDecadeUICore = (decadeUI, config) => {
 	// P11：启动后异步查一次模块更新；P12：把启动期自动修复的记录一并告知（未配置/离线/超时一律静默）
 	// P13：旧版本（十周年UI）检测——仍启用就当场关掉，玩家自建卡面自动复制，旧配置等玩家点「导入」
 	const legacy = runLegacyMigration();
+	// 只读诊断入口：返回的就是本次启动实际用到的那个对象（entries 会被异步部分就地追加），
+	// 不做第二份状态。控制台用 `decadeUI.legacyMigration().report` 看判定了什么。
+	decadeUI.legacyMigration = () => legacy;
 	setupUpdateNotice({ repairs: takeRepairNotes(), legacy });
 
 	console.timeEnd(decadeUIName);

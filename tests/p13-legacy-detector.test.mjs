@@ -192,6 +192,21 @@ const DEFAULTS = { killEffect: true, cardPrettify: "off", rightLayout: "on" };
 	assert.equal(r.migration.needed, true, "关掉旧版不影响配置照常可迁");
 }
 {
+	// 冲突判据必须与本体装载扩展的判据同形：本体用的是**真值**
+	// （game/index.js `if (... || !lib.config['extension_<名>_enable']) return;`），
+	// 写成 === true 会把 "true"/1 这类真值漏掉——旧版照样在跑而我们判定"没冲突"。
+	for (const truthy of ["true", 1, "yes"]) {
+		const r = detectLegacy({ config: { [`${LEGACY}enable`]: truthy }, installed: [LEGACY_EXTENSION_NAME] });
+		assert.equal(r.conflict, true, `真值 ${JSON.stringify(truthy)} 必须判为冲突`);
+		assert.equal(r.legacy.enabled, true);
+	}
+	// 假值一律不算冲突：本体那条判据同样不会装载它（含"键不存在"）
+	for (const falsy of [false, 0, "", null, undefined]) {
+		const r = detectLegacy({ config: falsy === undefined ? {} : { [`${LEGACY}enable`]: falsy }, installed: [LEGACY_EXTENSION_NAME] });
+		assert.equal(r.conflict, false, `假值 ${JSON.stringify(falsy)} 不该判冲突`);
+	}
+}
+{
 	// 装了但没启用 ⇒ 不冲突，仍可迁配置
 	const r = detectLegacy({
 		config: seeded({ [`${LEGACY}enable`]: false, [`${LEGACY}killEffect`]: false }),
