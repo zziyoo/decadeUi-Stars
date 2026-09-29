@@ -9,6 +9,7 @@ import { bootstrapExtension } from "./core/bootstrap.js";
 import { createDecadeUIObject } from "./core/decadeUI.js";
 import { registerDecadeUIUtilityModule, enhanceDecadeUIRuntime } from "./core/utility.js";
 import { getModuleSystem, takeRepairNotes } from "./core/moduleSystem.js";
+import { shouldLoadUIPlugins } from "./core/uiMode.js";
 import { config as extensionConfig } from "./config.js";
 
 // 动画模块
@@ -109,8 +110,7 @@ export const finalizeDecadeUICore = (decadeUI, config) => {
  * 加载UI插件模块（异步按需加载）
  */
 async function loadUIPlugins() {
-	const excludedModes = ["chess", "tafang", "hs_hearthstone"];
-	if (excludedModes.includes(get.mode())) return;
+	if (!shouldLoadUIPlugins(get.mode())) return;
 
 	const plugins = [
 		{ name: "lbtn", creator: createLbtnPlugin },
