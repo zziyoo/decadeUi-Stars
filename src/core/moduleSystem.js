@@ -86,7 +86,7 @@ export function getModuleSystem() {
  * @returns {Promise<void>}
  */
 export async function registerInstalledModules() {
-	const { moduleManager, packageInstaller } = getModuleSystem();
+	const { registry, moduleManager, packageInstaller } = getModuleSystem();
 	const base = (typeof window !== "undefined" && window.decadeUIPath) || "";
 	let installed;
 	try {
@@ -99,14 +99,28 @@ export async function registerInstalledModules() {
 
 	/** 按 URL 取清单并注册（运行时加载走的是 URL，所以注册这一侧仍以 fetch 为准） */
 	const registerByUrl = async (id, version) => {
+		let manifest;
 		try {
 			const res = await fetch(`${base}modules/${id}/${version}/manifest.json`);
 			if (!res.ok) return { ok: false, reason: `清单取不到（HTTP ${res.status}）：modules/${id}/${version}/manifest.json` };
-			const result = moduleManager.register(normalizeManifest(await res.json()), { source: "installed" });
-			return result.ok ? { ok: true } : { ok: false, reason: `清单校验失败：${(result.errors || []).join("；")}` };
+			manifest = normalizeManifest(await res.json());
 		} catch (error) {
 			return { ok: false, reason: `读取清单异常：${error?.message ?? error}` };
 		}
+		// 内置那份是按本体版本先登记的（getModuleSystem 里），而 registry.register 对"同 id
+		// 不同版本"是抛错拒绝的——安装器运行时会先 unregister 再注册，启动这条路上没人做，
+		// 于是"更新到别的版本号 + 重启"会退回内置记录：getModuleRel 落回扩展根，已迁移成包的
+		// 样式连 entry.css 都不读（2026-09-29 真机）。补上安装器那一条协议，别名 meta 带过去。
+		const prev = registry.get(id);
+		const switching = Boolean(prev && prev.manifest.version !== manifest.version);
+		if (switching) registry.unregister(id);
+		const result = moduleManager.register(manifest, { ...(prev?.meta ?? {}), source: "installed" });
+		if (!result.ok) {
+			// 校验没过就把内置那份原样放回，绝不留下"盘上有包、注册表里什么都没有"
+			if (switching) registry.register(prev.manifest, prev.meta);
+			return { ok: false, reason: `清单校验失败：${(result.errors || []).join("；")}` };
+		}
+		return { ok: true };
 	};
 
 	const entries = installed?.modules || {};
