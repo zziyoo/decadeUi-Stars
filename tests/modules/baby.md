@@ -11,6 +11,6 @@
 | 更新 | 索引 `baby.latest` 更高时提示窗列出该项；更新后 `previousVersion` 记录、新旧版本目录并存 | 真机 | 通过 | 2026-09-28 真机 1.4.2→1.4.3，`previousVersion:"1.4.2"` 且两版目录并存 |
 | 卸载 | 让位 `.removing-*` → 台账写成功 → 清理；卸载后样式不可用而 Core 正常 | 真机 | 待验 | — |
 | 重装 | 卸载后同版本重装成功，无残留临时目录 | 真机 | 待验 | — |
-| 回退 | 破坏 `manifest.json` 或删 `ui/baby.js` 入口后重启 ⇒ 自动回退上一版并把坏目录改名 `.corrupt-*` | 真机 | 待验 | 判据由 `tests/p12-repair.test.mjs` 覆盖 |
+| 回退 | 破坏 `manifest.json` 或删 `ui/baby.js` 入口后重启 ⇒ 自动回退上一版并把坏目录改名 `.corrupt-*` | 真机 | 通过 | 2026-09-29 批2 真机四条直接跑在本套上（§八 P12-1…P12-4）：回退 `1.4.3 → 1.4.2` 留 `.corrupt-1.4.3-2o3jnp`、上一版也坏时不改名、无上一版文案分岔、误报为零 |
 | 依赖 | `dependencies:["core"]` 不满足时报 `DEP_MISSING` 不半装 | Node | 通过 | `tests/p5-installer.test.mjs` |
 | 资源在场 | 未装包时样式判据为假；`.corrupt-*`/`.replacing-*` 目录不被 `localVersions` 当成可用版本 | 静态 | 通过 | `tests/p12-repair.test.mjs`（localVersions 过滤三条前缀） |

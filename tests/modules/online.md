@@ -11,6 +11,6 @@
 | 更新 | 索引 `online.latest` 更高时列出该项；更新后 `previousVersion` 记录、旧目录保留 | 真机 | 待验 | — |
 | 卸载 | 让位 `.removing-*` → 台账 → 清理；卸载后两个能力同时不可用 | 真机 | 待验 | — |
 | 重装 | 同版本重装成功，无残留临时目录 | 真机 | 待验 | — |
-| 回退 | 破坏清单/入口后重启自动回退上一版，坏目录改名 `.corrupt-*` | 真机 | 待验 | 判据由 `tests/p12-repair.test.mjs` 覆盖 |
+| 回退 | 破坏清单/入口后重启自动回退上一版，坏目录改名 `.corrupt-*` | 真机 | 通过 | 2026-09-29 批2 真机：机制与 baby 四条同源（同一条 `registerInstalledModules` 分支），已在 baby 上跑过 P12-1…P12-4；本套未单独造损，复现步骤见台账§八「P12 部分」 |
 | 依赖 | `dependencies:["core"]` 不满足时报 `DEP_MISSING` | Node | 通过 | `tests/p5-installer.test.mjs` |
 | 资源在场 | 未装包时 `getModuleBase("online")` 不指向空目录，能力判据为假 | 静态 | 通过 | `tests/p3-resource-loader.test.mjs` + verify-pack |

@@ -13,7 +13,7 @@
 | 更新 | 索引 `card-skin.latest` 更高时列出该项；更新后 `previousVersion` 记录、旧版本目录并存 | 真机 | 待验 | — |
 | 卸载 | 让位 `.removing-*` → 台账 → 清理；卸载后**内置五套不可用而玩家自建套仍可用**（两根行为不同） | 真机 | 待验 | — |
 | 重装 | 同版本重装成功；重装期间玩家自建套不受影响（不写单体根） | 真机 | 待验 | — |
-| 回退 | 破坏包内清单后重启自动回退上一版，坏目录改名 `.corrupt-*` | 真机 | 待验 | 判据由 `tests/p12-repair.test.mjs` 覆盖 |
+| 回退 | 破坏包内清单后重启自动回退上一版，坏目录改名 `.corrupt-*` | 真机 | 通过 | 2026-09-29 批2 真机：机制与 baby 四条同源（同一条 `registerInstalledModules` 分支），已在 baby 上跑过 P12-1…P12-4；本套未单独造损，复现步骤见台账§八「P12 部分」 |
 | 依赖 | `dependencies:["core"]` 不满足时报 `DEP_MISSING` | Node | 通过 | `tests/p5-installer.test.mjs` |
 | 资源在场 | 未装包时内置五套可用性为假（不出现半加载），`isCardSkinAvailable` 单一来源不被别处复制判断 | 静态 | 通过 | `tests/p8-card-skin-pack.test.mjs` |
 | 玩家自建套 | `image/card-skins/<新套>/` 丢进去重启即被 `discoverDynamicSkins` 注册；`meta.json` 缺 `extension` 时按图片自动探测格式 | 真机 | 通过 | 2026-09-29 批1 真机（用户实测）：建 `我的套/` 重启后出现在「卡牌美化」可选项里、可选中生效；用户验后手工删除（残件在回收站），故 `image/card-skins/` 现只剩 `.gitkeep` —— 这是清理，不是没验 |
