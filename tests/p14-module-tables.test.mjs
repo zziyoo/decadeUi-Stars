@@ -81,4 +81,48 @@ for (const item of list) {
 	assert.equal(byName["启用"]?.[2], "真机", "kill-effect 的门控生效必须真机验");
 }
 
-console.log(`p14-module-tables: OK（${ids.length} 份表：${ids.join(", ")}）`);
+// ---------------------------------------------------------------- §51 五类总账矩阵
+
+const MATRIX = "tests/modules/P14-matrix.md";
+assert.ok(fs.existsSync(MATRIX), "缺 §51 五类测试总账矩阵 tests/modules/P14-matrix.md");
+
+const MODES = new Set(["Node", "静态", "真机", "文档"]);
+const OWNERS = new Set(["我", "用户", "双方"]);
+const STATES = new Set(["待办", "已做", "已验", "本机不可验"]);
+const KINDS = ["安装", "模块", "样式", "平台", "游戏模式"];
+/** 台账§八 的每个小节都必须被矩阵引用到 —— 矩阵是总账，不许悄悄漏掉已挂账的项 */
+const LEDGER_SECTIONS = ["§八 通用", "§八 P6", "§八 P8", "§八 P9", "§八 P11", "§八 P12", "§八 P13"];
+
+const matrixRaw = fs.readFileSync(MATRIX, "utf8");
+const matrixRows = matrixRaw
+	.split("\n")
+	.filter(line => /^\|/.test(line) && !/^\|\s*-{2,}/.test(line))
+	.map(line => line.replace(/\\\|/g, " ").split("|").slice(1, -1).map(cell => cell.trim()));
+
+{
+	const [head, ...body] = matrixRows;
+	assert.deepEqual(head, ["类别", "用例", "覆盖方式", "归属", "状态"], "矩阵表头必须是五列固定口径");
+	assert.ok(body.length >= KINDS.length * 2, "矩阵每类至少两条用例");
+	for (const kind of KINDS) {
+		assert.ok(body.filter(row => row[0] === kind).length >= 2, `§51 类别「${kind}」在矩阵里不足两条`);
+	}
+	for (const row of body) {
+		assert.equal(row.length, 5, `矩阵行列数不是 5：${row.join(" / ")}`);
+		assert.ok(KINDS.includes(row[0]), `矩阵类别取值非法：${row[0]}`);
+		assert.ok(MODES.has(row[2]), `矩阵「${row[1]}」覆盖方式非法：${row[2]}`);
+		assert.ok(OWNERS.has(row[3]), `矩阵「${row[1]}」缺归属：${row[3]}`);
+		assert.ok(STATES.has(row[4]), `矩阵「${row[1]}」状态非法：${row[4]}`);
+		// 反假绿：两种"完成"不许混用 —— 真机项只有用户跑过才叫「已验」，
+		// 自动化项由我判定「已做」；谁也不能替谁填。
+		if (row[2] === "真机") {
+			assert.notEqual(row[4], "已做", `矩阵「${row[1]}」是真机项，状态不许写「已做」（只有用户跑过才写「已验」）`);
+		} else {
+			assert.notEqual(row[4], "已验", `矩阵「${row[1]}」不是真机项，不该用「已验」（自动化项写「已做」）`);
+		}
+	}
+	for (const section of LEDGER_SECTIONS) {
+		assert.ok(matrixRaw.includes(section), `矩阵没有引用台账${section} 的挂账项 —— 总账不许漏账`);
+	}
+}
+
+console.log(`p14-module-tables: OK（${ids.length} 份表：${ids.join(", ")} + §51 矩阵）`);
