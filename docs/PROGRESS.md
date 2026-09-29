@@ -14,7 +14,7 @@
 | Stars 仓库 | https://github.com/zziyoo/decadeUi-Stars （本仓库，**独立开发仓库，已迁入源码**） |
 | 原版扩展（玩家在用，不动） | `zziyoo/decadeUi`，本地路径 `C:\Users\32360\Desktop\无名杀-win32-x64\resources\app\extension\十周年UI` |
 | 总路线 | P0审计 → P1模块基础设施 → P2公共依赖解耦 → P3十周年Pack → P4移动版Pack → P5下载器 → P6模块管理界面 → P7全部Style → P8 Feature Pack → P9模块化构建 → P10 Release → P11自动更新 → P12回滚 → P13旧版本迁移 → P14全量测试 |
-| 当前阶段 | **P14 最终测试（任务书§51 + §52）—— 工具链完成 + 真机批 1、批 2 已跑完并回填**：批 2（P11-2/4/5、P12-1…4、R5 真机取消）全部通过，并**查出并修掉一个自 P3 就存在的硬缺陷**——启动期"已安装的包"注册不过"内置注册"（台账版本 ≠ 本体版本时样式资源根落回扩展根、整套 CSS 一条都不加载），修复 `40f7933` + 新用例 `tests/p14-boot-installed-override.test.mjs`，真机复核已过（`getModuleBase` 指向 `modules/baby/1.4.4/`）。上一阶段 **P13 旧版本迁移** 代码完成、真机 P13-1/P13-2/P13-3 已过，P13-4 本机不可验。**批 3 也已跑完**（卸载前置检查 → 卸载 → 在线重装整链、身份/国战/斗地主、排除模式）；**剩余**：六套切换的视觉目测（复测口径已更正：每切一套必须重载，`styleRuntime` 只写配置）、手机布局与横屏、联网分支（依赖 P10 建好 Release）、Android/SAF 三条本机不可验；产物**已重建并复验**（`pnpm build` + `verify:release` 均 exit=0，连打两次 9 项产物字节与 sha 一字未变 ⇒ `src==dist==release` 同步）。**遗留的复现性风险**：无 `.gitattributes` + `core.autocrlf=true`，一次 checkout 就能改掉分包 zip 的 sha（本次 baby 包 112079 → 112085 字节，内容未变），行尾经用户决定**不动**（不影响日常开发），上传一律以当次 `dist/release/RELEASE-NOTES.md` 的 9 项 sha 为准。 |
+| 当前阶段 | **P14 最终测试（任务书§51 + §52）—— 工具链完成 + 真机批 1、批 2 已跑完并回填**：批 2（P11-2/4/5、P12-1…4、R5 真机取消）全部通过，并**查出并修掉一个自 P3 就存在的硬缺陷**——启动期"已安装的包"注册不过"内置注册"（台账版本 ≠ 本体版本时样式资源根落回扩展根、整套 CSS 一条都不加载），修复 `40f7933` + 新用例 `tests/p14-boot-installed-override.test.mjs`，真机复核已过（`getModuleBase` 指向 `modules/baby/1.4.4/`）。上一阶段 **P13 旧版本迁移** 代码完成、真机 P13-1/P13-2/P13-3 已过，P13-4 本机不可验。**批 3 也已跑完**（卸载前置检查 → 卸载 → 在线重装整链、身份/国战/斗地主、排除模式）；**剩余**：六套切换的视觉目测（复测口径已更正：每切一套必须重载，`styleRuntime` 只写配置）、手机布局与横屏、联网分支（依赖 P10 建好 Release）、Android/SAF 三条本机不可验；产物**已重建并复验**（`pnpm build` + `verify:release` 均 exit=0，连打两次 9 项产物字节与 sha 一字未变 ⇒ `src==dist==release` 同步）。**遗留的复现性风险**：无 `.gitattributes` + `core.autocrlf=true`，一次 checkout 就能改掉分包 zip 的 sha（本次 baby 包 112079 → 112085 字节，内容未变），**P15 代码级收尾也已完成**（2026-09-30：六套切换契约、online/card-skin 卸载判据、传输层与失败分类缺口、浮层 CSS 不变量泛化，套件 18 → 23，`src/` 零改动）。行尾经用户决定**不动**（不影响日常开发）；本轮实测到它的真实代价：一次 `git checkout` 后重构建，`baby-1.4.2.zip` 从 112085 → 112150 字节（内容一字未动，纯 CRLF/LF），所以上传一律以当次 `dist/release/RELEASE-NOTES.md` 的 9 项 sha 为准。 |
 
 ## 二、环境备忘（本机关键信息）
 
@@ -78,6 +78,17 @@
 **当前任务：P9 构建系统模块化 —— 代码完成，待游戏内实测**（`dea6561` 索引相对地址解析 + `d5b8baf` `scripts/build-release.mjs`，详见§四"P9 记录"）。上一阶段 P8 两刀已完成：第一刀 Feature API + `kill-effect` 门控（`b4d8db5`/`8f89e43`/`16c398d` + 修复 `48a82bc`/`d31ab7e`），第二刀 `card-skin` 拆包（`28e1092`/`0e890c7` + §57 兼容修复 `64719f3`）。
 下一阶段：**P10 GitHub Release（任务书§47）**——发布结构 Core / Official Style Packs / Feature Packs / Full Package / module-index.json 与"下载链接必须可被客户端解析"。本轮产物已能直接作为上传物；建 Release、传资产、推 tag 由用户执行，我这侧只负责索引与解析正确。
 上一阶段 **P6 模块管理界面 —— ✅ 已验收通过（2026-09-27 用户游戏内实测：窗口可开、布局正常、"已独立安装 6"读取正确）**。P5（任务书§42 + §17/§18/§19/§11/§24/§20）已完成：`6c76534` + `f4a69ac` + `df2afea` + `29a69e3` + P6 实测暴露的 fs 锚点修复 `40149bf`；**P5/P6/P8 的 Android/SAF 真机实测并入§八收尾清单，不阻塞推进**。
+
+### P15 代码级收尾（六套切换契约 / 卸载可观测判据 / 传输层缺口，2026-09-30）
+
+| 项 | 内容 |
+|---|---|
+| 范围（用户下达） | 只闭环"能在代码/Node 环境完成"的收尾项：①六套样式切换的真实行为与验收口径 ②online 卸载 ③card-skin 双根卸载 ④手机布局/横屏/SAF 代码层检查 ⑤联网分支与失败路径 ⑥产物可重复性确认。**不改架构、不改 reload 生命周期、不动 `.gitattributes`** |
+| 新增测试（18 → 23 套） | `p15-style-switch-contract`（切换只写配置并回 `reloadRequired`、映射与内置注册不漂移、六套资源根各自解析、`MIGRATED_STYLE_IDS` 齐全、六套 CSS 与 image 目录指纹互不相同）；`p15-online-uninstall-observability`（真安装器跑 IN_USE 拦截→切走→卸载→台账/目录/注册状态/资源根四项核对 + 置灰理由 + 死亡特效图仍走扩展根）；`p15-card-skin-uninstall-roots`（内置套根随包切换、自建套地址两态一字不变、不可用返回空串、回退目标不可用不许回退、`getModuleRel("card-skin")` 只许一处）；`p15-transport-and-spec-failures`（`xhrTransport` 全事件 + 重试环"退避等待中被取消" + 安装器侧失败分类 + 两条现状钉住）；`p15-overlay-css-invariants`（把只覆盖 updateNotice 的扫描泛化到模块管理窗口，25 类/21 div） |
+| 反向验证（每条都注错验过） | 丢 `reloadRequired` → 红；`MIGRATED_STYLE_IDS` 漏 codename → 红；卸载不摘注册表 → 红；`buildSkinUrl` 丢掉包根决策 → 红；`onabort` 把超时混成取消 → **只有新套件红、`p5-installer` 全绿**（证明这层此前从未被测到）；删 `.decade-module-summary` 的 `position` → 红。每次注错后 `git checkout` 还原并复跑为绿 |
+| 查出的是**判据错**不是代码错 | online 表里原写「卸载后两个能力同时不可用」**不可观测**：capability 取自注册表清单，卸载当下确实变假，但每次启动 `builtInModules.js:31` 会把 `online-chat/online-gift` 重新声明回来，重启后又是真，而此时该样式一条 CSS 都不加载。已按代码把判据改成 independent/资源根/台账/目录四项，并把这种脱钩钉成断言 |
+| `src/` 零改动 | 本轮没有发现需要改生产代码的功能缺陷，故未改一行 `src/`（反向注错都只发生在验证时刻）。手机滚动、横屏、Android SAF 属真机项，代码层能给的结论已写进§五与§八 |
+| 门禁 | 207 个 JS/mjs `node --check` ✓；**23 套**测试 ✓；verify-pack 881/17/0、check-skin-imports 37/0 ✓；`pnpm build` + `verify:release` exit=0 ✓（9 项资产与 RELEASE-NOTES 一致） |
 
 ### 批2真机查出的硬缺陷：启动期已安装包注册不过内置（`40f7933`）
 
@@ -473,6 +484,16 @@
     - **能力诚实化（C）**：端口 `probe()` + 安装器 `ready()` + 窗口 `await ready()`；探不过就置灰安装/更新/卸载并写明"本机取不到解压能力（ZIP）：…"，不再让按钮亮着等玩家把包下完才失败。门控型 Feature 的启停不受影响（`48a82bc` 口径）。
     - **记录更正**：P5 记录里原写「ZIP 用本体自带 JSZip，加载方式与 `app.importPlugin` 完全一致」**不成立**——`importPlugin` 在 `noname/game/index.js` 里 grep 不到，我当初照抄的加载路径在本体里不存在。这也是"纯静态验证未进游戏"的代价，已在 P5 记录处同步更正。
 
+
+**P15 代码层检查新增的已知风险（2026-09-30，均未改代码，理由逐条给）**
+
+1. **清单里的 `platform` 字段没有任何消费点**。`manifest.js:65-67` 只校验它是不是数组、`:142` 只给默认值，registry/loader/安装器都不按它过滤 ⇒ 声明 `platform:["desktop","mobile"]` 与实际能否安装无关。属"清单多说了一句话"级，不是功能故障；**要真按平台拦安装会改变现有行为，需用户决定**，故本轮只记录不动。
+2. **`welcomeDialog.css` 的四个 div 类没有 `position`**，靠 `welcomeDialog.js` 写内联 style 兜住。它不用 `el()` 建 DOM，所以不在 `p15-overlay-css-invariants` 的扫描适用范围内（该测试头部已明写"不假装扫到了"）。风险：改类名或去掉内联 style 就会被本体 `div{position:absolute}` 拖走。
+3. **15 个浮层 div 类裸 `transition`**（更新提示窗 4 个、模块管理窗口 11 个，清单由 `p15-overlay-css-invariants` 每次打印）。本体 `transition:all .5s` 对它们都生效，但"会不会真动起来"取决于插入后有无尺寸/位置变化 —— 已实测到的一例（`.decade-update-repair` 第一帧 height 0 再半秒滑开）当时补了 `transition:none`，其余**没有实测证据就不批量改**，留给真机目测决定。
+4. **三处 `overflow-y:auto` 滚动区未接本体的触摸滚动**（`module-manager-window.css:129/304`、`updateNotice.css:72`；正面例是 `welcomeDialog.js:258` 与本体 `create.js:128-133`）。桌面滚轮无碍，**手机上能否滚到底必须真机验**（§八 已列），不在代码层猜改。
+5. **Android 无 Node fs 时安装器是"部分可用"**：`moduleIo.js:130` 缺 fs 就整体落到 `game.*` 那套（`:218-254`）、`atomicRename:false`，台账提交有备份+回读+还原（`packageInstaller.js:306-370`），读坏走 `INSTALLED_CORRAPT` 拒覆盖 —— 目录发布仍非原子，UI 也如实提示。**未写坏台账**；但 `legacyWrite` 把 `Uint8Array` 交给 cordova `FileWriter.write`（只认 ArrayBuffer/Blob）这一条**无法在本机验证**，属真机风险。
+6. **两条现状被测试钉住而非修改**：`fetchIndex` 对"顶层是数组"的索引会放行（`typeof parsed === "object"` 判不住数组），下游取不到条目才失败；`resolveModuleUrl("../x.zip", …)` 会解析到同 host 的上级路径而不被拒（索引本身是信任根、绝对地址本来就允许，故不扩大能力）。将来收紧时这两条断言会红，逼着同步判据。
+
 ## 六、下一步
 
 1. ~~P0~~ ✅ ~~P1~~ ✅ ~~P2（含阻塞修复）~~ ✅ ~~P3/P4~~ ✅ ~~四包批量拆分（`33da307`）~~ ✅ ~~P5 下载器/安装器 + 可靠性审查修复 + 两笔补充修复（`f4a69ac`/`df2afea`/`29a69e3`）~~ ✅ ~~P6 模块管理界面（`2bae45e` + 实测暴露的 `40149bf`）~~ ✅ ~~P8 第一刀：Feature API + kill-effect 门控（`b4d8db5`/`8f89e43`）+ P6 Feature 行（`16c398d`）+ 两处修复（`48a82bc`/`d31ab7e`）~~ ✅ ~~P8 第二刀：card-skin 拆包（`28e1092`/`0e890c7` + §57 兼容修复 `64719f3`）~~ ✅ ~~P9 模块化构建：分包 zip + module-index + 完整校验（`dea6561`/`d5b8baf`）~~ ~~P5 真机前取证修复：JSZip 获取 + 解压端口形状 + 能力诚实化（`5c7b557`，实机打脸后改按实例交付 `d296f9e`）~~ ✅（2026-09-28，**纯代码 / Node 验证 + 一轮实机反馈**）。
@@ -695,6 +716,19 @@
 | B3-7 | 手机布局与横屏 | 无溢出、不串版 | ⏸ 移入项目收尾（用户选做） |
 | B3-8 | 联网分支（§八 P9） | 真实 GitHub Release 地址解析索引 | ⛔ 依赖 P10 建好 Release 与上传资产，届后才能验 |
 
+
+### P15 复测步骤（六套目测 / online 与 card-skin 卸载 / 手机与联网，2026-09-30）
+
+> 这几条是**代码层已确认、必须真机收尾**的项。判据都按源码核过，不再写不可观测的话。
+
+| # | 目的 | 操作 | 判据 |
+|---|---|---|---|
+| S-1 | 六套逐套视觉目测 | **每切一套必须重载**（`styleRuntime.activate` 只写配置并回 `reloadRequired:true`，不重载看到的还是启动那套）：配置里选样式 → 重载 → 看；六套各来一遍 | 玩家框/手牌按钮/技能栏走包内根；`yjcm` 的边框档位、`online` 的聊天与赠礼位置正确；无叠印、无缺图、按钮不双份。探针：`JSON.stringify([window.decadeUI.style.id, window.decadeUI.style.skin, window.decadeUI.resource.getModuleRel(window.decadeUI.style.id)])` 应给出该套自己的 id/skin 与 `modules/<id>/1.4.2/` |
+| S-2 | online 卸载（更正后的判据） | 先切到别的样式 → 模块管理里卸载 online → 重载 | 台账无 `online` 行、`modules/online/` 目录清空、无 `.removing-*` 残留；`getModuleRel("online")` 为空串 ⇒ **该样式一条 CSS 都不加载**（不是"退回旧版"）；Core 其余功能正常。**不要拿 capability 当判据**（重启后内置声明会把它变回真） |
+| S-3 | card-skin 卸载（双根） | 模块管理里卸载 card-skin → 重载 | 内置五套在下拉里消失/置灰且卡面走本体默认；**玩家自己丢进 `image/card-skins/` 的文件夹必须仍然可用**；再装回来两套都能出图 |
+| S-4 | 手机布局与横屏 | 手机（或 `phonelayout` 开 + 横竖屏各一次）打开模块管理与更新提示窗 | 三处 `overflow-y:auto` 列表能滚到底（触摸滚动）、按钮不被裁切、短屏不溢出、横屏不串版 |
+| S-5 | Android / SAF | Android 上装/卸/回退各一次，并中途杀进程再启 | 不写坏台账（读坏会拒覆盖）、非原子发布的中断能被下一次启动纠正、UI 如实提示"本平台发布非原子" |
+| S-6 | 联网分支（依赖 P10） | 等正式 Release 建好、9 项资产传上去后，把模块源地址填成真实 `…/releases/download/<tag>/module-index.json` → 重载 | 模块管理列出可安装/可更新项、下载与 SHA 校验通过、客户端能装上。**当前不能验，也不许写成已验** |
 
 ### P13 部分（旧版本迁移，必须在游戏内验）
 
