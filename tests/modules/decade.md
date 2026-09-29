@@ -6,7 +6,7 @@
 |---|---|---|---|---|
 | 包结构 | `modules/decade/1.4.2/manifest.json` 可解析，`id/version` 与台账一致，声明的 entry（CSS + 皮肤 JS）文件都在 | 静态 | 通过 | `node scripts/verify-pack.mjs` 881 可达 / 17 已知上游死引用 / 0 未知缺失 |
 | 安装 | 模块管理窗口安装后台账记 `source:"installed"` + `hashVerified:true`，目录落在 `modules/decade/<版本>/` | 真机 | 待验 | — |
-| 启用 | 切到十周年后玩家框/手牌按钮走包内根（`getModuleBase("decade")`），CSS 只加载一份、无双根同时生效 | 真机 | 通过 | P3 拆分后用户游戏内实测验收（台账§三 P3 记录） |
+| 启用 | 切到十周年后玩家框/手牌按钮走包内根（`getModuleBase("decade")`），CSS 只加载一份、无双根同时生效 | 真机 | 通过 | 2026-09-29 批1 真机（用户实测）：`[decadeUI.style.id, skin, config]` = `["decade","shizhounian","on"]`，能力探针 `[false,false,false]`（本套不声明扩展能力）；视觉逐套目测未单独回报，留§八 |
 | 禁用 | 关掉十周年样式回落到默认套，Core 其余功能（技能栏/记牌器）不受影响 | 真机 | 待验 | — |
 | 更新 | 索引 `decade.latest` 更高时提示窗列出该项；更新后 `previousVersion` 记录、新旧版本目录并存 | 真机 | 待验 | — |
 | 卸载 | 目录改名 `.removing-*` 让位、台账写成功后清理；卸载后该样式不可用而 Core 正常 | 真机 | 待验 | — |

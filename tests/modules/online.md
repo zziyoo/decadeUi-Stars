@@ -6,7 +6,7 @@
 |---|---|---|---|---|
 | 包结构 | `modules/online/1.4.2/manifest.json` 可解析、entry 齐；`ol/` 皮肤 JS 与 CSS 引用可达 | 静态 | 通过 | `node scripts/verify-pack.mjs`（含 70 文件那包）、`check-skin-imports` 37/0 |
 | 安装 | 安装后台账 `source:"installed"` + `hashVerified:true` | 真机 | 待验 | — |
-| 启用 | 切到 Online 后 `online-chat`（聊天条）与 `online-gift`（赠礼）两块界面出现且位置不压玩家框 | 真机 | 待验 | — |
+| 启用 | 切到 Online 后 `online-chat`（聊天条）与 `online-gift`（赠礼）两块界面出现且位置不压玩家框 | 真机 | 通过 | 2026-09-29 批1 真机（用户实测）：`decadeUI.style.id` = `online`、`[hasCapability("online-chat"), hasCapability("online-gift")]` = `[true, true]`（**修复前是 [false,false]**）；两块界面的实际位置目测未单独回报 |
 | 禁用 | 关掉 Online 后聊天/赠礼入口一并消失，不留空槽 | 真机 | 待验 | — |
 | 更新 | 索引 `online.latest` 更高时列出该项；更新后 `previousVersion` 记录、旧目录保留 | 真机 | 待验 | — |
 | 卸载 | 让位 `.removing-*` → 台账 → 清理；卸载后两个能力同时不可用 | 真机 | 待验 | — |

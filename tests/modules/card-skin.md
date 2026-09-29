@@ -16,5 +16,5 @@
 | 回退 | 破坏包内清单后重启自动回退上一版，坏目录改名 `.corrupt-*` | 真机 | 待验 | 判据由 `tests/p12-repair.test.mjs` 覆盖 |
 | 依赖 | `dependencies:["core"]` 不满足时报 `DEP_MISSING` | Node | 通过 | `tests/p5-installer.test.mjs` |
 | 资源在场 | 未装包时内置五套可用性为假（不出现半加载），`isCardSkinAvailable` 单一来源不被别处复制判断 | 静态 | 通过 | `tests/p8-card-skin-pack.test.mjs` |
-| 玩家自建套 | `image/card-skins/<新套>/` 丢进去重启即被 `discoverDynamicSkins` 注册；`meta.json` 缺 `extension` 时按图片自动探测格式 | 真机 | 待验 | — |
-| 旧版迁移 | 旧版目录里的玩家自建套自动复制到本扩展 `image/card-skins/`，内置五套排除、同名不覆盖（幂等）、**只读旧目录不写不删** | 真机 | 待验 | 判据与幂等由 `tests/p13-legacy-detector.test.mjs` 覆盖（`planSkins` 四组） |
+| 玩家自建套 | `image/card-skins/<新套>/` 丢进去重启即被 `discoverDynamicSkins` 注册；`meta.json` 缺 `extension` 时按图片自动探测格式 | 真机 | 通过 | 2026-09-29 批1 真机（用户实测）：建 `我的套/` 重启后出现在「卡牌美化」可选项里、可选中生效；用户验后手工删除（残件在回收站），故 `image/card-skins/` 现只剩 `.gitkeep` —— 这是清理，不是没验 |
+| 旧版迁移 | 旧版目录里的玩家自建套自动复制到本扩展 `image/card-skins/`，内置五套排除、同名不覆盖（幂等）、**只读旧目录不写不删** | 真机 | 通过 | 2026-09-29 批1 真机（用户实测）（P13-3）：在旧版目录放非内置套 → 重启后提示窗出现「已复制玩家自建卡面 1 个」且 Stars 侧出现同名套；用户验后手工删除两侧文件夹。注：旧版目录若被恢复，下次启动会按设计重新复制（同名不覆盖） |
