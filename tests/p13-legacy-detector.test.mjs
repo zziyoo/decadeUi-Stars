@@ -459,4 +459,18 @@ function fakeSkinIo({ legacy = {}, current = {} } = {}) {
 	}
 }
 
+{
+	// 接线顺序不变量（真机踩出来的）：两个扩展共用 `window.decadeUI`，谁先 content()
+	// 谁占住、后加载的整段 return。自动禁用必须在那道守卫**之前**，否则恰好在
+	// "两套都启用"这个唯一需要它的场景里不执行。
+	const { readFileSync } = await import("node:fs");
+	const src = readFileSync(new URL("../src/content.js", import.meta.url), "utf8");
+	// 只认真正的代码行（制表符缩进 + 语句开头）：注释里也会引用这两句，indexOf 会被骗
+	const call = src.search(/\n\tconst legacy = runLegacyMigration\(\);/);
+	const guard = src.search(/\n\tif \(window\.decadeUI\) \{/);
+	assert.ok(call > -1 && guard > -1, `content.js 里找不到调用点(${call})或守卫(${guard})`);
+	assert.ok(call < guard, "自动禁用必须排在 window.decadeUI 守卫之前");
+	assert.match(src.slice(guard, src.indexOf("return;", guard)), /setupUpdateNotice\(\{ legacy \}\)/, "守卫里提前退出时也要把处置结果告诉玩家");
+}
+
 console.log("p13-legacy-detector: OK");
