@@ -14,7 +14,7 @@
 | Stars 仓库 | https://github.com/zziyoo/decadeUi-Stars （本仓库，**独立开发仓库，已迁入源码**） |
 | 原版扩展（玩家在用，不动） | `zziyoo/decadeUi`，本地路径 `C:\Users\32360\Desktop\无名杀-win32-x64\resources\app\extension\十周年UI` |
 | 总路线 | P0审计 → P1模块基础设施 → P2公共依赖解耦 → P3十周年Pack → P4移动版Pack → P5下载器 → P6模块管理界面 → P7全部Style → P8 Feature Pack → P9模块化构建 → P10 Release → P11自动更新 → P12回滚 → P13旧版本迁移 → P14全量测试 |
-| 当前阶段 | **P14 最终测试（任务书§51 + §52）—— 工具链完成 + 真机批 1、批 2 已跑完并回填**：批 2（P11-2/4/5、P12-1…4、R5 真机取消）全部通过，并**查出并修掉一个自 P3 就存在的硬缺陷**——启动期"已安装的包"注册不过"内置注册"（台账版本 ≠ 本体版本时样式资源根落回扩展根、整套 CSS 一条都不加载），修复 `40f7933` + 新用例 `tests/p14-boot-installed-override.test.mjs`，真机复核已过（`getModuleBase` 指向 `modules/baby/1.4.4/`）。上一阶段 **P13 旧版本迁移** 代码完成、真机 P13-1/P13-2/P13-3 已过，P13-4 本机不可验。**剩余**：批 3（游戏模式 / 联网 / Android 本机不可验）、六套切换的视觉目测、P10 建 Release 与传资产（用户动作）；产物**已重建并复验**（`pnpm build` + `verify:release` 均 exit=0，连打两次 9 项产物字节与 sha 一字未变 ⇒ `src==dist==release` 同步）。**遗留的复现性风险**：无 `.gitattributes` + `core.autocrlf=true`，一次 checkout 就能改掉分包 zip 的 sha（本次 baby 包 112079 → 112085 字节，内容未变），钉不钉行尾待用户拍板。 |
+| 当前阶段 | **P14 最终测试（任务书§51 + §52）—— 工具链完成 + 真机批 1、批 2 已跑完并回填**：批 2（P11-2/4/5、P12-1…4、R5 真机取消）全部通过，并**查出并修掉一个自 P3 就存在的硬缺陷**——启动期"已安装的包"注册不过"内置注册"（台账版本 ≠ 本体版本时样式资源根落回扩展根、整套 CSS 一条都不加载），修复 `40f7933` + 新用例 `tests/p14-boot-installed-override.test.mjs`，真机复核已过（`getModuleBase` 指向 `modules/baby/1.4.4/`）。上一阶段 **P13 旧版本迁移** 代码完成、真机 P13-1/P13-2/P13-3 已过，P13-4 本机不可验。**批 3 也已跑完**（卸载前置检查 → 卸载 → 在线重装整链、身份/国战/斗地主、排除模式）；**剩余**：六套切换的视觉目测（复测口径已更正：每切一套必须重载，`styleRuntime` 只写配置）、手机布局与横屏、联网分支（依赖 P10 建好 Release）、Android/SAF 三条本机不可验；产物**已重建并复验**（`pnpm build` + `verify:release` 均 exit=0，连打两次 9 项产物字节与 sha 一字未变 ⇒ `src==dist==release` 同步）。**遗留的复现性风险**：无 `.gitattributes` + `core.autocrlf=true`，一次 checkout 就能改掉分包 zip 的 sha（本次 baby 包 112079 → 112085 字节，内容未变），行尾经用户决定**不动**（不影响日常开发），上传一律以当次 `dist/release/RELEASE-NOTES.md` 的 9 项 sha 为准。 |
 
 ## 二、环境备忘（本机关键信息）
 
@@ -100,14 +100,14 @@
 | 整包排除判据 | `scripts/build-release.mjs` 的 `isPackagedFile(rel)`：精确路径（`README.md` / `docs/PROGRESS.md` / `docs/modularization-audit.md`）+ 目录前缀（`docs/superpowers/`、`tests/`）。原来只有精确路径 Set，新增任何内部文档都会照样打进 112MB 整包、改一个字 churn 一次 sha。**实测**：加完九份文档整包 sha 仍是 `5f301cff5f63…` 未变 |
 | §52 九份测试表 | `tests/modules/`：core、decade、mobile、yjcm、online、baby、codename、card-skin（拆包型 Feature）、kill-effect（门控型 Feature）。表头固定五列（项目/判据/层级/结果/证据）；已验过的直接回填证据与日期，没验的标 `待验` —— **不允许空白冒充通过** |
 | 表结构静态不变量 | `tests/p14-module-tables.test.mjs`：①表按 `moduleManager.list()` 动态要求（加模块就催表）；②§51「模块」六个动词一行不许省，不适用也要显式写行并给原因（`kill-effect` 是 `pack:false`，安装/卸载/更新/回退本就没有链路，省掉行等于掩盖判据）；③填了结果必须有证据；④`core` 表必须含整包 / module-index / 回退 / 旧版四条判据 |
-| §51 五类矩阵 | `tests/modules/P14-matrix.md` 35 行（安装 8 / 模块 11 / 样式 7 / 平台 4 / 游戏模式 5）。一行一条用例，标 `覆盖方式 / 归属 / 状态`。**两条反假绿**：真机项不许写 `已做`（只有用户跑过才写 `已验`）、自动化项不许写 `已验` —— 两种「完成」不许互相冒充。**一条防漏账**：§八 每个小节（通用/P6/P8/P9/P11/P12/P13）都必须被矩阵引用。§八 原表一行没删，矩阵只做总账、不重复抄 procedure |
+| §51 五类矩阵 | `tests/modules/P14-matrix.md` 36 行（安装 8 / 模块 12 / 样式 7 / 平台 4 / 游戏模式 5）。一行一条用例，标 `覆盖方式 / 归属 / 状态`。**两条反假绿**：真机项不许写 `已做`（只有用户跑过才写 `已验`）、自动化项不许写 `已验` —— 两种「完成」不许互相冒充。**一条防漏账**：§八 每个小节（通用/P6/P8/P9/P11/P12/P13）都必须被矩阵引用。§八 原表一行没删，矩阵只做总账、不重复抄 procedure |
 | 盘点结果（这一步真正的产出） | 逐条把矩阵里 `已做` 对回源码与用例，抓出两处假账：①错误码 `HASH_MISMATCH` 根本不存在（真实是 `SHA_MISMATCH`，见 `packageInstaller` / `downloader`）；②「排除模式不装载 UI 插件」长期挂 `已做` 却**没有任何用例** —— 判断内联在 `content.js:loadUIPlugins()`，而 content.js 一 import 就拉起 DOM/本体依赖链，Node 侧够不着，于是「测不了」被默认成了「已做」。其余 `已做` 都有断言行号支撑（首次安装 p5-installer:520/541/635、重复安装 :676、下载失败 :569/922、校验失败 :556/949、`localVersions` 三种临时前缀过滤 p12-repair:300-309） |
 | 补的那条 | 新增纯模块 `src/core/uiMode.js`（`UI_PLUGIN_EXCLUDED_MODES` + `shouldLoadUIPlugins(mode)`），`content.js` 改用同一函数，测试盯住「不许再留第二份内联名单」。**语义零变更**：名单内不装载；取不到模式时保持装载 —— 漏判等于整个 UI 消失，比误判更糟 |
 | 反验（四条都红过） | 删 `tests/modules/yjcm.md` → 红「缺表」；结果列写 `OK` → 红「取值非法」；去掉某行的「§八」引用 → 红「漏账」；把 `shouldLoadUIPlugins` 改成恒真 → 红「chess 模式不该装载」 |
 | 批 1 真机结果（2026-09-29） | **通过**：六套样式路由与能力查询三值一致（`["decade",false,false,false]` / `["yjcm",true,false,false]` / `["online",false,true,true]`）、卡面五套可用且根指向 `modules/card-skin/1.4.2/`、玩家自建套"丢进去就能用"、P13-3 旧版卡面自动复制。**这一批查出一个 P7 遗留缺陷**（见下一行）。**仍待办**：六套切换的视觉目测（玩家框/边框档位/聊天赠礼位置）、批 2 模块生命周期与 P12 四条、批 3 游戏模式与联网 |
 | P7 能力漂移（批1 查出，`4c57f54` 修） | `scripts/migrate-style-packs.mjs:131` 把四个样式的 `capabilities` 一律硬编码成 `["player-frame","lbtn"]` ⇒ yjcm 丢 `border-style`、online 丢 `online-chat`/`online-gift`；清单是发布契约，`build-release.mjs` 原样写进 `module-index.json`，所以**已发布索引一直在对客户端谎报能力**。修复：脚本按样式取声明 + 两份已提交清单补回 + 新增 `tests/p14-capability-drift.test.mjs` 盯「代码声明 = 磁盘清单 = 索引」三处一致（重建前它正是红在索引那条）。**影响面**：`src/` 内无人消费 `hasCapability/getCapability`，故实际功能未坏，属"API 说谎"级 |
 | 批 2 真机结果（2026-09-29） | **通过**：P11-2（忽略只压一次；索引切到 1.4.4 后又弹且**没有** Core 块）、P11-4（关掉开关后连续三次启动，演示源访问日志零请求）、P11-5（坏地址静默、无红字）、P12-1…P12-4 四条、R5 真机取消（`tmp/modules/` 无残留、重试即成功且 sha 与 zip 一字不差）。**这一批查出并修复了自 P3 存在的注册覆盖硬缺陷**（见上一小节 `40f7933`）。P12-2 的"当前版 + 上一版都坏"是**我手工铺的夹具**（台账 `previousVersion` 指到演示版 1.4.3、两个 manifest 都删）——被测的是启动期健康检测与修复计划那一段、不经安装器，判据文案直接由 `planRepair` 跑出来核对 |
-| 未做 / 待真机 | 真机批 3 未跑（批 1、批 2 已过并回填）；`.gitattributes` 是否钉行尾待用户决定（不决定就以上传当次 `RELEASE-NOTES.md` 的 sha 为准）；`本机不可验` 三条（Android/SAF 降级、无原子 rename 平台、从未装过旧版的环境）留在§八，不阻塞阶段；§51「中途失败」的真机取消链路已在批 2 过（R5）；六套切换的**视觉目测**仍待办 |
+| 未做 / 待真机 | 真机批 1、批 2、批 3 均已过并回填；`.gitattributes` 经用户决定**不动**（不影响日常开发功能），上传以当次 `RELEASE-NOTES.md` 的 sha 为准；`本机不可验` 三条（Android/SAF 降级、无原子 rename 平台、从未装过旧版的环境）留在§八，不阻塞阶段；§51「中途失败」的真机取消链路已在批 2 过（R5）；六套切换的**视觉目测**仍待办（复测口径已更正：每切一套必须重载，`styleRuntime` 只写配置）、**手机布局与横屏**、**联网分支**（要等 P10 建好 Release）同留收尾 |
 
 ### P13 记录（旧版本迁移，任务书§50 + §21，`3ca76a3`）
 
@@ -681,6 +681,20 @@
 1. 造损坏要在游戏**没在跑**时改文件（或改完重载再看）：运行中的页面缓存着旧清单，读得到不代表没坏。
 2. `.corrupt-*` 目录留着供诊断，确认不需要了手工删即可；它已被 `localVersions` 排除，不会被当成可用版本参与更新/回退判定。
 3. 判据含"清单声明的 entry 文件是否存在"，所以删 `ui/baby.js` 这类入口文件同样会触发回退——想验这一支可以直接删入口文件。
+
+### 批3 结果（模块生命周期 / 游戏模式 / 样式目测，2026-09-30）
+
+| # | 目的 | 判据（按代码更正过） | 结果 |
+|---|---|---|---|
+| B3-1 | 使用中的样式不许卸 | **UI 侧置灰**：当前样式那行「卸载」按钮 `disabled`，`title` 给「正在使用中，请先切换到其他样式再卸载」（`moduleAdmin.js:214` → `moduleManagerWindow.js:210`）。安装器的 `IN_USE` 报错是第二道防线，只有走 API/force 才碰得到 —— 我原先写的"点一下会弹红字"判据是**错层**了 | ✅ 通过（截图：Online 标「当前使用」，其卸载键为灰） |
+| B3-2 | 卸载整链 | 切走 → 卸载 → `modules/baby/1.4.2/` 清空、台账 `baby` 行消失、Core 其余功能不受影响；无 `.removing-*` 残留 | ✅ 通过（盘上我核对后已 `git checkout` 还原，27 文件、`verify:release` exit=0） |
+| B3-3 | 重装（在线索引） | 台账 `baby={version:"1.4.4",sha256:"e9d784…",hashVerified:true}` 且**无** `previousVersion`；`tmp/modules/` 无残留；`getModuleBase("baby")` 以 `modules/baby/1.4.4/` 结尾 | ✅ 通过 |
+| B3-4 | 游戏模式 | 身份 / 国战 / 斗地主 各进一次：无红字、按钮不双份、切模式不残留上一模式的 hook | ✅ 通过 |
+| B3-5 | 排除模式 | 自走棋 / 塔防 / 炉石类：十周年 UI 不装载、不报错 | ✅ 通过 |
+| B3-6 | 六套切换的视觉目测 | **步骤要补一步**：`styleRuntime` 明写"切换仅写配置并提示重启"（`styleRuntime.js:147-156`，`reloadRequired:true`）⇒ 必须「切一套 → 重载 → 看」，否则看到的还是启动那套。已排除的另一半猜测：**包内容没有重复** —— 五套的 `player.css`/`styles/{character,lbtn,skill}.css` sha 两两不同，`image/` 目录指纹也各不相同（decade 13 / yjcm 24 / codename 17 / online 5 / mobile 0 张图纯 CSS） | ⏸ 移入项目收尾（用户同意）；复测口径见矩阵该行 |
+| B3-7 | 手机布局与横屏 | 无溢出、不串版 | ⏸ 移入项目收尾（用户选做） |
+| B3-8 | 联网分支（§八 P9） | 真实 GitHub Release 地址解析索引 | ⛔ 依赖 P10 建好 Release 与上传资产，届后才能验 |
+
 
 ### P13 部分（旧版本迁移，必须在游戏内验）
 

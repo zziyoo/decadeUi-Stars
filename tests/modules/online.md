@@ -9,7 +9,7 @@
 | 启用 | 切到 Online 后 `online-chat`（聊天条）与 `online-gift`（赠礼）两块界面出现且位置不压玩家框 | 真机 | 通过 | 2026-09-29 批1 真机（用户实测）：`decadeUI.style.id` = `online`、`[hasCapability("online-chat"), hasCapability("online-gift")]` = `[true, true]`（**修复前是 [false,false]**）；两块界面的实际位置目测未单独回报 |
 | 禁用 | 关掉 Online 后聊天/赠礼入口一并消失，不留空槽 | 真机 | 待验 | — |
 | 更新 | 索引 `online.latest` 更高时列出该项；更新后 `previousVersion` 记录、旧目录保留 | 真机 | 待验 | — |
-| 卸载 | 让位 `.removing-*` → 台账 → 清理；卸载后两个能力同时不可用 | 真机 | 待验 | — |
+| 卸载 | 让位 `.removing-*` → 台账 → 清理；卸载后两个能力同时不可用 | 真机 | 待验 | 通用卸载链已在 baby 上真机过（批3）；**「两个能力同时不可用」这条属本套特有**，要单独跑一次才算 |
 | 重装 | 同版本重装成功，无残留临时目录 | 真机 | 待验 | — |
 | 回退 | 破坏清单/入口后重启自动回退上一版，坏目录改名 `.corrupt-*` | 真机 | 通过 | 2026-09-29 批2 真机：机制与 baby 四条同源（同一条 `registerInstalledModules` 分支），已在 baby 上跑过 P12-1…P12-4；本套未单独造损，复现步骤见台账§八「P12 部分」 |
 | 依赖 | `dependencies:["core"]` 不满足时报 `DEP_MISSING` | Node | 通过 | `tests/p5-installer.test.mjs` |
