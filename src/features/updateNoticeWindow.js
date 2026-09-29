@@ -169,16 +169,20 @@ export function createUpdateNotice(data, repairs = [], legacy = []) {
 	if (importTarget) {
 		const importBtn = el("decade-update-btn is-primary", actions, "button");
 		importBtn.textContent = "导入旧版设置";
-		importBtn.addEventListener("click", () => {
-			const result = importTarget.apply() ?? { kind: "migrate_failed", message: "导入动作丢失" };
+		importBtn.addEventListener("click", async () => {
+			// apply() 可能要现读旧版 info.json 拿版本号 ⇒ 期间禁用，避免连点写两遍
+			importBtn.disabled = true;
+			const result = (await importTarget.apply()) ?? { kind: "migrate_failed", message: "导入动作丢失" };
 			if (result.kind === "migrated") {
 				importTarget.name.textContent = `已导入 ${result.count} 项旧版设置`;
-				importTarget.detail.textContent = "重载游戏后生效；Stars 里你已经改过的项没有被覆盖。";
+				importTarget.detail.textContent = `重载游戏后生效；Stars 里你已经改过的项没有被覆盖${result.from ? `（来自旧版 ${result.from}）` : ""}`;
 				importTarget.row.scrollIntoView({ block: "nearest" });
 				importBtn.remove();
 			} else {
-				importTarget.detail.textContent = `导入失败：${result.message || "原因未知"}（没有写入任何配置）`;
+				// 逐项写入中途抛错会留下已写的部分，不能说"什么都没写"
+				importTarget.detail.textContent = `导入失败：${result.message || "原因未知"}（可能已写入部分项，重载后请在设置里核对）`;
 				importTarget.row.scrollIntoView({ block: "nearest" });
+				importBtn.disabled = false;
 			}
 		});
 	}

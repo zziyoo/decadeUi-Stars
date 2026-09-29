@@ -137,18 +137,49 @@ function buildSkinIo(fs, base, legacyName, currentName) {
 }
 
 /**
- * 点「导入」时真正写配置：逐项 `game.saveConfig`，最后打标记。
- * @param {{items?: Array, count?: number, from?: string|null}} entry - `importable` 条目
- * @param {{save?: Function, currentName?: string}} [deps]
- * @returns {{kind: "migrated"|"migrate_failed", count?: number, from?: string|null, message?: string}}
+ * 读旧扩展的 `info.json` 拿版本号。
+ *
+ * 为什么要点开按钮时才读：旧版**停用后本局不会被装载**，`lib.extensionPack[旧版]` 就是空的，
+ * 检测期拿不到版本号（真机上标记因此写成了 `unknown`）。地址口径与 `extension.js` 自己
+ * 读 `info.json` 的写法一致（`lib.assetURL` 在本构建里是空串，相对地址按文档基址解析）。
+ * @param {string} legacyName
+ * @param {{json?: Function, assetURL?: string}} [deps]
+ * @returns {Promise<string|null>} 读不到一律 null（旧版被删/没写版本号/网络失败都不该影响导入）
  */
-export function applyLegacyImport(entry, { save = (key, value) => game.saveConfig(key, value), currentName } = {}) {
+export async function readLegacyInfoVersion(legacyName, { json = lib?.init?.promises?.json, assetURL = lib?.assetURL ?? "" } = {}) {
+	if (typeof json !== "function") return null;
+	try {
+		const info = await json(`${assetURL}extension/${legacyName}/info.json`);
+		return typeof info?.version === "string" && info.version ? info.version : null;
+	} catch (e) {
+		console.warn("[十周年UI] 读取旧版版本号失败（不影响导入）：", e?.message ?? e);
+		return null;
+	}
+}
+
+/**
+ * 点「导入」时真正写配置：逐项 `game.saveConfig`，最后打标记。
+ *
+ * 异步的唯一理由是版本号可能要现读 `info.json`（见 `readLegacyInfoVersion`）；
+ * 任何失败都在内部转成结构化结果，绝不抛给窗口那边。
+ * @param {{items?: Array, count?: number, from?: string|null}} entry - `importable` 条目
+ * @param {{save?: Function, currentName?: string, legacyName?: string, readLegacyVersion?: Function}} [deps]
+ * @returns {Promise<{kind: "migrated"|"migrate_failed", count?: number, from?: string|null, message?: string}>}
+ */
+export async function applyLegacyImport(entry, {
+	save = (key, value) => game.saveConfig(key, value),
+	currentName,
+	legacyName = LEGACY_EXTENSION_NAME,
+	readLegacyVersion = name => readLegacyInfoVersion(name),
+} = {}) {
 	const items = Array.isArray(entry?.items) ? entry.items : [];
 	const name = currentName || (typeof decadeUIName === "string" && decadeUIName) || DEFAULT_CURRENT_NAME;
 	try {
 		for (const item of items) save(item.to, item.value);
-		save(migrationMarkKey(name), entry?.from || "unknown");
-		return { kind: "migrated", count: items.length, from: entry?.from ?? null };
+		let from = entry?.from ?? null;
+		if (!from) from = await readLegacyVersion(legacyName);
+		save(migrationMarkKey(name), from || "unknown");
+		return { kind: "migrated", count: items.length, from };
 	} catch (e) {
 		console.error("[十周年UI] 导入旧版设置失败：", e);
 		return { kind: "migrate_failed", count: 0, message: String(e?.message ?? e) };

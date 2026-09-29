@@ -278,7 +278,7 @@ const DEFAULTS = { killEffect: true, cardPrettify: "off", rightLayout: "on" };
 
 // ---------------------------------------------------------------- 接线层：真的写什么
 
-const { runLegacyMigration, applyLegacyImport, collectDefaults, BUILTIN_SKIN_FOLDERS } = await import("../src/features/legacyMigration.js");
+const { runLegacyMigration, applyLegacyImport, readLegacyInfoVersion, collectDefaults, BUILTIN_SKIN_FOLDERS } = await import("../src/features/legacyMigration.js");
 
 /**
  * 跑一次接线。`skinIo` 是卡面目录端口（Node 测试用替身；真机是裸 lib.node.fs）。
@@ -348,7 +348,7 @@ function fakeSkinIo({ legacy = {}, current = {} } = {}) {
 		{ installed: [LEGACY_EXTENSION_NAME], extensionPack: { [LEGACY_EXTENSION_NAME]: { version: "1.4.2" } } },
 	);
 	assert.deepEqual(calls, [], "没点按钮就一个键都不写");
-	const note = applyLegacyImport(entries.find(item => item.kind === "importable"), { save });
+	const note = await applyLegacyImport(entries.find(item => item.kind === "importable"), { save });
 	assert.deepEqual(calls, [
 		[`${CURRENT}killEffect`, false],
 		[`${CURRENT}rightLayout`, "off"],
@@ -356,6 +356,83 @@ function fakeSkinIo({ legacy = {}, current = {} } = {}) {
 	]);
 	assert.equal(note.kind, "migrated");
 	assert.equal(note.count, 2);
+}
+
+{
+	// 真机查出的缺陷：旧版本局没被装载（已停用）时 extensionPack 里取不到版本号，
+	// 标记就写成 "unknown"。现在改成：from 缺失时去读一次旧版 info.json 补上版本号。
+	const calls = [];
+	const reads = [];
+	const note = await applyLegacyImport(
+		{ kind: "importable", from: null, items: [{ to: `${CURRENT}killEffect`, value: false }] },
+		{
+			save: (k, v) => calls.push([k, v]),
+			readLegacyVersion: async name => {
+				reads.push(name);
+				return "1.4.2";
+			},
+		}
+	);
+	assert.deepEqual(reads, [LEGACY_EXTENSION_NAME], "只在拿不到版本号时才去读盘");
+	assert.deepEqual(calls, [[`${CURRENT}killEffect`, false], [`${CURRENT}${MIGRATION_MARK_KEY}`, "1.4.2"]]);
+	assert.equal(note.kind, "migrated");
+	assert.equal(note.from, "1.4.2");
+}
+
+{
+	// 版本号已知 ⇒ 不该多读一次盘
+	let readCalls = 0;
+	await applyLegacyImport({ kind: "importable", from: "1.4.2", items: [] }, {
+		save: () => {},
+		readLegacyVersion: async () => {
+			readCalls++;
+			return "9.9.9";
+		},
+	});
+	assert.equal(readCalls, 0, "有版本号就别再读 info.json");
+}
+
+{
+	// 拿不到版本号不能让导入失败：配置照常写、标记退回 "unknown"
+	// （真实默认实现 readLegacyInfoVersion 自己把 404/缺字段吞成 null，见下面两组）
+	const calls = [];
+	const note = await applyLegacyImport({ kind: "importable", from: null, items: [{ to: `${CURRENT}killEffect`, value: false }] }, {
+		save: (k, v) => calls.push([k, v]),
+		readLegacyVersion: async () => null,
+	});
+	assert.deepEqual(calls, [[`${CURRENT}killEffect`, false], [`${CURRENT}${MIGRATION_MARK_KEY}`, "unknown"]]);
+	assert.equal(note.kind, "migrated");
+	assert.equal(note.from, null);
+}
+
+{
+	// 读盘实现的地址口径：extension/<旧版名>/info.json（与 extension.js 自己读 info.json 同一写法）
+	const seen = [];
+	const version = await readLegacyInfoVersion(LEGACY_EXTENSION_NAME, {
+		json: async url => {
+			seen.push(url);
+			return { name: LEGACY_EXTENSION_NAME, version: "1.4.2" };
+		},
+	});
+	assert.equal(version, "1.4.2");
+	assert.deepEqual(seen, [`extension/${LEGACY_EXTENSION_NAME}/info.json`]);
+}
+{
+	// 读盘实现要吞掉一切异常（旧版被删/没版本号/网络失败）：拿不到就返回 null
+	const originalWarn = console.warn;
+	console.warn = () => {};
+	try {
+		const v1 = await readLegacyInfoVersion(LEGACY_EXTENSION_NAME, {
+			json: async () => {
+				throw new Error("404");
+			},
+		});
+		const v2 = await readLegacyInfoVersion(LEGACY_EXTENSION_NAME, { json: async () => ({ name: LEGACY_EXTENSION_NAME }) });
+		const v3 = await readLegacyInfoVersion(LEGACY_EXTENSION_NAME, { json: null });
+		assert.deepEqual([v1, v2, v3], [null, null, null]);
+	} finally {
+		console.warn = originalWarn;
+	}
 }
 
 {
@@ -448,7 +525,7 @@ function fakeSkinIo({ legacy = {}, current = {} } = {}) {
 	const originalError = console.error;
 	console.error = () => {};
 	try {
-		const note = applyLegacyImport({ kind: "importable", items: [{ to: `${CURRENT}killEffect`, value: false }] }, {
+		const note = await applyLegacyImport({ kind: "importable", items: [{ to: `${CURRENT}killEffect`, value: false }] }, {
 			save: () => {
 				throw new Error("boom");
 			},
@@ -457,6 +534,16 @@ function fakeSkinIo({ legacy = {}, current = {} } = {}) {
 	} finally {
 		console.error = originalError;
 	}
+}
+
+{
+	// 按钮绑的 apply 返回的就是同一个 promise（界面那边要 await 它才能更新文字）
+	const { entries } = await runWith({ [`${LEGACY}killEffect`]: false }, { installed: [LEGACY_EXTENSION_NAME] });
+	const importable = entries.find(item => item.kind === "importable");
+	const result = importable.apply();
+	assert.equal(typeof result.then, "function", "apply() 必须可 await（读版本号是异步的）");
+	const note = await result;
+	assert.equal(note.kind, "migrated");
 }
 
 {
