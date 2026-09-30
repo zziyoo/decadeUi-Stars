@@ -94,7 +94,9 @@
 | CI 自动打包（同日迁入） | 照上游两套工作流搬并改造：`.github/workflows/build.yml`（push main → 五道门禁 → `pnpm build` → `verify:release` → 把**部署形态**的 `dist/` 推到孤儿分支 `build-output`）与 `manual-package.yml`（`workflow_dispatch` 或 issue 评论 `/package` → 同样门禁 → 把 `dist/release/` 的 9 项资产 + `RELEASE-NOTES.md` 作为**工作流 artifact** 上传，sha256 清单与模块源地址写进运行摘要）。**两处刻意不同**：①原版构建前不跑任何测试，这里把 `check:syntax`/`test`/`verify:pack`/`verify:skins` 全排在构建前，且与本地跑的是同一批脚本；②`dist/release/` 不进 `build-output` 分支（那是 112MB 发布资产，只走 artifact），且 **CI 不建 Release、不动已发布版本** —— 建 Release 仍是人的动作 |
 | 新增脚本 | `scripts/run-tests.mjs`（25 套一次跑完，`--import` 传 file:// URL，Windows/Linux 同形）与 `scripts/check-syntax.mjs`（232 个 .js/.mjs 过 `node --check`）；`package.json` 补 `test`/`check:syntax`/`verify:pack`/`verify:skins` 四条入口 |
 | 本地已验 | 两条脚本实跑：`232/232`、`25/25` ✓；工作流里的 shell 步骤（版本读取、部署形态四件、9 项资产存在、`dist/release` 计数 10、摘要 sha 表）逐条在本机 Git Bash 跑通，sha 与 `RELEASE-NOTES.md` 一字不差 ✓；YAML 用 `tmp/yaml-shape-check.mjs`（缩进/块标量/重复键）对**原版两份能跑的工作流**做对照，四份全过 ✓ |
-| 未做 | 推送与建 Release（`gh` 未登录，且推送按惯例归用户）；**Actions 首次真实运行待验**（本机无法执行 `build-output` 分支部署那一段，只验了其余步骤）；Android/SAF 真机；§八 其余待验项 |
+| 未做 | Actions 首次真实运行待看（`build-output` 分支部署那段本机执行不了）；Android/SAF 真机；§八 其余待验项 |
+| 发布状态核查（2026-10-01，GitHub 匿名 API 只读） | `refs/heads/main` = **`149e90d`**（两套工作流已上线，首跑结果待看）。**两处不对**：①远端标签 `v1.5.0` 指向 **`f6b547b`** —— 该提交 `info.json` 仍是 `1.4.2`，且 `00c2485`（boot 样式读数）与 `ce7342f`（皮肤 import）都不是它的祖先 ⇒ GitHub 按标签生成的源码包是"标着 1.5.0 的 1.4.2"，**必须把标签挪到 `149e90d`**；②Release（id 400229824，2026-09-30 16:21Z 发布）**0 资产、标题与说明为空** ⇒ 要填 `dist/release/RELEASE-NOTES.md` 并传那 9 项资产。本地标签 `v1.5.0` 已在正确位置（`149e90d`），**未推送** |
+| 为什么这两步我没能做完 | 本会话拿不到 GitHub 凭据：`GIT_TERMINAL_PROMPT=0` 下 `git push` 明确报 `could not read Username for 'https://github.com'`（第一次推 main 能成，是凭据助手当时给了缓存），`gh auth status` = 未登录。挪标签与建/传 Release 都要凭据，属你终端的动作（或先 `gh auth login` 再让我接手） |
 ### 技能按钮点不动：包内皮肤 JS 的动态 import 说明符不可解析（2026-09-30 修复）
 
 | 项 | 内容 |
