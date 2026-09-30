@@ -1,0 +1,115 @@
+name: Manual Package
+
+# 与上游十周年UI 的 manual-package.yml 同形：手动触发或在 issue 里发 `/package` 评论，
+# 构建后把产物作为**工作流 artifact** 上传（不是 GitHub Release —— 建 Release 与传资产
+# 仍然是人的动作，这样 CI 不会碰到已发布的版本）。
+# Stars 的差别：上传的是 dist/release/ 那 9 项发布资产（整包 + 索引 + 七个分包），
+# 并把 sha256 清单与模块源地址写进运行摘要，照着核对即可。
+
+on:
+  workflow_dispatch:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: manual-package
+  cancel-in-progress: true
+
+jobs:
+  package:
+    name: Build package
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'issue_comment' &&
+        github.event.action == 'created' &&
+        !github.event.issue.pull_request &&
+        github.event.comment.body == '/package'
+      )
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout latest main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Gates
+        run: |
+          pnpm run check:syntax
+          pnpm test
+          pnpm run verify:pack
+          pnpm run verify:skins
+
+      - name: Build
+        run: pnpm build
+
+      - name: Verify release artifacts
+        run: pnpm run verify:release
+
+      - name: Read version
+        id: version
+        run: |
+          VERSION=$(node -e "process.stdout.write(JSON.parse(require('fs').readFileSync('dist/info.json','utf8')).version)")
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Check build output
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          test -f dist/extension.js
+          test -f dist/info.json
+          test -d dist/src
+          test -d dist/ui
+          node -e "const i=JSON.parse(require('fs').readFileSync('dist/info.json','utf8')); if(i.version!==process.env.VERSION) process.exit(1)"
+          # 9 项发布资产齐不齐：整包 + 索引 + 七个分包
+          test -f "dist/release/十周年UI-Stars-${VERSION}-full.zip"
+          test -f dist/release/module-index.json
+          for id in baby card-skin codename decade mobile online yjcm; do
+            test -f "dist/release/${id}-${VERSION}.zip" || { echo "缺 ${id}-${VERSION}.zip"; exit 1; }
+          done
+          # 目录里是 9 项发布资产 + 1 份 RELEASE-NOTES.md（说明文件也上传，方便对照 sha）
+          node -e "const fs=require('fs');const n=fs.readdirSync('dist/release').length; if(n!==10){console.error('dist/release 应为 10 项（9 资产 + 说明），实际 '+n); process.exit(1)}"
+
+      - name: Upload release assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: decadeUi-Stars-${{ steps.version.outputs.version }}-release
+          path: dist/release/
+          if-no-files-found: error
+          compression-level: 0
+
+      - name: Show package summary
+        run: |
+          {
+            echo "## 十周年UI-Stars ${{ steps.version.outputs.version }} 打包完成"
+            echo
+            echo "产物为**工作流 artifact**（未创建 Release）。下载后逐项核对 sha256 再上传到 Release。"
+            echo
+            echo "| 文件 | 字节 | sha256 |"
+            echo "|---|---|---|"
+            for f in dist/release/*; do
+              printf '| `%s` | %s | `%s` |\n' "$(basename "$f")" "$(stat -c %s "$f")" "$(sha256sum "$f" | cut -d' ' -f1)"
+            done
+            echo
+            echo "发布后模块源地址填：\`https://github.com/$GITHUB_REPOSITORY/releases/download/v${{ steps.version.outputs.version }}/module-index.json\`"
+          } >> "$GITHUB_STEP_SUMMARY"

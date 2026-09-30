@@ -1,0 +1,93 @@
+name: build
+
+# 与上游十周年UI 的 build.yml 同形：push 到 main 时构建，并把部署形态的 dist/ 推到
+# build-output 孤儿分支（玩家可从那个分支拿现成的扩展目录）。
+# Stars 的差别只有两处：①部署前必须过完五道静态门禁（原版没有）；
+# ②dist/release/（分包 zip + 整包 + 索引）**不进分支** —— 那是发布资产，只走工作流产物。
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+    workflow_dispatch:
+
+permissions:
+    contents: write # 只有 build-output 分支部署需要
+
+concurrency:
+    group: build-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Install pnpm
+              uses: pnpm/action-setup@v4
+              with:
+                  version: 11
+                  run_install: false
+
+            - name: Install Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 24
+                  cache: "pnpm"
+
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
+
+            # ---- 静态门禁：与本地跑的是同一批脚本，判据不分叉 ----
+            - name: Syntax check (src/ui/scripts/tests)
+              run: pnpm run check:syntax
+
+            - name: Test suites
+              run: pnpm test
+
+            - name: Verify pack references
+              run: pnpm run verify:pack
+
+            - name: Verify skin imports
+              run: pnpm run verify:skins
+
+            - name: Run Build
+              run: pnpm build
+
+            # 按盘上产物重算：分包→索引→整包→RELEASE-NOTES 逐字节比对，
+            # 任何一处 src 改了没重建都会在这里红。
+            - name: Verify release artifacts
+              run: pnpm run verify:release
+
+            - name: Deploy dist to branch
+              if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository_owner == 'zziyoo'
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  git config --global user.name "github-actions[bot]"
+                  git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+                  if [ ! -d "dist" ]; then
+                    echo "错误: 打包输出目录不存在"
+                    exit 1
+                  fi
+
+                  # 暂存部署形态，剥掉发布资产目录
+                  rm -rf /tmp/deploy
+                  mkdir -p /tmp/deploy
+                  cp -r dist/. /tmp/deploy/
+                  rm -rf /tmp/deploy/release
+
+                  git fetch origin
+                  git checkout --orphan build-output
+                  git reset --hard
+                  rm -rf ./*
+
+                  cp -r /tmp/deploy/. .
+
+                  git add -A
+                  git commit -m "Deploy dist from $GITHUB_SHA"
+                  git push -f origin build-output

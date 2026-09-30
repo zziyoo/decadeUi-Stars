@@ -2767,7 +2767,9 @@ P0 审计
 - **钩子按你的规则删**：原版已有的 Alt+1~6（`styleHotkeys.js`）、`Ctrl+Shift+C`、`disableBrowserShortcuts` **全部保留**；Stars 自绘的只有 `Ctrl+Shift+M`，已删。模块管理入口剩配置窗口里那行「模块管理界面 → 打开」（`config-window.js:350`）与 `decadeUI.showModuleManager()`，§八 P6 的 I/O 两行判据同步改过
 - **tmp/ 一次性脚本已清空**（比对、演示源、台账回填、探针校验等）。代价记在账上：P11 演示源（限速 + 版本差索引）以后要用得重建
 - **产物**：整包 `十周年UI-Stars-1.5.0-full.zip` 3596 文件 / 112,113,655 字节 / sha256 `f54917a49f05…`，索引 2510 字节 / `bbefc7853d62…`，九项资产全在 `dist/release/RELEASE-NOTES.md`。门禁：25 套测试 ✓、`node --check` 230 文件 ✓、`pnpm build` + `verify:release` exit=0 ✓、verify-pack 881/17/0 ✓、check-skin-imports 37/0 ✓
-- **未做**：推送与建 Release（`gh` 未登录；推送按惯例归用户）、Android/SAF 真机、§八 其余待验项
+- **CI 自动打包迁入**（照上游两套工作流改造）：`build.yml` 在 push main 时跑完五道门禁再构建，并把部署形态的 `dist/` 推到孤儿分支 `build-output`；`manual-package.yml` 支持手动触发与 issue 评论 `/package`，把 `dist/release/` 的 9 项资产 + 说明文件作为**工作流 artifact** 上传，sha256 清单与模块源地址写进运行摘要。与原版两处刻意不同：原版构建前不跑测试，这里 `check:syntax`/`test`/`verify:pack`/`verify:skins` 全排在构建前且与本地同一批脚本；`dist/release/` 不进分支，**CI 也不建 Release、不碰已发布版本**
+- 配套新增 `scripts/run-tests.mjs`（25 套一次跑完）与 `scripts/check-syntax.mjs`（232 文件 `node --check`），`package.json` 补 `test`/`check:syntax`/`verify:pack`/`verify:skins` 四条入口；工作流里的 shell 步骤已在本机 Git Bash 逐条跑通（sha 与 `RELEASE-NOTES.md` 一字不差），但 **Actions 首次真实运行仍待验** —— 分支部署那段本机没法执行
+- **未做**：推送与建 Release（`gh` 未登录；推送按惯例归用户）、Actions 首跑、Android/SAF 真机、§八 其余待验项
 
 ## v1.27（2026-09-30）技能按钮点不动：动态 import 吃不下相对形态的 decadeUIPath
 

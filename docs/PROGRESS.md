@@ -91,7 +91,10 @@
 | 钩子清理（用户规则：只删 Stars 比原版多的） | 原版已有 `styleHotkeys.js`（Alt+1~6）、`configWindow.js` 的 `Ctrl+Shift+C`、`disableBrowserShortcuts.js` ⇒ **全部保留**。Stars 自绘的只有 `Ctrl+Shift+M`（`moduleManagerWindow.js` 的 keydown 监听）⇒ 已删；模块管理入口剩「配置窗口 → 模块管理界面 → 打开」（`config-window.js:350`，`type:"button"` 行）与 `decadeUI.showModuleManager()` |
 | 产物（当次构建为准） | 整包 `十周年UI-Stars-1.5.0-full.zip` 3596 文件 / 112,113,655 字节 / sha256 `f54917a49f052034e7b9636a5b5f66c268aca20e4500fa726b99d65e3277433f`；`module-index.json` 2510 字节 / `bbefc7853d62913d494a9ad2d7fd8717603b4c4742023b8bb877674d83dbf59f`；七个分包与全部字节/sha 见 `dist/release/RELEASE-NOTES.md`（行尾问题仍在，上传一律以当次这份文件为准） |
 | 门禁 | 25 套测试 ✓；`node --check` 230 文件 ✓；`pnpm build` ✓、`verify:release` exit=0 ✓；verify-pack 881/17/0 ✓、check-skin-imports 37/0 ✓；表形审计 ✓ |
-| 未做 | 推送与建 Release（`gh` 未登录，且推送按惯例归用户）；Android/SAF 真机；§八 其余待验项 |
+| CI 自动打包（同日迁入） | 照上游两套工作流搬并改造：`.github/workflows/build.yml`（push main → 五道门禁 → `pnpm build` → `verify:release` → 把**部署形态**的 `dist/` 推到孤儿分支 `build-output`）与 `manual-package.yml`（`workflow_dispatch` 或 issue 评论 `/package` → 同样门禁 → 把 `dist/release/` 的 9 项资产 + `RELEASE-NOTES.md` 作为**工作流 artifact** 上传，sha256 清单与模块源地址写进运行摘要）。**两处刻意不同**：①原版构建前不跑任何测试，这里把 `check:syntax`/`test`/`verify:pack`/`verify:skins` 全排在构建前，且与本地跑的是同一批脚本；②`dist/release/` 不进 `build-output` 分支（那是 112MB 发布资产，只走 artifact），且 **CI 不建 Release、不动已发布版本** —— 建 Release 仍是人的动作 |
+| 新增脚本 | `scripts/run-tests.mjs`（25 套一次跑完，`--import` 传 file:// URL，Windows/Linux 同形）与 `scripts/check-syntax.mjs`（232 个 .js/.mjs 过 `node --check`）；`package.json` 补 `test`/`check:syntax`/`verify:pack`/`verify:skins` 四条入口 |
+| 本地已验 | 两条脚本实跑：`232/232`、`25/25` ✓；工作流里的 shell 步骤（版本读取、部署形态四件、9 项资产存在、`dist/release` 计数 10、摘要 sha 表）逐条在本机 Git Bash 跑通，sha 与 `RELEASE-NOTES.md` 一字不差 ✓；YAML 用 `tmp/yaml-shape-check.mjs`（缩进/块标量/重复键）对**原版两份能跑的工作流**做对照，四份全过 ✓ |
+| 未做 | 推送与建 Release（`gh` 未登录，且推送按惯例归用户）；**Actions 首次真实运行待验**（本机无法执行 `build-output` 分支部署那一段，只验了其余步骤）；Android/SAF 真机；§八 其余待验项 |
 ### 技能按钮点不动：包内皮肤 JS 的动态 import 说明符不可解析（2026-09-30 修复）
 
 | 项 | 内容 |
@@ -486,7 +489,7 @@
 2. ~~开发版与原版运行时同名~~ **已解决（P1）**：开发版命名定为「十周年UI-Stars」，运行时路径 `extension/十周年UI-Stars/`、配置键前缀 `extension_十周年UI-Stars_` 均与原版隔离，配置互不污染。注意：两版功能完全重叠，**不可同时启用**，否则全局覆写会互相冲突。
 3. P0 完成前禁止任何目录搬移、文件删除、样式重写（任务书 §61）——P0 已验收通过，该约束解除，但 P1 仍执行"零迁移"原则（任务书 §35）。
 4. ~~Stars 与原版仓库关系待确认~~ **已决策（2026-09-27，用户确认）**：Stars 作为独立仓库开发，原版十周年UI不动，玩家暂时继续使用原版扩展。
-5. 原版仓库的 .github CI（build.yml 会推代码/发布）未迁入，避免对 Stars 触发自动发布；P9/P10 构建系统改造时再引入。
+5. ~~原版仓库的 .github CI 未迁入~~ **已迁入（2026-10-01，1.5.0）**：照上游 `build.yml` + `manual-package.yml` 两套改造，构建前加五道门禁、`dist/release/` 不进部署分支、**CI 不建 Release**（详见§四「CI 自动打包」行）。首次 Actions 真实运行仍待验。
 6. **上游漂移风险**：原版仓库（zziyoo/decadeUi）仍在活跃更新，Stars 的迁移快照可能落后。今后同步上游改动时：先 `git -C <原版> log/diff` 确认变更文件，再拷贝并重做键改名转换；禁止直接整目录覆盖（会冲掉 Stars 的模块化改造）。
 7. **本机存在两份同仓库克隆**：`extension/decadeUi-Stars`（纯开发克隆，已落后）与 `extension/十周年UI-Stars`（**游戏实际加载目录，当前开发基准**）。游戏只能加载后者的路径名，因此 P3 起在后者直接开发；前者请 `git pull --ff-only` 后再用，避免两边分叉提交。
 8. **P5 剩余边界（审查轮之后）**：

@@ -7,6 +7,10 @@
 		"build": "vite build && node scripts/build-decade-pack.mjs dist && node scripts/build-release.mjs",
 		"build:release": "node scripts/build-release.mjs",
 		"verify:release": "node scripts/build-release.mjs --verify",
+		"verify:pack": "node scripts/verify-pack.mjs",
+		"verify:skins": "node scripts/check-skin-imports.mjs",
+		"check:syntax": "node scripts/check-syntax.mjs",
+		"test": "node scripts/run-tests.mjs",
 		"build:watch": "vite build --watch --mode development"
 	},
 	"devDependencies": {
