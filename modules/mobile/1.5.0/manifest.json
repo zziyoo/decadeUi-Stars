@@ -1,18 +1,18 @@
 {
 	"schema": 1,
-	"id": "yjcm",
-	"name": "一将成名样式",
-	"version": "1.4.2",
+	"id": "mobile",
+	"name": "移动版样式",
+	"version": "1.5.0",
 	"type": "style",
-	"core": ">=1.4.2",
+	"core": ">=1.5.0",
 	"dependencies": [
 		"core"
 	],
 	"entry": {
 		"js": [
-			"ui/character/skins/xinsha.js",
-			"ui/skill/skins/xinsha.js",
-			"ui/lbtn/skins/xinsha.js"
+			"ui/character/skins/shousha.js",
+			"ui/skill/skins/shousha.js",
+			"ui/lbtn/skins/shousha.js"
 		],
 		"css": [
 			"player.css",
@@ -24,15 +24,12 @@
 		]
 	},
 	"deadRefs": [
-		"image/styles/xinsha/new_border_camp1.png",
-		"ui/assets/character/xinsha/zasui.png",
-		"ui/assets/character/xinsha/haoyou.png",
-		"ui/assets/character/xinsha/haoyou2.png"
+		"image/ui/effects/sprites_shadow_lvse.png",
+		"ui/assets/character/shousha/bigdialog.png"
 	],
 	"capabilities": [
 		"player-frame",
-		"lbtn",
-		"border-style"
+		"lbtn"
 	],
 	"platform": [
 		"desktop",

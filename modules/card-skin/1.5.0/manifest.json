@@ -2,9 +2,9 @@
 	"schema": 1,
 	"id": "card-skin",
 	"name": "卡牌皮肤",
-	"version": "1.4.2",
+	"version": "1.5.0",
 	"type": "feature",
-	"core": ">=1.4.2",
+	"core": ">=1.5.0",
 	"dependencies": [
 		"core"
 	],

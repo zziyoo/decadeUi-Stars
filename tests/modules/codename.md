@@ -4,7 +4,7 @@
 
 | 项目 | 判据 | 层级 | 结果 | 证据 |
 |---|---|---|---|---|
-| 包结构 | `modules/codename/1.4.2/manifest.json` 可解析、32 文件 entry 齐；包内 CSS 引用不指回单体 | 静态 | 通过 | `pnpm verify:release`（codename：32 文件 / 962,011 字节 / sha256 `6c07f5d9f051…`） |
+| 包结构 | `modules/codename/1.5.0/manifest.json` 可解析、32 文件 entry 齐；包内 CSS 引用不指回单体 | 静态 | 通过 | `pnpm verify:release`（codename：32 文件 / 962,011 字节 / sha256 `6c07f5d9f051…`） |
 | 安装 | 安装后台账 `source` + `hashVerified:true`，目录在 `modules/codename/<版本>/` | 真机 | 通过 | 2026-09-28 真机（重装后模块管理窗口显示正常，台账§五 P6 验收行） |
 | 启用 | 切到名将杀后玩家框/手牌按钮走包内根；跨样式共用的 `character/shizhounian` 皮肤仍从单体根命中 | 真机 | 待验 | — |
 | 禁用 | 关掉后回落默认套，共用件不被动缺失（不影响其他样式的武将皮肤） | 真机 | 待验 | — |

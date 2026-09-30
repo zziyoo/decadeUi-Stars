@@ -2756,6 +2756,19 @@ P0 审计
 - **行尾那条被现实咬到了一次**：本轮重构建后 `baby-1.4.2.zip` 从 112085 → 112150 字节、`module-index.json` 与整包 sha 随之变化，而**内容一字未动** —— 起因是昨天为还原测试态跑过一次 `git checkout`，autocrlf 把包内 27 个文件 smudge 成 CRLF。连续两次构建仍然完全一致（确定性没问题），漂的是 checkout 之间。按用户决定仍不加 `.gitattributes`，所以上传以当次 `RELEASE-NOTES.md` 的 9 项 sha 为准（已重新生成并自验一致）
 - **仍待真机**（§八「P15 复测步骤」给了准确操作与判据）：六套逐套目测（每套必须重载）、online 与 card-skin 卸载、手机布局与横屏、Android/SAF、联网分支（要等 P10 的 Release 建好）。这些一律标"代码检查通过 / 真机待验"，不许算成已验
 
+## v1.28（2026-10-01）1.5.0：与上游同号发两个独立发行物，删掉 Stars 自绘的快捷键
+
+决定是「当两个不同的版本发行」，不做就地覆盖。顺带把版本发布形态与入口收干净。
+
+- **为什么不能覆盖原版目录**（三条硬事实，都查过码）：`extension.js` 写死 `extension/十周年UI-Stars/info.json`，覆盖后该路径不存在直接起不来；`info.json` 的 name 决定配置前缀，留 `-Stars` 玩家旧设置读不到、改回 `十周年UI` 则 Stars 侧 118 处键字面量与 P13 迁移器全要反转；`detectLegacy` 第一判据是旧扩展还在 `installed` 名单里，覆盖后旧目录不在 ⇒ 迁移器根本不触发
+- **覆盖到底丢不丢东西**（两套目录逐文件比对）：原版 3412 / Stars 3673 文件，同名同路径 2313 个里只有 **182** 个内容变了（175 js + 2 css + 六份元数据）；「只在原版」的 1099 个里 1016 是卡面图，其余除 2 个 `.github/workflows/*.yml`（CI 按决定不迁）外全部是**搬进 `modules/`** 的同一批资源 ⇒ 内容没删，只是换了位置。旧目录残留的五个内置卡面文件夹也不会重复列出（`registerDynamicSkin` 遇同名内置直接 return）
+- **bump 到 1.5.0**：7 个 `modules/<id>/1.4.2/` → `1.5.0/`（`git mv`）、7 份 manifest 的 `version` 与 `core`（`>=1.5.0`）、`modules/installed.json` 七条、`info.json`；`releaseTag` 去掉 `-stars` 后缀（用户决定：靠扩展身份区分，版本号与上游同号），并把这条规则钉成断言 `releaseTag("1.4.2") === "v1.4.2"`
+- **消掉一处会反复咬人的写法**：`p14-capability-drift`/`p15-style-switch-contract`/`p15-card-skin-uninstall-roots`/`p16-pack-skin-import-url` 四份用例原本把 `1.4.2` 写死，现改为从 `info.json` 取版本 —— 下次 bump 不用再改测试
+- **钩子按你的规则删**：原版已有的 Alt+1~6（`styleHotkeys.js`）、`Ctrl+Shift+C`、`disableBrowserShortcuts` **全部保留**；Stars 自绘的只有 `Ctrl+Shift+M`，已删。模块管理入口剩配置窗口里那行「模块管理界面 → 打开」（`config-window.js:350`）与 `decadeUI.showModuleManager()`，§八 P6 的 I/O 两行判据同步改过
+- **tmp/ 一次性脚本已清空**（比对、演示源、台账回填、探针校验等）。代价记在账上：P11 演示源（限速 + 版本差索引）以后要用得重建
+- **产物**：整包 `十周年UI-Stars-1.5.0-full.zip` 3596 文件 / 112,113,655 字节 / sha256 `f54917a49f05…`，索引 2510 字节 / `bbefc7853d62…`，九项资产全在 `dist/release/RELEASE-NOTES.md`。门禁：25 套测试 ✓、`node --check` 230 文件 ✓、`pnpm build` + `verify:release` exit=0 ✓、verify-pack 881/17/0 ✓、check-skin-imports 37/0 ✓
+- **未做**：推送与建 Release（`gh` 未登录；推送按惯例归用户）、Android/SAF 真机、§八 其余待验项
+
 ## v1.27（2026-09-30）技能按钮点不动：动态 import 吃不下相对形态的 decadeUIPath
 
 用户回报「所有样式的技能按钮都不能点击确认发动技能」，而同一时刻六套 CSS 探针全绿——**界面画对了，行为层缺席**。这次先把两条最容易误判的路证伪，再定位。

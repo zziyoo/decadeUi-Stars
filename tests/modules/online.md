@@ -4,7 +4,7 @@
 
 | 项目 | 判据 | 层级 | 结果 | 证据 |
 |---|---|---|---|---|
-| 包结构 | `modules/online/1.4.2/manifest.json` 可解析、entry 齐；`ol/` 皮肤 JS 与 CSS 引用可达 | 静态 | 通过 | `node scripts/verify-pack.mjs`（含 70 文件那包）、`check-skin-imports` 37/0 |
+| 包结构 | `modules/online/1.5.0/manifest.json` 可解析、entry 齐；`ol/` 皮肤 JS 与 CSS 引用可达 | 静态 | 通过 | `node scripts/verify-pack.mjs`（含 70 文件那包）、`check-skin-imports` 37/0 |
 | 安装 | 安装后台账 `source:"installed"` + `hashVerified:true` | 真机 | 待验 | — |
 | 启用 | 切到 Online 后 `online-chat`（聊天条）与 `online-gift`（赠礼）两块界面出现且位置不压玩家框 | 真机 | 通过 | **2026-09-30 降级为待验**：boot 期样式读数缺陷（见§四同名小节）导致 online 包 CSS 当时未加载，批1 证据只到状态三值与能力查询 ⇒ 判据需按 §八 S-1 重取。**2026-09-30 修复后探针 1~6 真机全符合**（online 包 6 份 CSS 已加载且 `link.sheet` 全 OK），所以本行卡着的只剩「聊天气泡与赠礼按钮的实际位置」这一项目测。**2026-09-30 用户回报：两块界面在六套下都没出现** —— 已定位为 lbtn 插件缺席（§四「技能按钮点不动」小节，同一根因：赠礼在 online 的 lbtn 皮肤里、聊天条由移动版 lbtn 皮肤 `initChatSystem` 起），修复后须整程序重开再验本行。旧证据保留：2026-09-29 批1 真机 `decadeUI.style.id` = `online`、`[hasCapability("online-chat"), hasCapability("online-gift")]` = `[true, true]`（**修复前是 [false,false]**）；两块界面的实际位置目测未单独回报。**2026-09-30 lbtn 插件缺席修好、整程序重开后，用户回报「其他的手动测试了，均无误」⇒ 两块界面都在且位置不压玩家框，本行转通过** |
 | 禁用 | 关掉 Online 后聊天/赠礼入口一并消失，不留空槽 | 真机 | 待验 | — |

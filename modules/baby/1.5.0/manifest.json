@@ -2,9 +2,9 @@
 	"schema": 1,
 	"id": "baby",
 	"name": "欢乐三国杀样式",
-	"version": "1.4.2",
+	"version": "1.5.0",
 	"type": "style",
-	"core": ">=1.4.2",
+	"core": ">=1.5.0",
 	"dependencies": [
 		"core"
 	],

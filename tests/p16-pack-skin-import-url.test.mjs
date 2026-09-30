@@ -24,13 +24,14 @@ import { pathToFileURL } from "node:url";
 import { createResourceLoader } from "../src/core/resourceLoader.js";
 
 /** 真机形状：lib.assetURL 为空串 ⇒ decadeUIPath 是相对串 */
+const PACK_VERSION = JSON.parse(fs.readFileSync("info.json", "utf8")).version;
 const REL_BASE = "extension/十周年UI-Stars/";
 /** 部署形状之一：lib.assetURL 非空（本地 HTTP 服务）⇒ decadeUIPath 已是绝对地址 */
 const ABS_BASE = "http://127.0.0.1:8192/extension/十周年UI-Stars/";
 
 /** 六套都已独立安装（真机探针 5 的结论）：getModuleRel 走 modules/<id>/<version>/ */
 const installedManager = {
-	getInstallState: id => ({ id, independent: true, version: "1.4.2", type: "style" }),
+	getInstallState: id => ({ id, independent: true, version: PACK_VERSION, type: "style" }),
 };
 
 const relLoader = createResourceLoader({ getBasePath: () => REL_BASE, moduleManager: installedManager });
@@ -39,7 +40,7 @@ const absLoader = createResourceLoader({ getBasePath: () => ABS_BASE, moduleMana
 // -------------------------------------------------- 1. 复现缺陷现场
 {
 	const raw = relLoader.getAsset("yjcm", "ui/skill/skins/xinsha.js");
-	assert.equal(raw, `${REL_BASE}modules/yjcm/1.4.2/ui/skill/skins/xinsha.js`, "getAsset 的既有语义不得改动（CSS/href 依赖它）");
+	assert.equal(raw, `${REL_BASE}modules/yjcm/${PACK_VERSION}/ui/skill/skins/xinsha.js`, "getAsset 的既有语义不得改动（CSS/href 依赖它）");
 
 	let err = null;
 	try {
@@ -81,7 +82,7 @@ const absLoader = createResourceLoader({ getBasePath: () => ABS_BASE, moduleMana
 	const url = absLoader.getModuleUrl("yjcm", "ui/skill/skins/xinsha.js");
 	// new URL() 会把非 ASCII 段按百分号转义（与 <link href> 交给浏览器的最终请求同一套编码），
 	// 所以这里按解码后的形状比对，不锁死转义细节。
-	assert.equal(decodeURI(url), `${ABS_BASE}modules/yjcm/1.4.2/ui/skill/skins/xinsha.js`);
+	assert.equal(decodeURI(url), `${ABS_BASE}modules/yjcm/${PACK_VERSION}/ui/skill/skins/xinsha.js`);
 	assert.ok(!url.includes("//modules"), "不该出现被拼坏的双斜杠路径");
 
 	// 无文档基址（Node 里没 DOM 的极端情形）时退回原串，不抛
@@ -90,7 +91,7 @@ const absLoader = createResourceLoader({ getBasePath: () => ABS_BASE, moduleMana
 	const savedHref = globalThis.location.href;
 	globalThis.location.href = "";
 	try {
-		assert.equal(relLoader.getModuleUrl("yjcm", "ui/skill/skins/xinsha.js"), `${REL_BASE}modules/yjcm/1.4.2/ui/skill/skins/xinsha.js`);
+		assert.equal(relLoader.getModuleUrl("yjcm", "ui/skill/skins/xinsha.js"), `${REL_BASE}modules/yjcm/${PACK_VERSION}/ui/skill/skins/xinsha.js`);
 	} finally {
 		globalThis.document.baseURI = saved;
 		globalThis.location.href = savedHref;

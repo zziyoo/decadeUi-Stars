@@ -18,7 +18,8 @@ globalThis.decadeUIName = "十周年UI-Stars";
 const { createModuleRegistry } = await import("../src/core/registry.js");
 const { registerBuiltInModules } = await import("../src/core/builtInModules.js");
 
-const PACK_VERSION = "1.4.2";
+/** 分包版本取自 info.json（单一真相）——bump 版本时不必再改这份用例 */
+const PACK_VERSION = JSON.parse(fs.readFileSync("info.json", "utf8")).version;
 const registry = createModuleRegistry();
 registerBuiltInModules(registry, { version: PACK_VERSION });
 

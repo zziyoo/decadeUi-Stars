@@ -223,7 +223,7 @@ export function buildReleaseNotes({ tag, name, version, coreVersion, index, pack
 		`https://github.com/${REPO_SLUG}/releases/download/${tag}/${INDEX_FILE}`,
 		"```",
 		"",
-		`索引里的 url 是裸文件名（如 \`${packs[0]?.zip.file ?? "baby-1.4.2.zip"}\`），客户端会用索引地址解析成同目录的绝对地址——`,
+		`索引里的 url 是裸文件名（如 \`${packs[0]?.zip.file ?? "baby-1.5.0.zip"}\`），客户端会用索引地址解析成同目录的绝对地址——`,
 		"所以索引与全部 zip **必须挂在同一个 Release 下**（同一 tag），不要手动编辑索引。",
 		"",
 		"## 校验",
@@ -291,8 +291,8 @@ export function buildIndex({ packs, coreVersion }) {
 
 const sha256hex = buffer => crypto.createHash("sha256").update(buffer).digest("hex");
 
-/** Release tag：Stars 的内容与上游同版本发布不同（模块化改造），所以带 -stars 后缀 */
-export const releaseTag = version => `v${version}-stars`;
+/** Release tag：与上游同号（两个发行物靠扩展身份区分，玩家看版本号即可对上） */
+export const releaseTag = version => `v${version}`;
 
 /** 扩展名与版本只认 info.json（不设第二版本源） */
 const readExtInfo = () => {

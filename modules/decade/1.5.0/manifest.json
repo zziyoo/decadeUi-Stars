@@ -1,18 +1,18 @@
 {
 	"schema": 1,
-	"id": "codename",
-	"name": "名将杀样式",
-	"version": "1.4.2",
+	"id": "decade",
+	"name": "十周年样式",
+	"version": "1.5.0",
 	"type": "style",
-	"core": ">=1.4.2",
+	"core": ">=1.5.0",
 	"dependencies": [
 		"core"
 	],
 	"entry": {
 		"js": [
-			"ui/character/skins/codename.js",
-			"ui/skill/skins/codename.js",
-			"ui/lbtn/skins/codename.js"
+			"ui/character/skins/shizhounian.js",
+			"ui/skill/skins/shizhounian.js",
+			"ui/lbtn/skins/shizhounian.js"
 		],
 		"css": [
 			"player.css",
@@ -24,7 +24,6 @@
 		]
 	},
 	"deadRefs": [
-		"image/styles/codename/border_camp0.png",
 		"ui/assets/character/shizhounian/dialog3.png"
 	],
 	"capabilities": [

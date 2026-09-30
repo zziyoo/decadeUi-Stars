@@ -4,7 +4,7 @@
 
 | 项目 | 判据 | 层级 | 结果 | 证据 |
 |---|---|---|---|---|
-| 包结构 | `modules/decade/1.4.2/manifest.json` 可解析，`id/version` 与台账一致，声明的 entry（CSS + 皮肤 JS）文件都在 | 静态 | 通过 | `node scripts/verify-pack.mjs` 881 可达 / 17 已知上游死引用 / 0 未知缺失 |
+| 包结构 | `modules/decade/1.5.0/manifest.json` 可解析，`id/version` 与台账一致，声明的 entry（CSS + 皮肤 JS）文件都在 | 静态 | 通过 | `node scripts/verify-pack.mjs` 881 可达 / 17 已知上游死引用 / 0 未知缺失 |
 | 安装 | 模块管理窗口安装后台账记 `source:"installed"` + `hashVerified:true`，目录落在 `modules/decade/<版本>/` | 真机 | 待验 | — |
 | 启用 | 切到十周年后玩家框/手牌按钮走包内根（`getModuleBase("decade")`），CSS 只加载一份、无双根同时生效 | 真机 | 通过 | 2026-09-29 批1 真机（用户实测）：`[decadeUI.style.id, skin, config]` = `["decade","shizhounian","on"]`，能力探针 `[false,false,false]`（本套不声明扩展能力）；视觉逐套目测未单独回报，留§八；2026-09-30 注：本套正是 boot 期样式读数缺陷的默认回落目标，所以当时 CSS「碰巧」加载对了；该行证据层级只到状态三值，CSS 层判据随 §八 S-1 一并重取 |
 | 禁用 | 关掉十周年样式回落到默认套，Core 其余功能（技能栏/记牌器）不受影响 | 真机 | 待验 | — |

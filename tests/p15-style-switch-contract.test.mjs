@@ -36,7 +36,8 @@ const { createResourceLoader } = await import("../src/core/resourceLoader.js");
 const { registerBuiltInModules } = await import("../src/core/builtInModules.js");
 const { normalizeManifest } = await import("../src/core/manifest.js");
 
-const CORE_VERSION = "1.4.2";
+/** 分包版本取自 info.json（单一真相）——bump 版本时不必再改这份用例 */
+const CORE_VERSION = JSON.parse(fs.readFileSync("info.json", "utf8")).version;
 const SIX = ["decade", "mobile", "yjcm", "online", "baby", "codename"];
 
 // ── 1. 切换的生命周期：只写配置，别的什么都不做 ────────────────────────────

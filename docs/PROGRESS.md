@@ -14,7 +14,7 @@
 | Stars 仓库 | https://github.com/zziyoo/decadeUi-Stars （本仓库，**独立开发仓库，已迁入源码**） |
 | 原版扩展（玩家在用，不动） | `zziyoo/decadeUi`，本地路径 `C:\Users\32360\Desktop\无名杀-win32-x64\resources\app\extension\十周年UI` |
 | 总路线 | P0审计 → P1模块基础设施 → P2公共依赖解耦 → P3十周年Pack → P4移动版Pack → P5下载器 → P6模块管理界面 → P7全部Style → P8 Feature Pack → P9模块化构建 → P10 Release → P11自动更新 → P12回滚 → P13旧版本迁移 → P14全量测试 |
-| 当前阶段 | **P14 最终测试（任务书§51 + §52）—— 工具链完成 + 真机批 1、批 2 已跑完并回填**：批 2（P11-2/4/5、P12-1…4、R5 真机取消）全部通过，并**查出并修掉一个自 P3 就存在的硬缺陷**——启动期"已安装的包"注册不过"内置注册"（台账版本 ≠ 本体版本时样式资源根落回扩展根、整套 CSS 一条都不加载），修复 `40f7933` + 新用例 `tests/p14-boot-installed-override.test.mjs`，真机复核已过（`getModuleBase` 指向 `modules/baby/1.4.4/`）。上一阶段 **P13 旧版本迁移** 代码完成、真机 P13-1/P13-2/P13-3 已过，P13-4 本机不可验。**批 3 也已跑完**（卸载前置检查 → 卸载 → 在线重装整链、身份/国战/斗地主、排除模式）；**剩余**：六套逐套目测重点（2026-09-30 boot 读数缺陷修复后，§八 S-1 六条探针真机全符合 ⇒ CSS 加载层已闭环；未取的是边框档位/聊天赠礼位置/死亡特效图）、手机布局与横屏、联网分支（依赖 P10 建好 Release）、Android/SAF 三条本机不可验；产物**已重建并复验**（`pnpm build` + `verify:release` 均 exit=0，连打两次 9 项产物字节与 sha 一字未变 ⇒ `src==dist==release` 同步）。**遗留的复现性风险**：无 `.gitattributes` + `core.autocrlf=true`，一次 checkout 就能改掉分包 zip 的 sha（本次 baby 包 112079 → 112085 字节，内容未变），**P15 代码级收尾也已完成**（2026-09-30：六套切换契约、online/card-skin 卸载判据、传输层与失败分类缺口、浮层 CSS 不变量泛化，套件 18 → 23，`src/` 零改动）。行尾经用户决定**不动**（不影响日常开发）；本轮实测到它的真实代价：一次 `git checkout` 后重构建，`baby-1.4.2.zip` 从 112085 → 112150 字节（内容一字未动，纯 CRLF/LF），所以上传一律以当次 `dist/release/RELEASE-NOTES.md` 的 9 项 sha 为准。 |
+| 当前阶段 | **P14 最终测试（任务书§51 + §52）—— 工具链完成 + 真机批 1、批 2 已跑完并回填**：批 2（P11-2/4/5、P12-1…4、R5 真机取消）全部通过，并**查出并修掉一个自 P3 就存在的硬缺陷**——启动期"已安装的包"注册不过"内置注册"（台账版本 ≠ 本体版本时样式资源根落回扩展根、整套 CSS 一条都不加载），修复 `40f7933` + 新用例 `tests/p14-boot-installed-override.test.mjs`，真机复核已过（`getModuleBase` 指向 `modules/baby/1.4.4/`）。上一阶段 **P13 旧版本迁移** 代码完成、真机 P13-1/P13-2/P13-3 已过，P13-4 本机不可验。**批 3 也已跑完**（卸载前置检查 → 卸载 → 在线重装整链、身份/国战/斗地主、排除模式）；**剩余**：六套逐套目测重点（2026-09-30 boot 读数缺陷修复后，§八 S-1 六条探针真机全符合 ⇒ CSS 加载层已闭环；未取的是边框档位/聊天赠礼位置/死亡特效图）、手机布局与横屏、联网分支（依赖 P10 建好 Release）、Android/SAF 三条本机不可验；产物**已重建并复验**（`pnpm build` + `verify:release` 均 exit=0，连打两次 9 项产物字节与 sha 一字未变 ⇒ `src==dist==release` 同步）。**遗留的复现性风险**：无 `.gitattributes` + `core.autocrlf=true`，一次 checkout 就能改掉分包 zip 的 sha（本次 baby 包 112079 → 112085 字节，内容未变），**P15 代码级收尾也已完成**（2026-09-30：六套切换契约、online/card-skin 卸载判据、传输层与失败分类缺口、浮层 CSS 不变量泛化，套件 18 → 23，`src/` 零改动）。行尾经用户决定**不动**（不影响日常开发）；本轮实测到它的真实代价：一次 `git checkout` 后重构建，`baby-1.4.2.zip` 从 112085 → 112150 字节（内容一字未动，纯 CRLF/LF），所以上传一律以当次 `dist/release/RELEASE-NOTES.md` 的 9 项 sha 为准。**2026-10-01：进入 P10 发布 —— 版本统一 1.5.0（tag 与上游同号、不带 `-stars` 后缀，两个独立发行物靠扩展身份区分），产物已重建且全门禁通过；Stars 自绘的 `Ctrl+Shift+M` 已删（原版已有的 Alt+1~6 / Ctrl+Shift+C / disableBrowserShortcuts 全留）。详见§四「1.5.0 发布」与§六第 14 条。** |
 
 ## 二、环境备忘（本机关键信息）
 
@@ -79,6 +79,19 @@
 下一阶段：**P10 GitHub Release（任务书§47）**——发布结构 Core / Official Style Packs / Feature Packs / Full Package / module-index.json 与"下载链接必须可被客户端解析"。本轮产物已能直接作为上传物；建 Release、传资产、推 tag 由用户执行，我这侧只负责索引与解析正确。
 上一阶段 **P6 模块管理界面 —— ✅ 已验收通过（2026-09-27 用户游戏内实测：窗口可开、布局正常、"已独立安装 6"读取正确）**。P5（任务书§42 + §17/§18/§19/§11/§24/§20）已完成：`6c76534` + `f4a69ac` + `df2afea` + `29a69e3` + P6 实测暴露的 fs 锚点修复 `40149bf`；**P5/P6/P8 的 Android/SAF 真机实测并入§八收尾清单，不阻塞推进**。
 
+### 1.5.0 发布：版本号与上游同号、tag 去后缀，Stars 自绘快捷键删除（2026-09-30 决定，2026-10-01 执行）
+
+| 项 | 内容 |
+|---|---|
+| 决定（用户下达） | Stars 与原版**当两个独立发行物发**，不做就地覆盖；版本号统一 `1.5.0`（上游十周年UI 也要发 1.5.0），**靠扩展身份区分、版本号不加后缀** —— 这样玩家反而更容易对上"哪个是哪个" |
+| 为什么不能覆盖 | 三条硬事实：①`extension.js` 写死 `${lib.assetURL}extension/十周年UI-Stars/info.json`，覆盖进 `extension/十周年UI/` 后该路径不存在，扩展直接起不来；②`info.json` 的 name 决定配置前缀，name 留 `-Stars` 则玩家旧设置全部读不到，name 改回 `十周年UI` 则 Stars 侧 118 处键字面量与 P13 迁移器全要反转；③`detectLegacy` 第一判据是旧扩展仍在 `installed` 名单里，覆盖后旧目录不在 ⇒ 迁移器根本不触发 |
+| 覆盖到底会不会丢东西（盘上比对，脚本已随 tmp 删除） | 原版 3412 文件 / Stars 3673。同名同路径 2313 个里只有 **182** 个内容变了（175 js + 2 css + info/package/lock/README/.gitignore）。「只在原版」的 1099 个里 1016 是卡面图，其余除 **2 个 `.github/workflows/*.yml`（真删，CI 不迁）** 外全部是**搬进 `modules/`** 的同一批资源（`player1-6.css`、`ui/styles/{character,lbtn,skill}/**`、`ui/*/skins/*.js`、`ui/assets/skill/shizhounian/*.png`）⇒ **内容没删，只是换了位置**。残留的五个旧内置卡面文件夹也不会重复出现：动态扫描按文件夹名注册，`registerDynamicSkin` 遇同名内置直接 return |
+| bump 改动面 | 7 个 `modules/<id>/1.4.2/` → `1.5.0/`（`git mv`）、7 份 manifest 的 `version` 与 `core`（`>=1.5.0`）、`modules/installed.json` 七条、`info.json`、`build-release.mjs` 的 `releaseTag = v${version}`（去掉 `-stars`） |
+| 顺手消掉的 churn | `tests/p14-capability-drift`、`p15-style-switch-contract`、`p15-card-skin-uninstall-roots`、`p16-pack-skin-import-url` 四份用例原本把 `1.4.2` 写死，现改为从 `info.json` 取版本（单一真相）；`p10-release` 把 tag 规则钉成断言 `releaseTag("1.4.2") === "v1.4.2"`，以后再加后缀会红 |
+| 钩子清理（用户规则：只删 Stars 比原版多的） | 原版已有 `styleHotkeys.js`（Alt+1~6）、`configWindow.js` 的 `Ctrl+Shift+C`、`disableBrowserShortcuts.js` ⇒ **全部保留**。Stars 自绘的只有 `Ctrl+Shift+M`（`moduleManagerWindow.js` 的 keydown 监听）⇒ 已删；模块管理入口剩「配置窗口 → 模块管理界面 → 打开」（`config-window.js:350`，`type:"button"` 行）与 `decadeUI.showModuleManager()` |
+| 产物（当次构建为准） | 整包 `十周年UI-Stars-1.5.0-full.zip` 3596 文件 / 112,113,655 字节 / sha256 `f54917a49f052034e7b9636a5b5f66c268aca20e4500fa726b99d65e3277433f`；`module-index.json` 2510 字节 / `bbefc7853d62913d494a9ad2d7fd8717603b4c4742023b8bb877674d83dbf59f`；七个分包与全部字节/sha 见 `dist/release/RELEASE-NOTES.md`（行尾问题仍在，上传一律以当次这份文件为准） |
+| 门禁 | 25 套测试 ✓；`node --check` 230 文件 ✓；`pnpm build` ✓、`verify:release` exit=0 ✓；verify-pack 881/17/0 ✓、check-skin-imports 37/0 ✓；表形审计 ✓ |
+| 未做 | 推送与建 Release（`gh` 未登录，且推送按惯例归用户）；Android/SAF 真机；§八 其余待验项 |
 ### 技能按钮点不动：包内皮肤 JS 的动态 import 说明符不可解析（2026-09-30 修复）
 
 | 项 | 内容 |
@@ -89,7 +102,7 @@
 | 修复 | `src/core/resourceLoader.js` 新增 `getModuleUrl(moduleId, path)`：拿 `getAsset` 的原串按 `document.baseURI`（回落 `location.href`）解析成绝对 URL，两者都拿不到时退回原串——**与 `<link href>` 同一套解析规则**，不引入新失败模式。三处皮肤装载的**包分支**改用它；未安装分支仍是 `./${skinName}.js` 不动。`getAsset` 语义一字未改（CSS/图片/脚本仍走相对解析） |
 | 用例 | `tests/p16-pack-skin-import-url.test.mjs`：①拿相对基址直接 `import()` 必须抛（复现现场）；②`getModuleUrl` 给带协议的绝对 URL 且**真能 import 到磁盘上的皮肤模块**（断言拿到 `createXinshaSkillPlugin/LbtnPlugin/CharacterPlugin` 三个导出）；③基址已是绝对地址时不二次加工、无基址时退回原串；④静态不变量：三处包分支必须是 `getModuleUrl`、不得残留 `getAsset(...)` 直接喂 import、未安装分支仍是 `./`。RED→GREEN 均验；反向把 lbtn 换回 `getAsset` → 红在「ui/lbtn/skins/index.js 的包分支必须改用 getModuleUrl」 |
 | 门禁缺口 | `check-skin-imports`/`verify-pack` 查的是**包内文件自己的相对 import 深度**，查不到「外层动态 import 的说明符是不是合法 ES 说明符」这一层。本用例把这条钉进门禁（套件 24 → 25） |
-| 同源的另一条 | 用户同一批回报「**没看到有礼物条、聊天，所有样式都缺失**」——不是第二个缺陷：赠礼按钮由 online 的 **lbtn 皮肤**创建（`modules/online/1.4.2/ui/lbtn/skins/online.js` 里 `gift` 出现 23 处），聊天条由移动版 lbtn 皮肤调 `initChatSystem`（`modules/mobile/1.4.2/ui/lbtn/skins/shousha.js:382` → `ui/lbtn/chatSystem.js:275`）。lbtn 插件缺席 ⇒ 两块界面自然都不在。同一次修复应一起回来，**复验时一并看** |
+| 同源的另一条 | 用户同一批回报「**没看到有礼物条、聊天，所有样式都缺失**」——不是第二个缺陷：赠礼按钮由 online 的 **lbtn 皮肤**创建（`modules/online/<版本>/ui/lbtn/skins/online.js` 里 `gift` 出现 23 处），聊天条由移动版 lbtn 皮肤调 `initChatSystem`（`modules/mobile/<版本>/ui/lbtn/skins/shousha.js:382` → `ui/lbtn/chatSystem.js:275`）。lbtn 插件缺席 ⇒ 两块界面自然都不在。同一次修复应一起回来，**复验时一并看** |
 | 目测层已确认的 | 用户回报：①等阶边框档位切档正常；③baby/codename 死亡后武将牌上的死亡字样按套有别（在扩展根，未受本缺陷影响）；④Android 留到项目收尾 |
 | 真机复核（2026-09-30） | 用户回报「一二均正确」⇒ §八 S-7 **探针 1**（`pluginsMap` 含 `lbtn` 与 `skill`）与**探针 2**（三处皮肤模块动态 import 全 `fulfilled` 且拿到导出名）两条判据在真机成立 —— **插件缺席这一层闭环**，未附原始输出。**行为层同日闭环**：用户回报「其他的手动测试了，均无误」⇒ 点技能能确认发动、online 套聊天条与赠礼都在且位置不压玩家框；`online.md` 启用行与矩阵「视觉目测」行随之转已验 |
 ### boot 期样式读数缺陷：六套全渲染成十周年套（`2026-09-30` 修复）
@@ -245,7 +258,7 @@
 | 范围决定（用户批准） | ①一次做完（真搬文件 + 删单体副本，P3/P4 惯例）；②未装包时内置五套**从外观页下拉消失**（与 P3"未装就不可选"同语义，不留"选了坏图"的路）；③`switchKey: null` 只资源门控——开关语义已在 `cardPrettify`（`off`=关闭），不再造第二套状态源 |
 | Feature 声明 | `BUILT_IN_FEATURES += { id:"card-skin", name:"卡牌皮肤", capabilities:["card-skin"], switchKey:null, defaultEnabled:true, pack:true }` ⇒ `active = 已声明 × getInstallState("card-skin").independent × (无开关→真)`。P6 行自动为：未装→只有`安装`（无源时置灰并说明）、已装→只有`卸载`，**不冒出启用/禁用** |
 | 单一决策点 | `resourceLoader` 新增 `getModuleRel(id)`：模块根**相对扩展根**的 POSIX 路径（未独立安装返回 `""`）。`getModuleBase(id)` 改为 `base()+getModuleRel(id)`，于是"给 DOM 的 URL 根"与"给 `game.getFileList` 的目录根"从此同一个判断，不许各处再拼一次 `modules/<id>/<version>`。`getModuleBase` 的注入覆盖仍只服务 P3 的切换实验 |
-| 双根形状 | 内置五套的根 = `getModuleRel("card-skin")`（装包→`modules/card-skin/1.4.2/`；未装→扩展根，而单体副本已迁走 ⇒ 扫到空 ⇒ 不可用）；玩家自建文件夹**永远**扫单体根 `image/card-skins/`（"丢进去重启即可用"是原版行为，实测点见§八）。`discoverDynamicSkins()` 与第三方 `window.registerDecadeCardSkin({extensionName,…})`（皮肤根在别人扩展目录）**一字未动** |
+| 双根形状 | 内置五套的根 = `getModuleRel("card-skin")`（装包→`modules/card-skin/1.5.0/`；未装→扩展根，而单体副本已迁走 ⇒ 扫到空 ⇒ 不可用）；玩家自建文件夹**永远**扫单体根 `image/card-skins/`（"丢进去重启即可用"是原版行为，实测点见§八）。`discoverDynamicSkins()` 与第三方 `window.registerDecadeCardSkin({extensionName,…})`（皮肤根在别人扩展目录）**一字未动** |
 | 可用性单一来源 | `statics.registerSkins()` 的**内部扫描那一次**发布 `setCardSkinAvailable(key, 牌面数>0)` —— 扫描结果是唯一真相，配置层不再自行判断装没装包（避免 kill-effect 那类"两处各存一套"的错）。未扫描过（`undefined`）时乐观视为可用，防菜单在扫描完成前把皮肤全抹掉 |
 | §57 兼容修复（验收发现，`64719f3`） | `registerSkins` 被三条路径共用（内置扫描 / 第三方带 `cardNames` / 第三方走目录扫描），首版在其中**无条件**发布可用性 ⇒ 别人一次空目录注册就能把内置 `decade` 整体标成不可用，`skin-applier` 随之当成 `off`；而原版 API 明确允许复用已有 skinKey（文档示例即 `registerDecadeCardSkin({extensionName:'我的扩展', skinKey:'decade'})`）。修法：`registerSkins(..., { publishAvailability })`，只有 `loadBuiltinSkins` 传 `true`，第三方两条调用点保持四参、不写 availability。皮肤根、同名条目去重优先级、`READ_OK` 语义一字未动，也未新增第二套状态源。测试补 A/B/C/D 四态（RED 实测为「B：false 不等于 true」） |
 | 消费端 | `config/utils.getAvailableCardSkinPresets()` 供下拉过滤（`cardPrettify.get item()` 改用，`off` 仍由定义侧补）；`skin-loader.buildSkinUrl()` 对不可用皮肤返回**空串**（不产生必 404 的地址）、内置套经 `getModuleBase("card-skin")` 解析、并删掉了 `window.decadeUI?.extensionName \|\| "十周年UI-Stars"` 这个硬编码回落；`getFallbackKey()` 要求回退目标真有牌面；`skin-applier.getSkinConfig()` 把"选中但无牌面"等同 `isOff` |
@@ -497,7 +510,7 @@
     - 门控型 Feature 的行不显示"未安装"（它随扩展发布），只有"内置功能 / 内置 <版本>"加一个启停按钮；若看到"未安装 + 安装按钮"，说明 `featureStates` 没传到（`decadeUI.feature` 未挂载或 content 未跑完），是接线问题不是数据问题。
     - **无文件/解压端口的平台**（`48a82bc` 之后）：列表仍出、Feature 仍可启停，只有安装/更新/卸载三钮置灰。若窗口又变成"整窗空白 + 不支持安装"，也是回归。
 
-12. **【P8 card-skin 已知边界，需游戏内实测】内置卡面已不在单体根**：五套卡面搬进 `modules/card-skin/1.4.2/` 之后，运行时的可用与否完全由"`installed.json` 有没有登记 + 目录扫得到吗"决定，因此有几个必须实测的点：
+12. **【P8 card-skin 已知边界，需游戏内实测】内置卡面已不在单体根**：五套卡面搬进 `modules/card-skin/<版本>/` 之后，运行时的可用与否完全由"`installed.json` 有没有登记 + 目录扫得到吗"决定，因此有几个必须实测的点：
     - **仓库自带包能被注册**全靠 `registerInstalledModules()` 读到 `modules/installed.json` 并探到包内 manifest。若这条链在任何平台断了（文件读不到、Cordova 下 `getFileList` 列不出中文路径等），表现是"外观页卡牌美化下拉里内置五项整体消失、卡面回落本体默认"——那不是皮肤坏了，是注册没跑成，先按§八 Z1/Z2 两条探针定位。
     - **玩家自建皮肤根未变**：`image/card-skins/` 这一层现在只剩 `.gitkeep`。若玩家把整个包目录（含 `decade/`）又丢回单体根，会被 `discoverDynamicSkins()` 的同名过滤跳过（沿用原版行为，不产生两份真相），但**不要**这样发布皮肤。
     - 老配置值指向未装包的 key 时等同 `off`，**代码不会替玩家改写配置**（避免"升级顺手清设置"）。
@@ -545,6 +558,7 @@
 10. ~~P12 回滚~~ ✅ **代码完成（2026-09-28，`a091286`），待真机跑§八"P12 部分"四条**（自动回退 / 回退目标也坏 / 无上一版 / 误报为零）。演示与造损坏的前置写在该节开头。
 11. ~~P13 旧版本迁移（任务书§50）~~ ✅ **代码完成 + 真机 P13-1/P13-2 已过（2026-09-29，`3ca76a3` + `957c96e` + `2bfd65c` + `a6b42e6` + `d6406d0`）**：`LegacyDetector` 拆成纯逻辑 `core/legacyDetector.js` + 接线 `features/legacyMigration.js`——旧版启用即**自动禁用**、玩家自建卡面**自动复制**、旧配置**按「导入」按钮才写**（只补玩家没动过的键）、结果走 P11/P12 提示窗。首轮真机查出根因是**两个扩展抢 `window.decadeUI` 全局名**（详见§四"P13 记录"）：已把禁用挪到守卫之前、并把共存做成看得见的状态；**明确不给 Stars 换全局名**（两套 UI 同时 hook 本体正是要避免的事）。标记版本号取不到时改为现读 `info.json`（`d6406d0`）。**P13-3 并入 P14 统一验**（用户决定）、P13-4 本机验不了。
 12. **P14 最终测试（任务书§51 + §52）—— 工具链已完成，真机三批待跑**：九份模块表 + 五类矩阵已建好，`tests/p14-module-tables.test.mjs` 会持续盯住「新模块没测试表 / 表结构跑偏 / 真机项被冒充成已做」。**批 1**（样式六套逐个切换 + 卡面五套 + 玩家自建套 + 手机/横屏 + P13-3 卡面复制）、**批 2**（模块生命周期：P12 四条回退探针 + P11 三条更新提示探针 + 卸载重装）、**批 3**（游戏模式四类 + 联网分支）。§52 要求的独立测试表已建立在 `tests/modules/`，矩阵在 `tests/modules/P14-matrix.md`。
+14. **P10 发布（2026-10-01，1.5.0）**：产物已按 1.5.0 重建并全门禁通过，tag 规则改为**与上游同号**（`v1.5.0`，不带 `-stars`）。上传清单与 sha 以 `dist/release/RELEASE-NOTES.md` 为准；模块源地址发布后填 `https://github.com/zziyoo/decadeUi-Stars/releases/download/v1.5.0/module-index.json`。**上面第 7 条里的 `v1.4.2-stars` 与 1.4.2 资产名已作废，以本条为准**（保留原文是为留住决定过程）。另：本机 `modules/installed.json` 已随 bump 指到 1.5.0，磁盘目录同步改名，无需重装。
 13. ~~工作区状态~~ ✅ **已回基线（2026-09-29）**：`modules/installed.json` 里 `baby` 仍指向 1.4.3 而磁盘只剩 1.4.2（P11 演示痕迹没清干净，这种"台账指向不存在的版本"下次启动就会自己触发 P12 损坏检测），已按 HEAD 恢复为基线（schema 1 + 7 个模块各只带 `version`）；`modules/codename/` 目录文件与 `baby/1.4.2/` 均在位，`find modules -name ".*-*"` 为空。以后每次真机探针收尾都要按这个顺序查：台账指回基线 → 版本目录存在 → 无 `.replacing-/.removing-/.corrupt-` 残留。
 
 ## 七、会话记录
@@ -625,13 +639,13 @@
 
 | # | 目的 | 操作 | 预期 |
 |---|---|---|---|
-| I | 入口可达 | 游戏内按 `Ctrl+Shift+M`；或控制台 `decadeUI.showModuleManager()`；或"扩展设置 → 小小玩楞 → 模块管理界面 → 打开"；配置窗口（`Ctrl+Shift+C`）"模块管理"分组里也有按钮 | 三种入口都能打开窗口；标题"模块管理"，汇总行形如"共 9 个模块 · 已独立安装 7 · 可更新 0 · 可安装 0"（注册表 = core + 六样式 + `kill-effect` + `card-skin`；`card-skin` 已进 `installed.json`，所以"已独立安装"从 6 变 7）；窗口不遮挡操作、可滚动 |
+| I | 入口可达 | 配置窗口（`Ctrl+Shift+C`，原版就有）→「模块管理界面 → 打开」；或控制台 `decadeUI.showModuleManager()`。**Stars 自绘的 `Ctrl+Shift+M` 已于 1.5.0 删除** | 三种入口都能打开窗口；标题"模块管理"，汇总行形如"共 9 个模块 · 已独立安装 7 · 可更新 0 · 可安装 0"（注册表 = core + 六样式 + `kill-effect` + `card-skin`；`card-skin` 已进 `installed.json`，所以"已独立安装"从 6 变 7）；窗口不遮挡操作、可滚动 |
 | J | 离线语义 | 不填模块源地址直接看列表 | 六个样式包显示"已安装"；`core` 显示"核心组件（随扩展发布）"且无按钮；模块源提示"未配置模块源"；"可更新/可安装"计数为 0（不误报） |
 | K | 卸载边界（§19） | 当前样式为十周年时，看十周年行的"卸载" | 按钮置灰，悬停提示"正在使用中，请先切换到其他样式再卸载"；被别的模块依赖的行提示"被以下模块依赖…" |
 | L | 卸载 → 重载 → 重装回路 | 切到移动版并重载 → 在窗口里对十周年执行"卸载"（需点两次：第一次变"确认卸载"）→ 点"重载游戏"→ 回到窗口 | 卸载后该行变"未安装"，`modules/decade/1.4.2/` 消失且 `modules/installed.json` 不含 decade；十周年样式不可用而其他样式正常；有索引时该行出现"安装" |
 | M | 进度与取消 | 填一个**允许跨域**的索引地址后点安装 → 中途点"取消" | 进度按阶段推进（下载中/解压中/写台账）；取消后结果条显示"已取消"，`tmp/` 无残留，台账不变 |
 | N | 二次确认与重载按钮 | 直接点"重载游戏" | 第一次只变"确认重载"，再点才真的刷新页面；4 秒不动自动复原 |
-| O | 窗口与对局共存 | 对局中点 `Ctrl+Shift+M` 打开/关闭 | 不报错、不卡死；关闭窗口（× 或点遮罩）后游戏可继续操作 |
+| O | 窗口与对局共存 | 对局中从配置窗口按钮打开/关闭（1.5.0 起无快捷键） | 不报错、不卡死；关闭窗口（× 或点遮罩）后游戏可继续操作 |
 
 **注意事项（P6）**
 1. 窗口只调用 `decadeUI.packageInstaller` 的公开方法，不自己碰文件系统；窗口里的按钮禁用理由与安装器的判定同源（`core/moduleAdmin.js` 与后端口径一致），若出现"按钮可点但安装器拒绝"，请把该行与返回对象一起回贴——那是口径不一致的 bug。
@@ -770,13 +784,13 @@
    判据：前两项都等于该套配置值（`on`/`off`/`othersOff`/`onlineUI`/`babysha`/`codename`）；第三项**只有移动版是 `"off"`**、其余五套是 `"on"`（名单在 `appearance-handlers.js:51-52`，与 `styleRuntime.js:38` 的 `DECADE_LAYOUT_STYLE_VALUES` 同口径）。
 2. **文档里到底加载了哪几份包 CSS（探针 2，这条是关键）**
    `JSON.stringify([...document.querySelectorAll('link[rel=stylesheet]')].map(l=>l.getAttribute('href') ?? '').filter(h=>h.indexOf('/modules/')>=0))`
-   判据：必须**恰好**是该套 6 份 —— `player.css`、`styles/character.css`、`styles/lbtn.css`、`styles/skill.css`、`styles/lbtn-window.css`、`styles/skill-window.css`，前缀 `modules/<该套id>/1.4.2/`。**出现别套 id ⇒ 上一套残留；一条都没有 ⇒ 该套 CSS 根本没加载**（"看着像默认样式"的确切原因）。已知例外：开着 `phonelayout` 时 `decadeModule.js:131` 会刻意跳过两份 `-window.css`，条数应为 4。
+   判据：必须**恰好**是该套 6 份 —— `player.css`、`styles/character.css`、`styles/lbtn.css`、`styles/skill.css`、`styles/lbtn-window.css`、`styles/skill-window.css`，前缀 `modules/<该套id>/1.5.0/`（1.5.0 起；bump 版本后这里要跟着改）。**出现别套 id ⇒ 上一套残留；一条都没有 ⇒ 该套 CSS 根本没加载**（"看着像默认样式"的确切原因）。已知例外：开着 `phonelayout` 时 `decadeModule.js:131` 会刻意跳过两份 `-window.css`，条数应为 4。
 3. **这 6 份是否真加载成功（探针 3）**
    `JSON.stringify([...document.querySelectorAll('link[rel=stylesheet]')].filter(l=>(l.getAttribute('href') ?? '').indexOf('/modules/')>=0).map(l=>[l.getAttribute('href').split('/').slice(-2).join('/'), l.sheet?'OK':'未加载']))`
    判据：每项都是 `"OK"`。出现 `"未加载"` 表示 `link.sheet === null`（CSS 请求失败），不必再靠眼睛判断像不像。
 4. **资源根与皮肤名（探针 4，可选佐证）**
    `JSON.stringify([window.decadeUI.style.id, window.decadeUI.style.skin, window.decadeUI.resource.getModuleRel(window.decadeUI.style.id)])`
-   判据：依次是该套 id、皮肤名（`shizhounian`/`shousha`/`xinsha`/`online`/`baby`/`codename`）、`modules/<id>/1.4.2/`。
+   判据：依次是该套 id、皮肤名（`shizhounian`/`shousha`/`xinsha`/`online`/`baby`/`codename`）、`modules/<id>/1.5.0/`。
 
 **内容层取证（2026-09-30，Node 里做的，不需要真机）**：把每套包内 6 份 CSS 与**原版十周年UI** 的对应单体文件逐行比对（只把 `url(...)` 的路径归一化为文件名），结论是——
 
@@ -801,7 +815,7 @@
 | 十周年 | `on` / Alt+1 | 基准套：金框玩家框、手牌按钮、技能栏；`decadeLayout=on` |
 | 移动版 | `off` / Alt+2 | **唯一 `decadeLayout=off`** 的那套，布局明显不同、无叠印 |
 | 一将成名 | `othersOff` / Alt+3 | 红龙风格武将框；配置「等阶边框」一~五阶/随机改的是 `#arena[data-border-level]`（`appearance-handlers.js:113-126`），切档后边框档位要跟着变 |
-| online | `onlineUI` / Alt+4 | 聊天气泡 `.chat-bubble` 与赠礼按钮 `.gift/.giftbg/.giftcost…`（`modules/online/1.4.2/styles/lbtn.css`）位置正确、不溢出 |
+| online | `onlineUI` / Alt+4 | 聊天气泡 `.chat-bubble` 与赠礼按钮 `.gift/.giftbg/.giftcost…`（`modules/online/1.5.0/styles/lbtn.css`）位置正确、不溢出 |
 | 欢乐三国杀 | `babysha` / Alt+5 | 玩家框与技能按钮；死亡特效取 `image/styles/baby/dead3_*.png`（**扩展根**，卸掉样式包也不该坏） |
 | 名将杀 | `codename` / Alt+6 | 玩家框；死亡特效 `image/styles/codename/dead_*.png` |
 
@@ -811,7 +825,7 @@
 
 1. `JSON.stringify(Object.keys(window.app?.pluginsMap ?? {}))`
    判据：必须含 `lbtn` 与 `skill`（`character` 可被配置 `characterPlugin` 关掉，缺它不算异常）。**缺 `skill`/`lbtn` ⇒ 皮肤模块的动态 import 失败、插件静默缺席**（catch 见 `ui/skill/skins/index.js:41`），这就是"点了没反应"的直接成因，再看第 2 条报什么。
-2. `Promise.allSettled(["skill","lbtn","character"].map(k=>import(window.decadeUIPath+"modules/"+window.decadeUI.style.id+"/1.4.2/ui/"+k+"/skins/"+window.decadeUI.style.skin+".js"))).then(r=>console.log(JSON.stringify(r.map(x=>[x.status, x.reason?.message ?? Object.keys(x.value)]))))`
+2. `Promise.allSettled(["skill","lbtn","character"].map(k=>import(window.decadeUIPath+"modules/"+window.decadeUI.style.id+"/1.5.0/ui/"+k+"/skins/"+window.decadeUI.style.skin+".js"))).then(r=>console.log(JSON.stringify(r.map(x=>[x.status, x.reason?.message ?? Object.keys(x.value)]))))`
    判据：三项都 `fulfilled` 且第二项是导出名数组。任何 `rejected` 的 message 就是根因（404 / `Failed to resolve module specifier` / MIME 不符）。
 3. `JSON.stringify([window.decadeUI.style.id, window.decadeUI.style.skin, window.decadeUIPath, window.lib?.config?.touchscreen ?? "lib不可见"])`
    判据：前两项是第 2 条拼路径用的当前套与皮肤名；`decadeUIPath` 必须是**带协议的绝对地址**（若是 `extension/...` 这种相对串，动态 `import()` 会按裸模块名直接失败，而 `<link>`/`<script>` 不会 —— 这正好解释"CSS 全在、插件却缺席"）；末项若为 `true`，按钮绑的是 `touchend` 而非 `click`（`ui/skill/skins/base.js:75`），是另一条独立成因。

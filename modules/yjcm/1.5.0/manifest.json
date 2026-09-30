@@ -1,18 +1,18 @@
 {
 	"schema": 1,
-	"id": "online",
-	"name": "Online样式",
-	"version": "1.4.2",
+	"id": "yjcm",
+	"name": "一将成名样式",
+	"version": "1.5.0",
 	"type": "style",
-	"core": ">=1.4.2",
+	"core": ">=1.5.0",
 	"dependencies": [
 		"core"
 	],
 	"entry": {
 		"js": [
-			"ui/character/skins/online.js",
-			"ui/skill/skins/online.js",
-			"ui/lbtn/skins/online.js"
+			"ui/character/skins/xinsha.js",
+			"ui/skill/skins/xinsha.js",
+			"ui/lbtn/skins/xinsha.js"
 		],
 		"css": [
 			"player.css",
@@ -24,15 +24,15 @@
 		]
 	},
 	"deadRefs": [
-		"image/ui/effects/XZ.jpg",
-		"image/ui/effects/KXZ.jpg",
-		"image/styles/decade/border_campOL1.png"
+		"image/styles/xinsha/new_border_camp1.png",
+		"ui/assets/character/xinsha/zasui.png",
+		"ui/assets/character/xinsha/haoyou.png",
+		"ui/assets/character/xinsha/haoyou2.png"
 	],
 	"capabilities": [
 		"player-frame",
 		"lbtn",
-		"online-chat",
-		"online-gift"
+		"border-style"
 	],
 	"platform": [
 		"desktop",

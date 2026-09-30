@@ -35,7 +35,7 @@ const {
 } = await import("../src/config/utils.js");
 
 const { registry, moduleManager, resourceLoader } = getModuleSystem();
-const packManifest = JSON.parse(fs.readFileSync("modules/card-skin/1.4.2/manifest.json", "utf8"));
+const packManifest = JSON.parse(fs.readFileSync(`modules/card-skin/${JSON.parse(fs.readFileSync("info.json", "utf8")).version}/manifest.json`, "utf8"));
 const BUILTIN_KEYS = cardSkinPresets.map(skin => skin.key);
 
 // ── 1. 内置五套的名单与"内置判定"必须同源（判错就会拿错根） ───────────────────

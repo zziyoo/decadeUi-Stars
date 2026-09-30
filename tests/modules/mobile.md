@@ -4,7 +4,7 @@
 
 | 项目 | 判据 | 层级 | 结果 | 证据 |
 |---|---|---|---|---|
-| 包结构 | `modules/mobile/1.4.2/manifest.json` 可解析且 entry 文件齐；包内 CSS 的相对引用不指回单体 | 静态 | 通过 | `node scripts/verify-pack.mjs`（0 未知缺失）、`node scripts/check-skin-imports.mjs` 37/0 |
+| 包结构 | `modules/mobile/1.5.0/manifest.json` 可解析且 entry 文件齐；包内 CSS 的相对引用不指回单体 | 静态 | 通过 | `node scripts/verify-pack.mjs`（0 未知缺失）、`node scripts/check-skin-imports.mjs` 37/0 |
 | 安装 | 安装后台账 `source:"installed"`、`hashVerified:true`，目录在 `modules/mobile/<版本>/` | 真机 | 待验 | — |
 | 启用 | 切到移动版后玩家框/手牌按钮走包内根，`shousha` 共用资产仍从单体根命中（不缺图） | 真机 | 待验 | — |
 | 禁用 | 关掉移动版回落到默认套，横屏/手机布局不受牵连 | 真机 | 待验 | — |

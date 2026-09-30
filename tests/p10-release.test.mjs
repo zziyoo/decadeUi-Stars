@@ -160,9 +160,10 @@ const packs = [
 		indexAsset,
 	});
 
-	assert.match(notes, /v1\.4\.2-stars/);
+	assert.equal(mod.releaseTag("1.4.2"), "v1.4.2", "tag 与上游同号：两个发行物靠扩展身份区分，不加分支后缀");
+	assert.match(notes, /^# 十周年UI-Stars v1\.4\.2\b/, "标题行用的就是不带后缀的 tag");
 	assert.match(notes, /Core 随扩展本体发布/);
-	assert.match(notes, /https:\/\/github\.com\/zziyoo\/decadeUi-Stars\/releases\/download\/v1\.4\.2-stars\/module-index\.json/);
+	assert.match(notes, /https:\/\/github\.com\/zziyoo\/decadeUi-Stars\/releases\/download\/v1\.4\.2\/module-index\.json/);
 	for (const asset of [full, indexAsset, zipped[0].zip]) {
 		assert.ok(notes.includes(asset.file), `清单必须列出 ${asset.file}`);
 		assert.ok(notes.includes(asset.sha256), `清单必须给出 ${asset.file} 的 sha256`);
@@ -179,18 +180,18 @@ const packs = [
 // ---------------------------------------------------------------- GitHub Release 形状的地址解析
 
 {
-	const base = "https://github.com/zziyoo/decadeUi-Stars/releases/download/v1.4.2-stars/module-index.json";
+	const base = "https://github.com/zziyoo/decadeUi-Stars/releases/download/v1.4.2/module-index.json";
 	assert.equal(
 		resolveModuleUrl("baby-1.4.2.zip", base),
-		"https://github.com/zziyoo/decadeUi-Stars/releases/download/v1.4.2-stars/baby-1.4.2.zip",
+		"https://github.com/zziyoo/decadeUi-Stars/releases/download/v1.4.2/baby-1.4.2.zip",
 		"裸文件名必须能按索引地址解析成同一个 Release 下的资产地址"
 	);
 	assert.equal(
 		resolveModuleUrl("十周年UI-Stars-1.4.2-full.zip", base),
-		"https://github.com/zziyoo/decadeUi-Stars/releases/download/v1.4.2-stars/%E5%8D%81%E5%91%A8%E5%B9%B4UI-Stars-1.4.2-full.zip",
+		"https://github.com/zziyoo/decadeUi-Stars/releases/download/v1.4.2/%E5%8D%81%E5%91%A8%E5%B9%B4UI-Stars-1.4.2-full.zip",
 		"非 ASCII 资产名会被 URL 规范百分号编码——这是正确行为，fetch 时 GitHub 自行解码"
 	);
-	assert.equal(mod.releaseTag("1.4.2"), "v1.4.2-stars");
+	assert.equal(mod.releaseTag("1.4.2"), "v1.4.2");
 }
 
 {
