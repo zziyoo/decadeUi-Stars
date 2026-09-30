@@ -54,13 +54,38 @@ export function getStyleConfigKey() {
 }
 
 /**
+ * boot 期样式读数源。本体只在开发者模式被打开时才把 `lib` 挂到 window
+ * （noname/library/index.js 的 `lib.cheat.i()`，以及 `setLibrary` 里 `if (lib.config.dev)`），
+ * 所以 precontent 阶段 `window.lib` 还不存在。而 decadeModule 正是在 precontent 里决定
+ * 加载哪套样式 CSS —— 靠 window.lib 会读到 undefined 并回落默认 "on"，六套于是全变成十周年套
+ * （2026-09-30 真机：body.dataset.style="on" 而 arena 里是玩家选的 othersOff）。
+ * 原版用的是 import 的 lib 绑定，故不受影响。这里把那条绑定接进来，window.lib 退为兜底。
+ * @type {((key: string) => any)|null}
+ */
+let configReader = null;
+
+/**
+ * 绑定样式配置取值器（precontent 一进来就该调，必须早于 initDecadeModule）
+ * @param {(key: string) => any}|null reader - 用 import 的 lib.config 取值的函数；传 null 解绑
+ */
+export function bindStyleConfigReader(reader) {
+	configReader = typeof reader === "function" ? reader : null;
+}
+
+/**
  * 原始读取样式配置值：与直接读 lib.config[getStyleConfigKey()] 完全等价，
  * 不做合法性校验、不做默认值归一化（保证历史调用点语义零变化）。
- * @returns {*} 配置原始值；未设置或运行环境不可用时为 undefined
+ * 取值顺序：绑定的取值器（boot 期唯一可靠来源）→ window.lib（晚阶段兜底）→ undefined。
+ * @returns {*} 配置原始值；两处都取不到时为 undefined
  */
 export function readRawStyleValue() {
+	const key = getStyleConfigKey();
+	if (configReader) {
+		const value = configReader(key);
+		if (value !== undefined) return value;
+	}
 	const config = typeof window !== "undefined" && window.lib ? window.lib.config : undefined;
-	return config ? config[getStyleConfigKey()] : undefined;
+	return config ? config[key] : undefined;
 }
 
 /**

@@ -2755,3 +2755,15 @@ P0 审计
 - **门禁**：207 个 JS/mjs `node --check` ✓；**23 套**测试 ✓（每条新测试都反向注错验过红，再 `git checkout` 还原复跑为绿）；verify-pack 881/17/0、check-skin-imports 37/0 ✓；`pnpm build` + `verify:release` exit=0 ✓
 - **行尾那条被现实咬到了一次**：本轮重构建后 `baby-1.4.2.zip` 从 112085 → 112150 字节、`module-index.json` 与整包 sha 随之变化，而**内容一字未动** —— 起因是昨天为还原测试态跑过一次 `git checkout`，autocrlf 把包内 27 个文件 smudge 成 CRLF。连续两次构建仍然完全一致（确定性没问题），漂的是 checkout 之间。按用户决定仍不加 `.gitattributes`，所以上传以当次 `RELEASE-NOTES.md` 的 9 项 sha 为准（已重新生成并自验一致）
 - **仍待真机**（§八「P15 复测步骤」给了准确操作与判据）：六套逐套目测（每套必须重载）、online 与 card-skin 卸载、手机布局与横屏、Android/SAF、联网分支（要等 P10 的 Release 建好）。这些一律标"代码检查通过 / 真机待验"，不许算成已验
+
+## v1.26（2026-09-30）真机查出的硬缺陷：boot 期样式读数回落默认套，六套其实一直是十周年脸
+
+用户对着一批样式截图说「所有样式几乎都是一样的，原版不是这样」。这次没有再靠眼睛猜 —— 四条探针 + 一次参照实现比对把根因钉死了，而且**我上一轮给的解释是错的**（已在台账作废）。
+
+- **决定性证据是两条读数不一致**：`document.body.dataset.style` = `"on"`（precontent 阶段读的），`ui.arena.dataset.newDecadeStyle` = `"othersOff"`（晚阶段读的）；而 `link[href]` 里加载的是 `modules/decade/1.4.2/*.css`，六份全在、规则数 248/37/37/51/40/49。也就是说：配置是对的，**boot 时读错了**
+- **四条排除**（都做了取证，不是推理）：①包内容没搬错 —— 六套各自 6 份 CSS 与**原版十周年UI** 的对应单体文件逐行比对（`url()` 归一化后）完全一致，差异只有被 Core 统一加载的 `@import "animation.css"` 和一行注释，且没有任何一份等于别套的原版文件；②包都注册上了（`getInstallState` 六套 `independent:true`）；③加载器去重键是完整 URL，跨套不撞；④**时机不是原因** —— 原版在同样的 precontent 时机读样式并加载 `playerN.css`，却工作正常
+- **根因**：Stars 的模块级读数 `readRawStyleValue()` 依赖 `window.lib`，而本体只在**开发者模式**被打开时才把 `lib` 挂到 window（`noname/library/index.js:1513` 的 `lib.cheat.i()`，以及 `setLibrary` 里 `if (lib.config.dev)`）。`decadeModule.module.init()` 恰好在 precontent 里决定加载哪套 CSS ⇒ 读到 `undefined` ⇒ 回落默认 `"on"` ⇒ **自 P3 起，六套永远加载十周年套的 CSS**。原版用的是 `import` 的 `lib` 绑定，所以同样的时机不会出问题 —— 这条差异是「拿原版当验收基准」抓出来的，不是猜出来的
+- **最小修复**：`styleRuntime` 加 `bindStyleConfigReader(fn)`，读数顺序改为「绑定的取值器 → `window.lib` 兜底 → undefined」；`precontent.js` 在 `initDecadeModule()` 之前绑 `key => lib.config[key]`。配置键仍只在 `getStyleConfigKey()` 一处拼接，38 处历史读取点语义不变
+- **用例先行**：`tests/p15-boot-style-reader.test.mjs` 先 RED（复现「没 window.lib 就读不到」的现场）再 GREEN；含静态不变量「绑定必须早于 `initDecadeModule()`」；反向把顺序改成 window.lib 优先 → 红在「绑定过就不许再被 window.lib 覆盖」。套件 23 → **24 套**全绿，`pnpm build` + `verify:release` exit=0（整包 sha `4d163de06eab…`，7 个分包与索引未变）
+- **回改旧账**：`yjcm.md` 与 `online.md` 的「启用」行原记真机通过（判据分别是边框档位、聊天条与赠礼位置），但当时那两套 CSS 根本没加载，证据只到状态三值 ⇒ **降级为待验**并注明原因；`decade.md` 恰是默认套（加载对了）保留通过，但补一句证据层级。修复后需按 §八 S-1 重跑六套目测 —— 移动版与一将成名应当立刻看得出不同（就像用户给的原版对比图那样）
+- 教训入档：判据必须落在**可观测**的东西上。批1 我用 `styleRuntime.id/skin/config` 三值当「样式切换正确」的证据，那是状态层读数，恰好是缺陷掩盖不了的一层，于是它绿着而界面是错的。CSS 层要用 `link[href]` + `link.sheet` + 计算样式指纹，这套探针已写进 §八 S-1

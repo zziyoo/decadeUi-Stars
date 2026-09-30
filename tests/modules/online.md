@@ -6,7 +6,7 @@
 |---|---|---|---|---|
 | 包结构 | `modules/online/1.4.2/manifest.json` 可解析、entry 齐；`ol/` 皮肤 JS 与 CSS 引用可达 | 静态 | 通过 | `node scripts/verify-pack.mjs`（含 70 文件那包）、`check-skin-imports` 37/0 |
 | 安装 | 安装后台账 `source:"installed"` + `hashVerified:true` | 真机 | 待验 | — |
-| 启用 | 切到 Online 后 `online-chat`（聊天条）与 `online-gift`（赠礼）两块界面出现且位置不压玩家框 | 真机 | 通过 | 2026-09-29 批1 真机（用户实测）：`decadeUI.style.id` = `online`、`[hasCapability("online-chat"), hasCapability("online-gift")]` = `[true, true]`（**修复前是 [false,false]**）；两块界面的实际位置目测未单独回报 |
+| 启用 | 切到 Online 后 `online-chat`（聊天条）与 `online-gift`（赠礼）两块界面出现且位置不压玩家框 | 真机 | 待验 | **2026-09-30 降级为待验**：boot 期样式读数缺陷（见§四同名小节）导致 online 包 CSS 当时未加载，批1 证据只到状态三值与能力查询 ⇒ 判据需按 §八 S-1 重取。旧证据保留：2026-09-29 批1 真机 `decadeUI.style.id` = `online`、`[hasCapability("online-chat"), hasCapability("online-gift")]` = `[true, true]`（**修复前是 [false,false]**）；两块界面的实际位置目测未单独回报 |
 | 禁用 | 关掉 Online 后聊天/赠礼入口一并消失，不留空槽 | 真机 | 待验 | — |
 | 更新 | 索引 `online.latest` 更高时列出该项；更新后 `previousVersion` 记录、旧目录保留 | 真机 | 待验 | — |
 | 卸载 | 让位 `.removing-*` → 台账 → 清理；卸载后可观测的是 `independent:false`、资源根回落扩展根（于是本样式一条 CSS 都不加载）、台账条目与目录清空。**原写「两个能力同时不可用」已按代码作废**：capability 取自注册表清单，卸载当下确实变假，但每次启动 `builtInModules.js:31` 会把 `online-chat/online-gift` 重新声明回来，重启后又是真 —— 它不能当卸载判据 | Node | 通过 | `tests/p15-online-uninstall-observability.test.mjs`：真安装器跑卸载（IN_USE 拦截 → 切走 → 卸成功 → 台账/目录/注册状态/资源根四项核对）+ 把 capability 与可用性脱钩钉成断言 + 置灰理由；卸载事务本身另有 `p5-installer:773-846` |

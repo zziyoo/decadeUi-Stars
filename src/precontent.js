@@ -7,6 +7,7 @@ import { initDecadeModule, EXCLUDED_MODES } from "./core/decadeModule.js";
 import { setupConnectMode, setupLayoutVisualMenu } from "./core/connectMode.js";
 import { initApp } from "./core/app.js";
 import { getModuleSystem, registerInstalledModules } from "./core/moduleSystem.js";
+import { bindStyleConfigReader } from "./core/styleRuntime.js";
 import { applyMoveAnimFix } from "./overrides/moveAnimFix.js";
 import { initPrecontentUI } from "./ui/progress-bar.js";
 import { initCardAlternateNameVisible } from "./ui/cardAlternateName.js";
@@ -15,6 +16,10 @@ import { initCardAlternateNameVisible } from "./ui/cardAlternateName.js";
  * Precontent主入口 - 游戏初始化前执行
  */
 export async function precontent() {
+	// 样式读数源必须早于 initDecadeModule 绑好：precontent 阶段本体还没把 lib 挂到 window
+	// （只有开发者模式才挂），不绑就会读到 undefined 并回落默认套，六套全变成十周年外观。
+	bindStyleConfigReader(key => lib.config[key]);
+
 	// 同一游戏进程内重复导入扩展时，保留第一次初始化的运行时状态。
 	if (window.decadeUI) return;
 

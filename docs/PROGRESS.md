@@ -79,6 +79,18 @@
 下一阶段：**P10 GitHub Release（任务书§47）**——发布结构 Core / Official Style Packs / Feature Packs / Full Package / module-index.json 与"下载链接必须可被客户端解析"。本轮产物已能直接作为上传物；建 Release、传资产、推 tag 由用户执行，我这侧只负责索引与解析正确。
 上一阶段 **P6 模块管理界面 —— ✅ 已验收通过（2026-09-27 用户游戏内实测：窗口可开、布局正常、"已独立安装 6"读取正确）**。P5（任务书§42 + §17/§18/§19/§11/§24/§20）已完成：`6c76534` + `f4a69ac` + `df2afea` + `29a69e3` + P6 实测暴露的 fs 锚点修复 `40149bf`；**P5/P6/P8 的 Android/SAF 真机实测并入§八收尾清单，不阻塞推进**。
 
+### boot 期样式读数缺陷：六套全渲染成十周年套（`2026-09-30` 修复）
+
+| 项 | 内容 |
+|---|---|
+| 现象（真机） | 用户切到移动版/一将成名后，界面与十周年套几乎没区别（附四张对比图：原版两套明显不同，Stars 两套雷同）。探针给出决定性证据：`document.body.dataset.style` = `"on"` 而 `ui.arena.dataset.newDecadeStyle` = `"othersOff"` —— 同一份配置，两个时刻读出两个值；`link[href]` 里加载的是 `modules/decade/1.4.2/*.css`（六份、规则数 248/37/37/51/40/49，全部加载成功） |
+| 排除项（先证伪再定位） | ①包内容搬错/搬重：把六套包内 6 份 CSS 与**原版十周年UI** 的对应单体文件逐行比对（`url()` 归一化后），逐套一致，差异只有被 Core 统一加载的 `@import "animation.css"` 与一行注释，且没有任何一份等于别套原版文件；②包没注册：`getInstallState` 六套全 `independent:true`；③加载器去重撞车：`loader.js:47-49` 的去重键是完整 URL，跨套不互含；④时机问题（我上一轮的错误解释）：原版在**同样的 precontent 时机**读样式并加载 `playerN.css`（原版 `decadeModule.js:95`）却正常 ⇒ 差异不在时机 |
+| 根因 | Stars 的模块级读数 `styleRuntime.readRawStyleValue()` 走 `window.lib`，而本体只在开发者模式被打开时才把 `lib` 挂到 window（`noname/library/index.js:1513` 的 `lib.cheat.i()`，以及 `setLibrary` 里 `if (lib.config.dev) window.lib = lib`）。`decadeModule.module.init()` 恰在 precontent 阶段决定加载哪套 CSS ⇒ 读到 `undefined` ⇒ 回落默认 `"on"` ⇒ **自 P3 起六套永远加载十周年套的 CSS**。原版用的是 `import` 进来的 `lib` 绑定，所以不受影响 |
+| 修复 | `styleRuntime` 增加 `bindStyleConfigReader(fn)`，`readRawStyleValue()` 取值顺序改为「绑定的取值器 → window.lib 兜底 → undefined」；`precontent.js` 在 `initDecadeModule()` 之前绑 `key => lib.config[key]`（用的是 import 的绑定）。配置键仍只在 `getStyleConfigKey()` 一处拼接，38 处历史读取点语义不变 |
+| 用例 | `tests/p15-boot-style-reader.test.mjs`：①不绑定且无 window.lib ⇒ 读不到（复现缺陷现场）；②绑定后读到玩家设置值且能选对包 id；③绑定优先、window.lib 只兜底、可解绑；④静态不变量：`precontent` 里绑定必须早于 `initDecadeModule()`，且绑的必须是 `lib.config[key]`。RED→GREEN 均验；反向把顺序换成 window.lib 优先 → 红在「绑定过就不许再被 window.lib 覆盖」 |
+| 待真机复核 | **修复后必须重跑 §八 S-1**：移动版与一将成名应立刻看得出不同（用户对比图里的原版样子）。同时回改三行受影响判据（见下） |
+| 受影响的旧账（已标注） | `yjcm.md`/`online.md` 的「启用」行原记 真机通过，判据分别是「边框风格按 `borderStyle` 生效」「聊天条与赠礼出现且位置不压玩家框」—— 那两套 CSS 当时根本没加载，结论**存疑待重取**；`decade.md` 那行恰好是默认套（加载对了），但证据只到状态三值，一并标注。矩阵「六套逐个切换」行只验状态与能力查询，不受影响；「视觉目测」行本就 待办 |
+
 ### P15 代码级收尾（六套切换契约 / 卸载可观测判据 / 传输层缺口，2026-09-30）
 
 | 项 | 内容 |
@@ -747,7 +759,7 @@
 - `styles/{character,lbtn,skill,lbtn-window,skill-window}.css` 同样与各自原版一致，差异只有新增的说明注释；**没有任何一份等于别套的原版文件**（跨套串内容这条已排除）；
 - 六套包内 CSS 与 `image/` 目录指纹两两不同（`p15-style-switch-contract` 第 5 节，已进套件）。
 
-所以「所有样式几乎一样」不是搬运错了内容，只剩两种可能，靠上面的探针分辨：**①包压根没注册成功**（`getInstallState(...).independent` 全为 `false` ⇒ 一套包 CSS 都不会加载，只剩 Core 默认外观，六套自然一样）；**②比较的场景看不到差异**（这些 CSS 选择器打的是对局内的 `#arena .player` / 手牌按钮 / 技能栏，在菜单与选将界面本来就没多少差别）。
+所以「所有样式几乎一样」不是搬运错了内容。当时列了两种可能（包没注册 / 比较场景看不到差异），**两条都被探针否定了**：`getInstallState` 六套全 `independent:true`，而 T4 暴露出第三种、也是真正的原因 —— boot 期样式读数回落默认套（见§四「boot 期样式读数缺陷」小节，已修）。
 
 **T1 注册状态探针（先跑这条，它能一分为二）**：
 `JSON.stringify(["decade","mobile","yjcm","online","baby","codename"].map(id=>[id, window.decadeUI?.moduleManager?.getInstallState?.(id) ?? "无API"]))`

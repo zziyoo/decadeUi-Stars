@@ -6,7 +6,7 @@
 |---|---|---|---|---|
 | 包结构 | `modules/yjcm/1.4.2/manifest.json` 可解析、entry 齐；`styles/*.css` 内引用全部可达 | 静态 | 通过 | `node scripts/verify-pack.mjs` 0 未知缺失 |
 | 安装 | 安装后台账 `source:"installed"` + `hashVerified:true` | 真机 | 待验 | — |
-| 启用 | 切到一将成名后边框风格按 `borderStyle` 生效（仅一将 / 关闭 / 五阶等档位不串档） | 真机 | 通过 | 2026-09-29 批1 真机（用户实测）：`decadeUI.style.id` = `yjcm`、`hasCapability("border-style")` = `true`（**修复前是 false**，见台账§四"P7 能力漂移"）；边框档位目测串档与否未单独回报 |
+| 启用 | 切到一将成名后边框风格按 `borderStyle` 生效（仅一将 / 关闭 / 五阶等档位不串档） | 真机 | 待验 | **2026-09-30 降级为待验**：当日查出 boot 期样式读数回落默认套（见§四同名小节），yjcm 的包 CSS 当时根本没加载，批1 那条只量到状态三值 ⇒ 判据需按 §八 S-1 重取。旧证据保留：2026-09-29 批1 真机 `decadeUI.style.id` = `yjcm`、`hasCapability("border-style")` = `true`（**修复前是 false**，见台账§四"P7 能力漂移"）；边框档位目测串档与否未单独回报 |
 | 禁用 | 关掉后回落默认套，`borderLevel` 配置项不残留视觉效果 | 真机 | 待验 | — |
 | 更新 | 索引 `yjcm.latest` 更高时列出该项；更新后 `previousVersion` 记录、旧目录保留 | 真机 | 待验 | — |
 | 卸载 | 让位 `.removing-*` → 台账 → 清理；卸载后样式不可用而 Core 正常 | 真机 | 通过 | 2026-09-30 批3 真机：同一条 `packageInstaller.uninstall/install` 路径已在 baby 上跑通（卸载→台账清行→重装 1.4.4→`hashVerified:true`）；本套未单独跑，特殊条款见判据 |
