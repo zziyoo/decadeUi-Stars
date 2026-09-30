@@ -2765,7 +2765,7 @@ P0 审计
 - **最小修复**：`resourceLoader` 新增 `getModuleUrl(moduleId, path)`，按 `document.baseURI`（回落 `location.href`）把原串解析成绝对 URL，拿不到基址时退回原串；三处皮肤装载的**包分支**改用它，未安装分支仍是 `./${skinName}.js`，`getAsset` 语义一字未改（CSS/图片仍走相对解析，那条路本来就对）
 - **用例先行**：`tests/p16-pack-skin-import-url.test.mjs` 先 RED（拿相对基址直接 import 必抛），修复后断言 `getModuleUrl` 的结果**真能 import 到磁盘上的皮肤模块**并拿到 `createXinshaSkillPlugin/LbtnPlugin/CharacterPlugin` 三个导出；再加静态不变量（三处包分支必须 `getModuleUrl`、不得残留裸 `getAsset` 喂 import）。反向把 lbtn 换回 `getAsset` → 红在「包分支必须改用 getModuleUrl」。套件 24 → **25 套**全绿，`pnpm build` + `verify:release` exit=0（整包 3596 文件 / 112,113,719 字节 / sha256 `4813b78101b0…`）
 - **门禁缺口入档**：`verify-pack`/`check-skin-imports` 查的是包内文件自己的相对 import 深度，查不到「外层动态 import 的说明符是不是合法 ES 说明符」这一层——这类"CSS 全绿、JS 插件缺席"的错位以后由 p16 盯
-- **待真机复核（不许写成已验）**：整程序退出重开后跑 §八 S-7 探针 1，硬判据是 `window.app.pluginsMap` 的键里**必须有 `lbtn` 与 `skill`**（修复前必缺），再进一局确认技能可发动。若仍缺，说明还有第二个成因，分叉点是探针 3 的 `touchscreen` 与点击那一刻的控制台红字。**2026-09-30 真机回报「一二均正确」⇒ 探针 1（`pluginsMap` 含 `lbtn`/`skill`）与探针 2（三处皮肤模块动态 import 全 `fulfilled` 且拿到导出名）在真机成立，插件缺席这一层闭环**；技能能否真的确认发动、online 套聊天条与赠礼的实际位置，仍要一句明确回报才转「通过」
+- **待真机复核（不许写成已验）**：整程序退出重开后跑 §八 S-7 探针 1，硬判据是 `window.app.pluginsMap` 的键里**必须有 `lbtn` 与 `skill`**（修复前必缺），再进一局确认技能可发动。若仍缺，说明还有第二个成因，分叉点是探针 3 的 `touchscreen` 与点击那一刻的控制台红字。**2026-09-30 真机回报「一二均正确」⇒ 探针 1（`pluginsMap` 含 `lbtn`/`skill`）与探针 2（三处皮肤模块动态 import 全 `fulfilled` 且拿到导出名）在真机成立，插件缺席这一层闭环**；技能能否真的确认发动、online 套聊天条与赠礼的实际位置，仍要一句明确回报才转「通过」。**同日行为层闭环**：用户回报「其他的手动测试了，均无误」⇒ 点技能能确认发动、online 套聊天条与赠礼都在且位置不压玩家框，`online.md` 启用行与矩阵「视觉目测」行随之转通过
 
 ## v1.26（2026-09-30）真机查出的硬缺陷：boot 期样式读数回落默认套，六套其实一直是十周年脸
 

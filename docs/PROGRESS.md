@@ -91,7 +91,7 @@
 | 门禁缺口 | `check-skin-imports`/`verify-pack` 查的是**包内文件自己的相对 import 深度**，查不到「外层动态 import 的说明符是不是合法 ES 说明符」这一层。本用例把这条钉进门禁（套件 24 → 25） |
 | 同源的另一条 | 用户同一批回报「**没看到有礼物条、聊天，所有样式都缺失**」——不是第二个缺陷：赠礼按钮由 online 的 **lbtn 皮肤**创建（`modules/online/1.4.2/ui/lbtn/skins/online.js` 里 `gift` 出现 23 处），聊天条由移动版 lbtn 皮肤调 `initChatSystem`（`modules/mobile/1.4.2/ui/lbtn/skins/shousha.js:382` → `ui/lbtn/chatSystem.js:275`）。lbtn 插件缺席 ⇒ 两块界面自然都不在。同一次修复应一起回来，**复验时一并看** |
 | 目测层已确认的 | 用户回报：①等阶边框档位切档正常；③baby/codename 死亡后武将牌上的死亡字样按套有别（在扩展根，未受本缺陷影响）；④Android 留到项目收尾 |
-| 真机复核（2026-09-30） | 用户回报「一二均正确」⇒ §八 S-7 **探针 1**（`pluginsMap` 含 `lbtn` 与 `skill`）与**探针 2**（三处皮肤模块动态 import 全 `fulfilled` 且拿到导出名）两条判据在真机成立 —— **插件缺席这一层闭环**，未附原始输出。**仍未取**：点技能能否真的确认发动、online 套聊天条/赠礼的实际位置（这两条是行为/目测判据，要他一句明确回报才转通过） |
+| 真机复核（2026-09-30） | 用户回报「一二均正确」⇒ §八 S-7 **探针 1**（`pluginsMap` 含 `lbtn` 与 `skill`）与**探针 2**（三处皮肤模块动态 import 全 `fulfilled` 且拿到导出名）两条判据在真机成立 —— **插件缺席这一层闭环**，未附原始输出。**行为层同日闭环**：用户回报「其他的手动测试了，均无误」⇒ 点技能能确认发动、online 套聊天条与赠礼都在且位置不压玩家框；`online.md` 启用行与矩阵「视觉目测」行随之转已验 |
 ### boot 期样式读数缺陷：六套全渲染成十周年套（`2026-09-30` 修复）
 
 | 项 | 内容 |
@@ -450,7 +450,7 @@
 
 ## 五、已知问题与风险
 
-0. **【已修复，插件层已真机确认】技能按钮点不动（2026-09-30 用户报，六套皆然）**——根因与修复见§四「技能按钮点不动：包内皮肤 JS 的动态 import 说明符不可解析」。现象：对局内点技能按钮无法确认发动技能（截图里濒死提示只剩「取消」）。已完成的静态取证（**未改任何代码**）：
+0. **【已修复，真机闭环】技能按钮点不动（2026-09-30 用户报，六套皆然）**——根因与修复见§四「技能按钮点不动：包内皮肤 JS 的动态 import 说明符不可解析」。现象：对局内点技能按钮无法确认发动技能（截图里濒死提示只剩「取消」）。已完成的静态取证（**未改任何代码**）：
    - 点击链路 `ui/character/skins/base.js:431-445`（`.skillbutton` → `btn.func = lib.skill[name].clickable` → `btn.listen(ui.click.skillbutton)`）与**原版逐行一致**；本体侧 `ui.click.skillbutton`（`noname/ui/click/index.js:4445`）与 `HTMLDivElement.prototype.listen`（`noname/init/polyfill.js:208`）都在 ⇒ 这一条不是搬坏的；
    - 三个 UI 插件（lbtn/skill/character）由 `src/content.js:112-143` 异步装载，皮肤模块走 `ui/*/skins/index.js` 里的**动态 import**，失败会被 catch 成 `[SkillSkin] 加载失败` 并返回 null ⇒ **插件静默缺席**，表现正是"点了没反应"；
    - `tmp/check-relative-imports.mjs` 扫 212 个 JS 的相对引用：包内 18 份皮肤 JS 上跳 6 层指向根 `ui/*/skins/base.js`、`gskillMixin.js`、`src/ui/skillButtonTooltip.js`，**全部可解析**（唯一 MISSING 是 `moduleIo.js` 注释里提到的本体虚拟模块名，不是真引用）；
