@@ -736,20 +736,25 @@
 
 | # | 目的 | 操作 | 判据 |
 |---|---|---|---|
-| S-1 | 六套逐套视觉目测 | 配置 → 外观 → 整体外观 → 切换样式 → 选一套（**菜单自己会重启**：`onNewDecadeStyleClick` 里 `game.reload()`；电脑端也可 Alt+1~6）→ 重启后跑下面三条探针；六套各来一遍。别在对局中切（reload 会丢本局） | 见下方「S-1 探针」与「逐套该看到什么」两张表；核心判据是**文档里恰好只有该套的 6 份 CSS、且每份 `link.sheet` 都不为 null**，再目测玩家框/手牌按钮/技能栏/等阶边框/聊天赠礼位置 |
+| S-1 | 六套逐套视觉目测 | 配置 → 外观 → 整体外观 → 切换样式 → 选一套（**菜单自己会重启**：`onNewDecadeStyleClick` 里 `game.reload()`；电脑端也可 Alt+1~6）→ 重启后跑下面六条探针；六套各来一遍。别在对局中切（reload 会丢本局） | 见下方「S-1 探针」与「逐套该看到什么」两张表；核心判据是**文档里恰好只有该套的 6 份 CSS、且每份 `link.sheet` 都不为 null**，再目测玩家框/手牌按钮/技能栏/等阶边框/聊天赠礼位置 |
+| S-2 | online 卸载（更正后的判据） | 先切到别的样式 → 模块管理里卸载 online → 重载 | 台账无 `online` 行、`modules/online/` 目录清空、无 `.removing-*` 残留；`getModuleRel("online")` 为空串 ⇒ **该样式一条 CSS 都不加载**（不是"退回旧版"）；Core 其余功能正常。**不要拿 capability 当判据**（重启后内置声明会把它变回真） |
+| S-3 | card-skin 卸载（双根） | 模块管理里卸载 card-skin → 重载 | 内置五套在下拉里消失/置灰且卡面走本体默认；**玩家自己丢进 `image/card-skins/` 的文件夹必须仍然可用**；再装回来两套都能出图 |
+| S-4 | 手机布局与横屏 | 手机（或 `phonelayout` 开 + 横竖屏各一次）打开模块管理与更新提示窗 | 三处 `overflow-y:auto` 列表能滚到底（触摸滚动）、按钮不被裁切、短屏不溢出、横屏不串版 |
+| S-5 | Android / SAF | Android 上装/卸/回退各一次，并中途杀进程再启 | 不写坏台账（读坏会拒覆盖）、非原子发布的中断能被下一次启动纠正、UI 如实提示"本平台发布非原子" |
+| S-6 | 联网分支（依赖 P10） | 等正式 Release 建好、9 项资产传上去后，把模块源地址填成真实 `…/releases/download/<tag>/module-index.json` → 重载 | 模块管理列出可安装/可更新项、下载与 SHA 校验通过、客户端能装上。**当前不能验，也不许写成已验** |
 
-**S-1 探针**（每套切换、游戏自动重启后各跑一次；四条都是单行单表达式，不依赖 `ui`/`lib` 全局是否可见）：
+**S-1 探针**（每套切换、游戏自动重启后各跑一次；六条都是单行单表达式，不依赖 `ui`/`lib` 全局是否可见。写法约束：粘进控制台前不折行，串与串之间只允许 ASCII 空格，不用裸 `||` 与换行——真机踩过被截断成 `SyntaxError`）：
 
-1. **状态三值**
+1. **状态三值（探针 1）**
    `JSON.stringify([document.body.dataset.style, document.querySelector('#arena')?.dataset.newDecadeStyle, document.querySelector('#arena')?.dataset.decadeLayout])`
    判据：前两项都等于该套配置值（`on`/`off`/`othersOff`/`onlineUI`/`babysha`/`codename`）；第三项**只有移动版是 `"off"`**、其余五套是 `"on"`（名单在 `appearance-handlers.js:51-52`，与 `styleRuntime.js:38` 的 `DECADE_LAYOUT_STYLE_VALUES` 同口径）。
-2. **文档里到底加载了哪几份包 CSS**（这条是关键）
+2. **文档里到底加载了哪几份包 CSS（探针 2，这条是关键）**
    `JSON.stringify([...document.querySelectorAll('link[rel=stylesheet]')].map(l=>l.getAttribute('href') ?? '').filter(h=>h.indexOf('/modules/')>=0))`
    判据：必须**恰好**是该套 6 份 —— `player.css`、`styles/character.css`、`styles/lbtn.css`、`styles/skill.css`、`styles/lbtn-window.css`、`styles/skill-window.css`，前缀 `modules/<该套id>/1.4.2/`。**出现别套 id ⇒ 上一套残留；一条都没有 ⇒ 该套 CSS 根本没加载**（"看着像默认样式"的确切原因）。已知例外：开着 `phonelayout` 时 `decadeModule.js:131` 会刻意跳过两份 `-window.css`，条数应为 4。
-3. **这 6 份是否真加载成功**
+3. **这 6 份是否真加载成功（探针 3）**
    `JSON.stringify([...document.querySelectorAll('link[rel=stylesheet]')].filter(l=>(l.getAttribute('href') ?? '').indexOf('/modules/')>=0).map(l=>[l.getAttribute('href').split('/').slice(-2).join('/'), l.sheet?'OK':'未加载']))`
    判据：每项都是 `"OK"`。出现 `"未加载"` 表示 `link.sheet === null`（CSS 请求失败），不必再靠眼睛判断像不像。
-4. **资源根与皮肤名（可选佐证）**
+4. **资源根与皮肤名（探针 4，可选佐证）**
    `JSON.stringify([window.decadeUI.style.id, window.decadeUI.style.skin, window.decadeUI.resource.getModuleRel(window.decadeUI.style.id)])`
    判据：依次是该套 id、皮肤名（`shizhounian`/`shousha`/`xinsha`/`online`/`baby`/`codename`）、`modules/<id>/1.4.2/`。
 
@@ -759,15 +764,15 @@
 - `styles/{character,lbtn,skill,lbtn-window,skill-window}.css` 同样与各自原版一致，差异只有新增的说明注释；**没有任何一份等于别套的原版文件**（跨套串内容这条已排除）；
 - 六套包内 CSS 与 `image/` 目录指纹两两不同（`p15-style-switch-contract` 第 5 节，已进套件）。
 
-所以「所有样式几乎一样」不是搬运错了内容。当时列了两种可能（包没注册 / 比较场景看不到差异），**两条都被探针否定了**：`getInstallState` 六套全 `independent:true`，而 T4 暴露出第三种、也是真正的原因 —— boot 期样式读数回落默认套（见§四「boot 期样式读数缺陷」小节，已修）。
+所以「所有样式几乎一样」不是搬运错了内容。当时列了两种可能（包没注册 / 比较场景看不到差异），**两条都被探针否定了**：`getInstallState` 六套全 `independent:true`，而探针 1 暴露出第三种、也是真正的原因 —— boot 期样式读数回落默认套（见§四「boot 期样式读数缺陷」小节，已修）。
 
-**T1 注册状态探针（先跑这条，它能一分为二）**：
+**5. 注册状态探针（探针 5，先跑这条，它能一分为二）**：
 `JSON.stringify(["decade","mobile","yjcm","online","baby","codename"].map(id=>[id, window.decadeUI?.moduleManager?.getInstallState?.(id) ?? "无API"]))`
 判据：六项都应 `independent:true` 且 `version:"1.4.2"`。若全 `false` ⇒ 走①，去查 `registerInstalledModules` 为什么没成功（控制台会有一行 `[十周年UI-Stars] 注册模块失败：…`）。
 
-**T5 对局内计算样式指纹（进一局再跑，用来客观回答"两套真的一样吗"）**：
+**6. 对局内计算样式指纹（探针 6，进一局再跑，用来客观回答"两套真的一样吗"）**：
 `JSON.stringify([...document.querySelectorAll("#arena .player")].slice(0,2).map(p=>{var s=getComputedStyle(p);return [p.className, s.width, s.height, s.borderImageSource.slice(0,60), s.backgroundImage.slice(0,60)]}))`
-判据：不同套的 width/边框/背景图应不同。若 T2 有 6 条 CSS 而 T5 六套完全相同 ⇒ 才是真的选择器没命中（搬运/改写问题），届时按这条开新一轮排查。
+判据：不同套的 width/边框/背景图应不同。若探针 2 有 6 条 CSS 而探针 6 六套完全相同 ⇒ 才是真的选择器没命中（搬运/改写问题），届时按这条开新一轮排查。
 
 **逐套该看到什么**：
 
@@ -780,12 +785,7 @@
 | 欢乐三国杀 | `babysha` / Alt+5 | 玩家框与技能按钮；死亡特效取 `image/styles/baby/dead3_*.png`（**扩展根**，卸掉样式包也不该坏） |
 | 名将杀 | `codename` / Alt+6 | 玩家框；死亡特效 `image/styles/codename/dead_*.png` |
 
-> 六套 CSS 与图片内容互不相同这点已在 Node 里按文件指纹核过（`p15-style-switch-contract` 第 5 节）。所以目测仍"两套一模一样"时，请按探针 2/3 取证据 —— 那是**没加载或加载错**，不是包重复。
-| S-2 | online 卸载（更正后的判据） | 先切到别的样式 → 模块管理里卸载 online → 重载 | 台账无 `online` 行、`modules/online/` 目录清空、无 `.removing-*` 残留；`getModuleRel("online")` 为空串 ⇒ **该样式一条 CSS 都不加载**（不是"退回旧版"）；Core 其余功能正常。**不要拿 capability 当判据**（重启后内置声明会把它变回真） |
-| S-3 | card-skin 卸载（双根） | 模块管理里卸载 card-skin → 重载 | 内置五套在下拉里消失/置灰且卡面走本体默认；**玩家自己丢进 `image/card-skins/` 的文件夹必须仍然可用**；再装回来两套都能出图 |
-| S-4 | 手机布局与横屏 | 手机（或 `phonelayout` 开 + 横竖屏各一次）打开模块管理与更新提示窗 | 三处 `overflow-y:auto` 列表能滚到底（触摸滚动）、按钮不被裁切、短屏不溢出、横屏不串版 |
-| S-5 | Android / SAF | Android 上装/卸/回退各一次，并中途杀进程再启 | 不写坏台账（读坏会拒覆盖）、非原子发布的中断能被下一次启动纠正、UI 如实提示"本平台发布非原子" |
-| S-6 | 联网分支（依赖 P10） | 等正式 Release 建好、9 项资产传上去后，把模块源地址填成真实 `…/releases/download/<tag>/module-index.json` → 重载 | 模块管理列出可安装/可更新项、下载与 SHA 校验通过、客户端能装上。**当前不能验，也不许写成已验** |
+> 六套 CSS 与图片内容互不相同这点已在 Node 里按文件指纹核过（`p15-style-switch-contract` 第 5 节）。所以目测仍"两套一模一样"时，请按探针 2／3 取证据 —— 那是**没加载或加载错**，不是包重复。
 
 ### P13 部分（旧版本迁移，必须在游戏内验）
 
