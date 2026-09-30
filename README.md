@@ -2769,6 +2769,7 @@ P0 审计
 - **产物**：整包 `十周年UI-Stars-1.5.0-full.zip` 3596 文件 / 112,113,655 字节 / sha256 `f54917a49f05…`，索引 2510 字节 / `bbefc7853d62…`，九项资产全在 `dist/release/RELEASE-NOTES.md`。门禁：25 套测试 ✓、`node --check` 230 文件 ✓、`pnpm build` + `verify:release` exit=0 ✓、verify-pack 881/17/0 ✓、check-skin-imports 37/0 ✓
 - **CI 自动打包迁入**（照上游两套工作流改造）：`build.yml` 在 push main 时跑完五道门禁再构建，并把部署形态的 `dist/` 推到孤儿分支 `build-output`；`manual-package.yml` 支持手动触发与 issue 评论 `/package`，把 `dist/release/` 的 9 项资产 + 说明文件作为**工作流 artifact** 上传，sha256 清单与模块源地址写进运行摘要。与原版两处刻意不同：原版构建前不跑测试，这里 `check:syntax`/`test`/`verify:pack`/`verify:skins` 全排在构建前且与本地同一批脚本；`dist/release/` 不进分支，**CI 也不建 Release、不碰已发布版本**
 - 配套新增 `scripts/run-tests.mjs`（25 套一次跑完）与 `scripts/check-syntax.mjs`（232 文件 `node --check`），`package.json` 补 `test`/`check:syntax`/`verify:pack`/`verify:skins` 四条入口；工作流里的 shell 步骤已在本机 Git Bash 逐条跑通（sha 与 `RELEASE-NOTES.md` 一字不差），但 **Actions 首次真实运行仍待验** —— 分支部署那段本机没法执行
+- **Actions 首跑就抓出一处真缺陷（同日修）**：三次运行全在 `Install dependencies` 步 11~20 秒失败，`ERR_PNPM_BAD_PACKAGE_JSON ... Invalid name: "@noname-extension/十周年UI-Stars"` —— `package.json` 的 `name` 带中文，npm 名称规则不允许，本机 pnpm 11.7.0 容忍、CI 解析到的 **11.28.3** 硬拒。扩展显示名来自 `info.json`，这个 `name` 全仓无人消费，故改为 ASCII `@noname-extension/decadeui-stars`。验证是双向的：用与 CI 同一个 pnpm 11.28.3 在临时夹具里跑 `install --frozen-lockfile`，中文名复现出与 CI 一字不差的错误、ASCII 名 `Done in 968ms` 通过。改完本机门禁复跑全绿，**整包 sha 未变**（`package.json` 不进整包），之前那份 9 项资产清单仍然有效
 - **未做**：推送与建 Release（`gh` 未登录；推送按惯例归用户）、Actions 首跑、Android/SAF 真机、§八 其余待验项
 
 ## v1.27（2026-09-30）技能按钮点不动：动态 import 吃不下相对形态的 decadeUIPath
