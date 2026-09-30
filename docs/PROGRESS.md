@@ -89,6 +89,8 @@
 | 修复 | `src/core/resourceLoader.js` 新增 `getModuleUrl(moduleId, path)`：拿 `getAsset` 的原串按 `document.baseURI`（回落 `location.href`）解析成绝对 URL，两者都拿不到时退回原串——**与 `<link href>` 同一套解析规则**，不引入新失败模式。三处皮肤装载的**包分支**改用它；未安装分支仍是 `./${skinName}.js` 不动。`getAsset` 语义一字未改（CSS/图片/脚本仍走相对解析） |
 | 用例 | `tests/p16-pack-skin-import-url.test.mjs`：①拿相对基址直接 `import()` 必须抛（复现现场）；②`getModuleUrl` 给带协议的绝对 URL 且**真能 import 到磁盘上的皮肤模块**（断言拿到 `createXinshaSkillPlugin/LbtnPlugin/CharacterPlugin` 三个导出）；③基址已是绝对地址时不二次加工、无基址时退回原串；④静态不变量：三处包分支必须是 `getModuleUrl`、不得残留 `getAsset(...)` 直接喂 import、未安装分支仍是 `./`。RED→GREEN 均验；反向把 lbtn 换回 `getAsset` → 红在「ui/lbtn/skins/index.js 的包分支必须改用 getModuleUrl」 |
 | 门禁缺口 | `check-skin-imports`/`verify-pack` 查的是**包内文件自己的相对 import 深度**，查不到「外层动态 import 的说明符是不是合法 ES 说明符」这一层。本用例把这条钉进门禁（套件 24 → 25） |
+| 同源的另一条 | 用户同一批回报「**没看到有礼物条、聊天，所有样式都缺失**」——不是第二个缺陷：赠礼按钮由 online 的 **lbtn 皮肤**创建（`modules/online/1.4.2/ui/lbtn/skins/online.js` 里 `gift` 出现 23 处），聊天条由移动版 lbtn 皮肤调 `initChatSystem`（`modules/mobile/1.4.2/ui/lbtn/skins/shousha.js:382` → `ui/lbtn/chatSystem.js:275`）。lbtn 插件缺席 ⇒ 两块界面自然都不在。同一次修复应一起回来，**复验时一并看** |
+| 目测层已确认的 | 用户回报：①等阶边框档位切档正常；③baby/codename 死亡后武将牌上的死亡字样按套有别（在扩展根，未受本缺陷影响）；④Android 留到项目收尾 |
 | 待真机复核 | 整程序退出重开后跑 §八 S-7 探针 1：`Object.keys(window.app.pluginsMap)` **必须含 `lbtn` 与 `skill`**（修复前不含），再进一局点技能按钮确认可发动。若探针 1 修复后仍缺插件，说明还有第二个成因（探针 3 的 `touchscreen` 与点击时的控制台红字是下一步分叉点） |
 ### boot 期样式读数缺陷：六套全渲染成十周年套（`2026-09-30` 修复）
 
