@@ -2738,7 +2738,7 @@ P0 审计
 - **「使用中的样式不许卸」我写成了"点一下会弹红字"，错层了**：真实行为是 UI 侧直接把那行的「卸载」按钮置灰并给 `title` 理由（`moduleAdmin.js:214` → `moduleManagerWindow.js:210`），安装器那条 `IN_USE` 报错只是第二道防线、只有走 API/force 才碰得到。截图里 Online 标着「当前使用」、卸载键是灰的 —— 判据按代码更正回表格
 - **卸载 → 重装整链通过**：切走样式后卸载，`modules/baby/1.4.2/` 清空、台账 `baby` 行消失、Core 其余功能不受影响；再从在线索引重装，台账 `baby = {version:"1.4.4", sha256:"e9d784…", hashVerified:true}` 且**没有** `previousVersion`（卸载清掉的不该凭空回来），`tmp/modules/` 无残留。跑完我把盘还原到出厂态并复验 `verify:release` exit=0（27 文件一字不差）
 - **游戏模式**：身份 / 国战 / 斗地主 各进一次，无红字、按钮不双份、切模式不残留上一模式的 hook；**排除模式**（自走棋 / 塔防 / 炉石类）UI 不装载、不报错 —— 这两块把§51「游戏模式」类目的真机项清掉了三条
-- **六套切换的视觉目测：我给的步骤漏了一步，所以那一眼的结论不作数**。`styleRuntime.js:147-156` 明写「切换样式仅写配置并提示需要重启」（`reloadRequired:true`），不重载看到的还是启动那套 —— 这正好解释用户报的「前几套看着像共用一个样式」。已用文件指纹排除掉另一种猜测：**包内容没有重复**，五套的 `player.css` / `styles/{character,lbtn,skill}.css` sha 两两不同，`image/` 目录指纹也各不相同（decade 13 张 / yjcm 24 / codename 17 / online 5 / mobile 0 张纯 CSS）。复测口径写进矩阵该行：切一套 → 重载 → 看，六次
+- **六套切换的视觉目测：那一眼的结论不作数，而我当时给的解释也是错的**。`styleRuntime.js:147-156` 的「切换只写配置并回 `reloadRequired:true`」只描述 **API 路径** —— 界面走的 `onNewDecadeStyleClick`（`appearance-handlers.js:33-41`）与 Alt+1~6（`styleHotkeys.js:29-36`）**都会 `saveConfig` 之后 `game.reload()`**，从菜单切样式本来就会自动重启；而 `styleRuntime.activate()` 在 `src/` 里**没有任何调用者**。所以「前几套看着像共用一个样式」当时并没有被解释，得靠量「文档里到底加载了哪几份 CSS」来判（探针与逐套清单见§八 S-1）。已排除的一种猜测：**包内容没有重复** —— 六套的 `player.css` 与 `styles/{character,lbtn,skill,lbtn-window,skill-window}.css` 摘要两两不同，`image/` 目录指纹也各不相同（decade 13 张 / yjcm 24 / codename 17 / online 5 / mobile 0 张纯 CSS）
 - 按用户决定：`.gitattributes` **不加**（不影响日常开发功能），所以分包 zip 的 sha 仍会随行尾模式浮动，上传一律以当次 `RELEASE-NOTES.md` 的 9 项为准；**手机布局与横屏**、**联网分支**（要等 P10 的 Release 建好才有真实索引地址可验）、Android/SAF 三条本机不可验项，全部留在§八收尾清单
 - 门禁：**十八套**测试 ✓；矩阵 35 → 36 行（新增「卸载前置检查 → 卸载 → 重装」真机一条），三条游戏模式转 `已验`；`online` 与 `card-skin` 的卸载行**没有**跟着转通过 —— 它们的判据各带一条自己的特殊条款（两个能力同时不可用 / 双根行为不同），代理验证不算数，如实留在待验。下一步：P10 建 Release 与传资产（用户动作），之后回来补联网那条
 
@@ -2746,7 +2746,7 @@ P0 审计
 
 用户下达的收尾清单里有六项。本轮的原则是：**有证据才动代码，没证据就只补测试与文档**；结果是没有发现需要改的生产代码 —— `src/` 零改动，套件从 18 涨到 23。
 
-- **六套样式切换：确认不是缺陷，是我的验收口径缺了一步**。`styleRuntime.activate()` 按任务书§16 只写配置并回 `reloadRequired:true`，所以"切了没变化"是设计。新增 `tests/p15-style-switch-contract.test.mjs` 把这件事钉住（切换只发生一次配置写入、不许碰注册表、未知 id 与只读环境都如实被拒），并顺手核对六套映射与内置注册不漂移、六套资源根各自解析到已装版本、`MIGRATED_STYLE_IDS` 齐全 —— 这个名单漏一套，那一套就会去加载不存在的单体 CSS。批 3 那句"前几套看着像共用一个样式"也一并量清了：六套的六个 CSS 文件与 image 目录**两两不同**（mobile 是 0 图纯 CSS 变体），不是包内容重复
+- **六套样式切换：测试钉的是 API 契约，不是界面行为**。新增 `tests/p15-style-switch-contract.test.mjs` 把这件事钉住（切换只发生一次配置写入、不许碰注册表、未知 id 与只读环境都如实被拒），并顺手核对六套映射与内置注册不漂移、六套资源根各自解析到已装版本、`MIGRATED_STYLE_IDS` 齐全 —— 这个名单漏一套，那一套就会去加载不存在的单体 CSS。**同一轮里我写的「批 3 那句『看着像共用一个样式』的根因是没重载」已作废**：`activate()` 在 `src/` 内零调用者，界面两条路径都会自动 reload，它说明不了玩家看到什么。六套 CSS 与 image 目录指纹两两不同（mobile 是 0 图纯 CSS 变体），「包内容重复」这一种猜测已排除
 - **online 的卸载判据是错的，不是没验**。原写「卸载后两个能力同时不可用」—— 读码发现这条**不可观测**：capability 取自注册表清单，卸载当下确实变假，但每次启动 `builtInModules.js:31` 会把 `online-chat/online-gift` 重新声明回来，重启后又是真，而此时该样式一条 CSS 都不加载。判据已按代码改成 independent / 资源根 / 台账 / 目录四项，并把这种「capability 报告 ≠ 包装着没」的脱钩直接钉成断言（防止以后有人拿它当卸载依据）
 - **card-skin 的双根补齐了自动化验证**：内置五套的根随包切换、玩家自建套的地址在装与卸两种状态下必须一字不变、不可用时 `buildSkinUrl` 返回空串（等价 off 走本体默认卡面）、回退目标不可用时不许回退、`getModuleRel("card-skin")` 在扫描里只许出现一处（防两处各算一份根）
 - **生产传输层此前零测试**。`xhrTransport` 是真正跑在下载链路里的那一层，而以前所有失败用例都注入在替身 transport 上。新增 `tests/p15-transport-and-spec-failures.test.mjs` 覆盖：状态码分档、200 空响应体、onerror、**超时与用户取消都走 abort 但必须分得开**、无 XHR 环境、send 直接抛、退避等待中途被取消、以及安装器侧的失败分类（`INVALID_SPEC` 四种形状、404 不重试、解压失败与 IO 抛错分档、摘要算不出来时宁可判失败）。最有说服力的一条反向验证：把 `onabort` 里的 `timedOut` 判别去掉，**只有新套件红、`p5-installer` 全绿**

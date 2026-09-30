@@ -492,6 +492,7 @@
 3. **15 个浮层 div 类裸 `transition`**（更新提示窗 4 个、模块管理窗口 11 个，清单由 `p15-overlay-css-invariants` 每次打印）。本体 `transition:all .5s` 对它们都生效，但"会不会真动起来"取决于插入后有无尺寸/位置变化 —— 已实测到的一例（`.decade-update-repair` 第一帧 height 0 再半秒滑开）当时补了 `transition:none`，其余**没有实测证据就不批量改**，留给真机目测决定。
 4. **三处 `overflow-y:auto` 滚动区未接本体的触摸滚动**（`module-manager-window.css:129/304`、`updateNotice.css:72`；正面例是 `welcomeDialog.js:258` 与本体 `create.js:128-133`）。桌面滚轮无碍，**手机上能否滚到底必须真机验**（§八 已列），不在代码层猜改。
 5. **Android 无 Node fs 时安装器是"部分可用"**：`moduleIo.js:130` 缺 fs 就整体落到 `game.*` 那套（`:218-254`）、`atomicRename:false`，台账提交有备份+回读+还原（`packageInstaller.js:306-370`），读坏走 `INSTALLED_CORRAPT` 拒覆盖 —— 目录发布仍非原子，UI 也如实提示。**未写坏台账**；但 `legacyWrite` 把 `Uint8Array` 交给 cordova `FileWriter.write`（只认 ArrayBuffer/Blob）这一条**无法在本机验证**，属真机风险。
+7. **`styleRuntime.activate()` 在 `src/` 内零调用者**（界面切样式走 `appearance-handlers.js:33-41` 与 `styleHotkeys.js:29-36`，两者都自己 `saveConfig` + `game.reload()`）。它带的 `reloadRequired` 只是 API 契约，`p15-style-switch-contract` 钉的就是这个契约 —— **不许再拿它解释「玩家切了没生效」**，我上一轮就是这么错的。要么以后让界面统一走它，要么保持现状，两者不能混着说。
 6. **两条现状被测试钉住而非修改**：`fetchIndex` 对"顶层是数组"的索引会放行（`typeof parsed === "object"` 判不住数组），下游取不到条目才失败；`resolveModuleUrl("../x.zip", …)` 会解析到同 host 的上级路径而不被拒（索引本身是信任根、绝对地址本来就允许，故不扩大能力）。将来收紧时这两条断言会红，逼着同步判据。
 
 ## 六、下一步
@@ -712,7 +713,7 @@
 | B3-3 | 重装（在线索引） | 台账 `baby={version:"1.4.4",sha256:"e9d784…",hashVerified:true}` 且**无** `previousVersion`；`tmp/modules/` 无残留；`getModuleBase("baby")` 以 `modules/baby/1.4.4/` 结尾 | ✅ 通过 |
 | B3-4 | 游戏模式 | 身份 / 国战 / 斗地主 各进一次：无红字、按钮不双份、切模式不残留上一模式的 hook | ✅ 通过 |
 | B3-5 | 排除模式 | 自走棋 / 塔防 / 炉石类：十周年 UI 不装载、不报错 | ✅ 通过 |
-| B3-6 | 六套切换的视觉目测 | **步骤要补一步**：`styleRuntime` 明写"切换仅写配置并提示重启"（`styleRuntime.js:147-156`，`reloadRequired:true`）⇒ 必须「切一套 → 重载 → 看」，否则看到的还是启动那套。已排除的另一半猜测：**包内容没有重复** —— 五套的 `player.css`/`styles/{character,lbtn,skill}.css` sha 两两不同，`image/` 目录指纹也各不相同（decade 13 / yjcm 24 / codename 17 / online 5 / mobile 0 张图纯 CSS） | ⏸ 移入项目收尾（用户同意）；复测口径见矩阵该行 |
+| B3-6 | 六套切换的视觉目测 | 那一眼不作数（没量到「文档里加载了哪几份 CSS」）。**当时写的「根因是没重载」已作废**：界面切样式走 `appearance-handlers.js:33-41` 与 `styleHotkeys.js:29-36`，两条都 `saveConfig` + `game.reload()`；`styleRuntime.activate()` 的 `reloadRequired` 只是 API 契约，`src/` 内零调用者。已排除的一种猜测：包内容没有重复（六套 CSS 与 image 目录指纹两两不同，mobile 0 图纯 CSS） | ⏸ 移入项目收尾（用户同意）；复测按§八 S-1 的三条探针 |
 | B3-7 | 手机布局与横屏 | 无溢出、不串版 | ⏸ 移入项目收尾（用户选做） |
 | B3-8 | 联网分支（§八 P9） | 真实 GitHub Release 地址解析索引 | ⛔ 依赖 P10 建好 Release 与上传资产，届后才能验 |
 
@@ -723,7 +724,35 @@
 
 | # | 目的 | 操作 | 判据 |
 |---|---|---|---|
-| S-1 | 六套逐套视觉目测 | **每切一套必须重载**（`styleRuntime.activate` 只写配置并回 `reloadRequired:true`，不重载看到的还是启动那套）：配置里选样式 → 重载 → 看；六套各来一遍 | 玩家框/手牌按钮/技能栏走包内根；`yjcm` 的边框档位、`online` 的聊天与赠礼位置正确；无叠印、无缺图、按钮不双份。探针：`JSON.stringify([window.decadeUI.style.id, window.decadeUI.style.skin, window.decadeUI.resource.getModuleRel(window.decadeUI.style.id)])` 应给出该套自己的 id/skin 与 `modules/<id>/1.4.2/` |
+| S-1 | 六套逐套视觉目测 | 配置 → 外观 → 整体外观 → 切换样式 → 选一套（**菜单自己会重启**：`onNewDecadeStyleClick` 里 `game.reload()`；电脑端也可 Alt+1~6）→ 重启后跑下面三条探针；六套各来一遍。别在对局中切（reload 会丢本局） | 见下方「S-1 探针」与「逐套该看到什么」两张表；核心判据是**文档里恰好只有该套的 6 份 CSS、且每份 `link.sheet` 都不为 null**，再目测玩家框/手牌按钮/技能栏/等阶边框/聊天赠礼位置 |
+
+**S-1 探针**（每套切换、游戏自动重启后各跑一次；四条都是单行单表达式，不依赖 `ui`/`lib` 全局是否可见）：
+
+1. **状态三值**
+   `JSON.stringify([document.body.dataset.style, document.querySelector('#arena')?.dataset.newDecadeStyle, document.querySelector('#arena')?.dataset.decadeLayout])`
+   判据：前两项都等于该套配置值（`on`/`off`/`othersOff`/`onlineUI`/`babysha`/`codename`）；第三项**只有移动版是 `"off"`**、其余五套是 `"on"`（名单在 `appearance-handlers.js:51-52`，与 `styleRuntime.js:38` 的 `DECADE_LAYOUT_STYLE_VALUES` 同口径）。
+2. **文档里到底加载了哪几份包 CSS**（这条是关键）
+   `JSON.stringify([...document.querySelectorAll('link[rel=stylesheet]')].map(l=>l.getAttribute('href')||'').filter(h=>h.includes('/modules/')))`
+   判据：必须**恰好**是该套 6 份 —— `player.css`、`styles/character.css`、`styles/lbtn.css`、`styles/skill.css`、`styles/lbtn-window.css`、`styles/skill-window.css`，前缀 `modules/<该套id>/1.4.2/`。**出现别套 id ⇒ 上一套残留；一条都没有 ⇒ 该套 CSS 根本没加载**（"看着像默认样式"的确切原因）。已知例外：开着 `phonelayout` 时 `decadeModule.js:131` 会刻意跳过两份 `-window.css`，条数应为 4。
+3. **这 6 份是否真加载成功**
+   `JSON.stringify([...document.querySelectorAll('link[rel=stylesheet]')].filter(l=>(l.getAttribute('href')||'').includes('/modules/')).map(l=>[l.getAttribute('href').split('/').slice(-2).join('/'), l.sheet?'OK':'未加载']))`
+   判据：每项都是 `"OK"`。出现 `"未加载"` 表示 `link.sheet === null`（CSS 请求失败），不必再靠眼睛判断像不像。
+4. **资源根与皮肤名（可选佐证）**
+   `JSON.stringify([window.decadeUI.style.id, window.decadeUI.style.skin, window.decadeUI.resource.getModuleRel(window.decadeUI.style.id)])`
+   判据：依次是该套 id、皮肤名（`shizhounian`/`shousha`/`xinsha`/`online`/`baby`/`codename`）、`modules/<id>/1.4.2/`。
+
+**逐套该看到什么**：
+
+| 套 | 配置值 / 快捷键 | 目测重点 |
+|---|---|---|
+| 十周年 | `on` / Alt+1 | 基准套：金框玩家框、手牌按钮、技能栏；`decadeLayout=on` |
+| 移动版 | `off` / Alt+2 | **唯一 `decadeLayout=off`** 的那套，布局明显不同、无叠印 |
+| 一将成名 | `othersOff` / Alt+3 | 红龙风格武将框；配置「等阶边框」一~五阶/随机改的是 `#arena[data-border-level]`（`appearance-handlers.js:113-126`），切档后边框档位要跟着变 |
+| online | `onlineUI` / Alt+4 | 聊天气泡 `.chat-bubble` 与赠礼按钮 `.gift/.giftbg/.giftcost…`（`modules/online/1.4.2/styles/lbtn.css`）位置正确、不溢出 |
+| 欢乐三国杀 | `babysha` / Alt+5 | 玩家框与技能按钮；死亡特效取 `image/styles/baby/dead3_*.png`（**扩展根**，卸掉样式包也不该坏） |
+| 名将杀 | `codename` / Alt+6 | 玩家框；死亡特效 `image/styles/codename/dead_*.png` |
+
+> 六套 CSS 与图片内容互不相同这点已在 Node 里按文件指纹核过（`p15-style-switch-contract` 第 5 节）。所以目测仍"两套一模一样"时，请按探针 2/3 取证据 —— 那是**没加载或加载错**，不是包重复。
 | S-2 | online 卸载（更正后的判据） | 先切到别的样式 → 模块管理里卸载 online → 重载 | 台账无 `online` 行、`modules/online/` 目录清空、无 `.removing-*` 残留；`getModuleRel("online")` 为空串 ⇒ **该样式一条 CSS 都不加载**（不是"退回旧版"）；Core 其余功能正常。**不要拿 capability 当判据**（重启后内置声明会把它变回真） |
 | S-3 | card-skin 卸载（双根） | 模块管理里卸载 card-skin → 重载 | 内置五套在下拉里消失/置灰且卡面走本体默认；**玩家自己丢进 `image/card-skins/` 的文件夹必须仍然可用**；再装回来两套都能出图 |
 | S-4 | 手机布局与横屏 | 手机（或 `phonelayout` 开 + 横竖屏各一次）打开模块管理与更新提示窗 | 三处 `overflow-y:auto` 列表能滚到底（触摸滚动）、按钮不被裁切、短屏不溢出、横屏不串版 |
