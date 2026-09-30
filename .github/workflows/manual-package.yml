@@ -91,6 +91,7 @@ jobs:
           node -e "const fs=require('fs');const n=fs.readdirSync('dist/release').length; if(n!==10){console.error('dist/release 应为 10 项（9 资产 + 说明），实际 '+n); process.exit(1)}"
 
       - name: Upload release assets
+        id: upload
         uses: actions/upload-artifact@v4
         with:
           name: decadeUi-Stars-${{ steps.version.outputs.version }}-release
@@ -99,9 +100,13 @@ jobs:
           compression-level: 0
 
       - name: Show package summary
+        env:
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
         run: |
           {
             echo "## 十周年UI-Stars ${{ steps.version.outputs.version }} 打包完成"
+            echo
+            echo "[下载 artifact：decadeUi-Stars-${{ steps.version.outputs.version }}-release](${ARTIFACT_URL})（需登录；解包即 \`dist/release/\` 原样 10 个文件）"
             echo
             echo "产物为**工作流 artifact**（未创建 Release）。下载后逐项核对 sha256 再上传到 Release。"
             echo
