@@ -39,6 +39,7 @@
 | 样式 | 六套样式包文件与引用可达、无未知缺失 | 静态 | 我 | 已做 |
 | 样式 | 分包数量守恒（含 card-skin 五套逐套核对） | 静态 | 我 | 已做 |
 | 样式 | 六套逐个切换：`style.id/skin/config` 三值一致 + 能力查询正确（border-style / online-chat / online-gift） | 真机 | 用户 | 已验 |
+| 模块 | 修复后真机复核：`pluginsMap` 含 `lbtn`/`skill`，三处皮肤模块动态 import 全 fulfilled 且拿到导出名（§八 S-7 探针 1/2） | 真机 | 用户 | 已验 |
 | 模块 | 包内皮肤 JS 的动态 import 说明符必须可解析（相对 `decadeUIPath` 要按文档基址转绝对 URL），三处包分支不得回退成裸串 | Node | 我 | 已做 |
 | 样式 | boot 读数修复后的 CSS 层复核：状态读数一致 + 本套 6 份 CSS 全 `link.sheet` OK + 资源根/皮肤名各自正确 + 对局内计算样式指纹按套不同（§八 S-1 探针 1~6） | 真机 | 用户 | 已验 |
 | 样式 | 六套逐个切换后的**视觉目测**（玩家框、边框档位、聊天/赠礼位置）——CSS 加载层已由上条探针确认，这里只剩**目测项本身**未取（`styleRuntime` 的切换只写配置并回 `reloadRequired:true`，界面两条路径都 `game.reload()`） | 真机 | 用户 | 待办 |
