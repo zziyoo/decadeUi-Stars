@@ -367,16 +367,10 @@ export function hideModuleManager() {
 	}
 }
 
-/** 接线：公开 API + 快捷键（Ctrl+Shift+M），与配置窗口（Ctrl+Shift+C）同风格 */
+/** 接线：公开 API。入口是配置窗口里的「模块管理界面 → 打开」按钮（Stars 不自绘快捷键） */
 export function setupModuleManagerWindow() {
 	if (window.decadeUI) {
 		window.decadeUI.showModuleManager = showModuleManager;
 		window.decadeUI.hideModuleManager = hideModuleManager;
 	}
-	document.addEventListener("keydown", event => {
-		if (event.ctrlKey && event.shiftKey && String(event.key).toLowerCase() === "m") {
-			event.preventDefault();
-			showModuleManager();
-		}
-	});
 }
