@@ -2766,4 +2766,5 @@ P0 审计
 - **最小修复**：`styleRuntime` 加 `bindStyleConfigReader(fn)`，读数顺序改为「绑定的取值器 → `window.lib` 兜底 → undefined」；`precontent.js` 在 `initDecadeModule()` 之前绑 `key => lib.config[key]`。配置键仍只在 `getStyleConfigKey()` 一处拼接，38 处历史读取点语义不变
 - **用例先行**：`tests/p15-boot-style-reader.test.mjs` 先 RED（复现「没 window.lib 就读不到」的现场）再 GREEN；含静态不变量「绑定必须早于 `initDecadeModule()`」；反向把顺序改成 window.lib 优先 → 红在「绑定过就不许再被 window.lib 覆盖」。套件 23 → **24 套**全绿，`pnpm build` + `verify:release` exit=0（整包 sha `4d163de06eab…`，7 个分包与索引未变）
 - **回改旧账**：`yjcm.md` 与 `online.md` 的「启用」行原记真机通过（判据分别是边框档位、聊天条与赠礼位置），但当时那两套 CSS 根本没加载，证据只到状态三值 ⇒ **降级为待验**并注明原因；`decade.md` 恰是默认套（加载对了）保留通过，但补一句证据层级。修复后需按 §八 S-1 重跑六套目测 —— 移动版与一将成名应当立刻看得出不同（就像用户给的原版对比图那样）
+- **真机复核（2026-09-30）**：用户回报「探针 5 正确」→「探针全部正确」，§八 S-1 六条判据在真机全部成立 —— 注册状态、boot/arena 两处读数一致、文档里恰好是本套 6 份 CSS 且每条 `link.sheet` 都 OK、资源根与皮肤名各自正确、对局内计算样式指纹按套不同。移动版与一将成名不再与十周年套同脸，这条自 P3 起的缺陷闭环；矩阵新增一行「boot 读数修复后的 CSS 层复核 = 已验」，yjcm/online 两行仍留「待验」，卡着的只是边框档位与聊天/赠礼位置的**目测**本身
 - 教训入档：判据必须落在**可观测**的东西上。批1 我用 `styleRuntime.id/skin/config` 三值当「样式切换正确」的证据，那是状态层读数，恰好是缺陷掩盖不了的一层，于是它绿着而界面是错的。CSS 层要用 `link[href]` + `link.sheet` + 计算样式指纹，这套探针已写进 §八 S-1
