@@ -732,14 +732,30 @@
    `JSON.stringify([document.body.dataset.style, document.querySelector('#arena')?.dataset.newDecadeStyle, document.querySelector('#arena')?.dataset.decadeLayout])`
    判据：前两项都等于该套配置值（`on`/`off`/`othersOff`/`onlineUI`/`babysha`/`codename`）；第三项**只有移动版是 `"off"`**、其余五套是 `"on"`（名单在 `appearance-handlers.js:51-52`，与 `styleRuntime.js:38` 的 `DECADE_LAYOUT_STYLE_VALUES` 同口径）。
 2. **文档里到底加载了哪几份包 CSS**（这条是关键）
-   `JSON.stringify([...document.querySelectorAll('link[rel=stylesheet]')].map(l=>l.getAttribute('href')||'').filter(h=>h.includes('/modules/')))`
+   `JSON.stringify([...document.querySelectorAll('link[rel=stylesheet]')].map(l=>l.getAttribute('href') ?? '').filter(h=>h.indexOf('/modules/')>=0))`
    判据：必须**恰好**是该套 6 份 —— `player.css`、`styles/character.css`、`styles/lbtn.css`、`styles/skill.css`、`styles/lbtn-window.css`、`styles/skill-window.css`，前缀 `modules/<该套id>/1.4.2/`。**出现别套 id ⇒ 上一套残留；一条都没有 ⇒ 该套 CSS 根本没加载**（"看着像默认样式"的确切原因）。已知例外：开着 `phonelayout` 时 `decadeModule.js:131` 会刻意跳过两份 `-window.css`，条数应为 4。
 3. **这 6 份是否真加载成功**
-   `JSON.stringify([...document.querySelectorAll('link[rel=stylesheet]')].filter(l=>(l.getAttribute('href')||'').includes('/modules/')).map(l=>[l.getAttribute('href').split('/').slice(-2).join('/'), l.sheet?'OK':'未加载']))`
+   `JSON.stringify([...document.querySelectorAll('link[rel=stylesheet]')].filter(l=>(l.getAttribute('href') ?? '').indexOf('/modules/')>=0).map(l=>[l.getAttribute('href').split('/').slice(-2).join('/'), l.sheet?'OK':'未加载']))`
    判据：每项都是 `"OK"`。出现 `"未加载"` 表示 `link.sheet === null`（CSS 请求失败），不必再靠眼睛判断像不像。
 4. **资源根与皮肤名（可选佐证）**
    `JSON.stringify([window.decadeUI.style.id, window.decadeUI.style.skin, window.decadeUI.resource.getModuleRel(window.decadeUI.style.id)])`
    判据：依次是该套 id、皮肤名（`shizhounian`/`shousha`/`xinsha`/`online`/`baby`/`codename`）、`modules/<id>/1.4.2/`。
+
+**内容层取证（2026-09-30，Node 里做的，不需要真机）**：把每套包内 6 份 CSS 与**原版十周年UI** 的对应单体文件逐行比对（只把 `url(...)` 的路径归一化为文件名），结论是——
+
+- 六套的 `player.css` 与各自 `playerN.css`（原版 42758/33001/50122/37822/38799/36576 字节）逐行一致，唯一差异是原版那句 `@import "animation.css"` 被搬到 Core 统一加载（`decadeModule.js` 里 `this.css(CORE, "src/styles/animation.css")`）；
+- `styles/{character,lbtn,skill,lbtn-window,skill-window}.css` 同样与各自原版一致，差异只有新增的说明注释；**没有任何一份等于别套的原版文件**（跨套串内容这条已排除）；
+- 六套包内 CSS 与 `image/` 目录指纹两两不同（`p15-style-switch-contract` 第 5 节，已进套件）。
+
+所以「所有样式几乎一样」不是搬运错了内容，只剩两种可能，靠上面的探针分辨：**①包压根没注册成功**（`getInstallState(...).independent` 全为 `false` ⇒ 一套包 CSS 都不会加载，只剩 Core 默认外观，六套自然一样）；**②比较的场景看不到差异**（这些 CSS 选择器打的是对局内的 `#arena .player` / 手牌按钮 / 技能栏，在菜单与选将界面本来就没多少差别）。
+
+**T1 注册状态探针（先跑这条，它能一分为二）**：
+`JSON.stringify(["decade","mobile","yjcm","online","baby","codename"].map(id=>[id, window.decadeUI?.moduleManager?.getInstallState?.(id) ?? "无API"]))`
+判据：六项都应 `independent:true` 且 `version:"1.4.2"`。若全 `false` ⇒ 走①，去查 `registerInstalledModules` 为什么没成功（控制台会有一行 `[十周年UI-Stars] 注册模块失败：…`）。
+
+**T5 对局内计算样式指纹（进一局再跑，用来客观回答"两套真的一样吗"）**：
+`JSON.stringify([...document.querySelectorAll("#arena .player")].slice(0,2).map(p=>{var s=getComputedStyle(p);return [p.className, s.width, s.height, s.borderImageSource.slice(0,60), s.backgroundImage.slice(0,60)]}))`
+判据：不同套的 width/边框/背景图应不同。若 T2 有 6 条 CSS 而 T5 六套完全相同 ⇒ 才是真的选择器没命中（搬运/改写问题），届时按这条开新一轮排查。
 
 **逐套该看到什么**：
 
