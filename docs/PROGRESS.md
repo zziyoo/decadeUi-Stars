@@ -79,6 +79,17 @@
 下一阶段：**P10 GitHub Release（任务书§47）**——发布结构 Core / Official Style Packs / Feature Packs / Full Package / module-index.json 与"下载链接必须可被客户端解析"。本轮产物已能直接作为上传物；建 Release、传资产、推 tag 由用户执行，我这侧只负责索引与解析正确。
 上一阶段 **P6 模块管理界面 —— ✅ 已验收通过（2026-09-27 用户游戏内实测：窗口可开、布局正常、"已独立安装 6"读取正确）**。P5（任务书§42 + §17/§18/§19/§11/§24/§20）已完成：`6c76534` + `f4a69ac` + `df2afea` + `29a69e3` + P6 实测暴露的 fs 锚点修复 `40149bf`；**P5/P6/P8 的 Android/SAF 真机实测并入§八收尾清单，不阻塞推进**。
 
+### 技能按钮点不动：包内皮肤 JS 的动态 import 说明符不可解析（2026-09-30 修复）
+
+| 项 | 内容 |
+|---|---|
+| 现象（真机） | 用户报「所有样式的技能按钮都不能点击确认发动技能」（截图：濒死提示只剩「取消」）。同时六套的 CSS 探针全绿（探针 2/3 恰好本套 6 份且 `link.sheet` 都 OK）——**界面画对了，行为层缺席** |
+| 取证（先证伪再定位） | ①点击链路 `ui/character/skins/base.js:431-445`（`.skillbutton` → `btn.func` → `ui.click.skillbutton`）与**原版逐行一致**，本体侧 `ui.click.skillbutton`（`noname/ui/click/index.js:4445`）、`HTMLDivElement.prototype.listen`（`noname/init/polyfill.js:208`）都在 ⇒ 不是这段搬坏；②`tmp/check-relative-imports.mjs` 扫 230 个 JS 的相对引用：包内 18 份皮肤 JS 上跳 6 层指向根 `ui/*/skins/base.js`、`gskillMixin.js`、`src/ui/skillButtonTooltip.js` **全部可解析**（`check-skin-imports` 也报 37/0）⇒ 不是深度算错；③全仓只有三处动态 `import()`，正是 lbtn/skill/character 三个 UI 插件的皮肤装载点 |
+| 根因 | 本体 `noname/util/index.js:2` 是 `const assetURL = "";`，于是 `window.decadeUIPath` 形如 `extension/十周年UI-Stars/`——**没有协议、也没有前导 `./`**（用户早前探针回过的基址正是这个形状）。`ui/{skill,lbtn,character}/skins/index.js` 把 `resourceLoader.getAsset()` 的返回串直接交给 `import()`：`<link href>`/`<script src>` 会按文档基址解析相对串（所以 CSS 全在），而 **ES module 的说明符解析不接受裸名**（浏览器 `Failed to resolve module specifier` / Node `ERR_MODULE_NOT_FOUND`）⇒ 抛错被那三个文件的 try/catch 吞掉并 `return null` ⇒ `src/content.js:131-139` 拿到 null 就什么都不注册 ⇒ 三个插件静默缺席。原版用的是 `./${skinName}.js`（模块自身相对路径），是合法说明符，所以同样的时机不出问题 |
+| 修复 | `src/core/resourceLoader.js` 新增 `getModuleUrl(moduleId, path)`：拿 `getAsset` 的原串按 `document.baseURI`（回落 `location.href`）解析成绝对 URL，两者都拿不到时退回原串——**与 `<link href>` 同一套解析规则**，不引入新失败模式。三处皮肤装载的**包分支**改用它；未安装分支仍是 `./${skinName}.js` 不动。`getAsset` 语义一字未改（CSS/图片/脚本仍走相对解析） |
+| 用例 | `tests/p16-pack-skin-import-url.test.mjs`：①拿相对基址直接 `import()` 必须抛（复现现场）；②`getModuleUrl` 给带协议的绝对 URL 且**真能 import 到磁盘上的皮肤模块**（断言拿到 `createXinshaSkillPlugin/LbtnPlugin/CharacterPlugin` 三个导出）；③基址已是绝对地址时不二次加工、无基址时退回原串；④静态不变量：三处包分支必须是 `getModuleUrl`、不得残留 `getAsset(...)` 直接喂 import、未安装分支仍是 `./`。RED→GREEN 均验；反向把 lbtn 换回 `getAsset` → 红在「ui/lbtn/skins/index.js 的包分支必须改用 getModuleUrl」 |
+| 门禁缺口 | `check-skin-imports`/`verify-pack` 查的是**包内文件自己的相对 import 深度**，查不到「外层动态 import 的说明符是不是合法 ES 说明符」这一层。本用例把这条钉进门禁（套件 24 → 25） |
+| 待真机复核 | 整程序退出重开后跑 §八 S-7 探针 1：`Object.keys(window.app.pluginsMap)` **必须含 `lbtn` 与 `skill`**（修复前不含），再进一局点技能按钮确认可发动。若探针 1 修复后仍缺插件，说明还有第二个成因（探针 3 的 `touchscreen` 与点击时的控制台红字是下一步分叉点） |
 ### boot 期样式读数缺陷：六套全渲染成十周年套（`2026-09-30` 修复）
 
 | 项 | 内容 |
@@ -437,6 +448,12 @@
 
 ## 五、已知问题与风险
 
+0. **【已修复，待真机复核】技能按钮点不动（2026-09-30 用户报，六套皆然）**——根因与修复见§四「技能按钮点不动：包内皮肤 JS 的动态 import 说明符不可解析」。现象：对局内点技能按钮无法确认发动技能（截图里濒死提示只剩「取消」）。已完成的静态取证（**未改任何代码**）：
+   - 点击链路 `ui/character/skins/base.js:431-445`（`.skillbutton` → `btn.func = lib.skill[name].clickable` → `btn.listen(ui.click.skillbutton)`）与**原版逐行一致**；本体侧 `ui.click.skillbutton`（`noname/ui/click/index.js:4445`）与 `HTMLDivElement.prototype.listen`（`noname/init/polyfill.js:208`）都在 ⇒ 这一条不是搬坏的；
+   - 三个 UI 插件（lbtn/skill/character）由 `src/content.js:112-143` 异步装载，皮肤模块走 `ui/*/skins/index.js` 里的**动态 import**，失败会被 catch 成 `[SkillSkin] 加载失败` 并返回 null ⇒ **插件静默缺席**，表现正是"点了没反应"；
+   - `tmp/check-relative-imports.mjs` 扫 212 个 JS 的相对引用：包内 18 份皮肤 JS 上跳 6 层指向根 `ui/*/skins/base.js`、`gskillMixin.js`、`src/ui/skillButtonTooltip.js`，**全部可解析**（唯一 MISSING 是 `moduleIo.js` 注释里提到的本体虚拟模块名，不是真引用）；
+   - 定案的正是①：本体 `assetURL` 为空串 ⇒ `decadeUIPath` 是相对串 ⇒ 动态 `import()` 按裸名解析失败 ⇒ 三个 UI 插件静默缺席。已修（`getModuleUrl` 按文档基址解析成绝对 URL）并进门禁用例；剩下的分叉只在真机——探针 1 若仍缺 `skill`/`lbtn`，再查②（点击处理器抛异常）。
+
 0. **【进行中】布局错乱与配置菜单缺失（已修复待验收）**。根因链（用户游戏内诊断实锤）：
    - Stars 的配置对象在 loadExtension 跨层传递时为空（菜单仅4项/0个update回调/`packConfigKeys=0`），而原版启用时为56项/20回调——**Stars 特有故障**；阶梯诊断实证配置模块在游戏运行环境中完整（config:52键），丢失发生在 boot 期对象跨层传递环节（深层机理待查，非本次范围）；
    - 配置对象为空 → 菜单 update 回调缺失 → `#arena` 的 `data-new-decade-style`/`data-right-layout` 永不写入 → 定位CSS（--w、右手布局等19+条规则）全部失效 → 布局回落本体默认（用户所见"错乱"；且Stars回落默认样式on=十周年金框，与用户原版常用的othersOff=一将成名红龙风格对比强烈）。
@@ -742,6 +759,7 @@
 | S-4 | 手机布局与横屏 | 手机（或 `phonelayout` 开 + 横竖屏各一次）打开模块管理与更新提示窗 | 三处 `overflow-y:auto` 列表能滚到底（触摸滚动）、按钮不被裁切、短屏不溢出、横屏不串版 |
 | S-5 | Android / SAF | Android 上装/卸/回退各一次，并中途杀进程再启 | 不写坏台账（读坏会拒覆盖）、非原子发布的中断能被下一次启动纠正、UI 如实提示"本平台发布非原子" |
 | S-6 | 联网分支（依赖 P10） | 等正式 Release 建好、9 项资产传上去后，把模块源地址填成真实 `…/releases/download/<tag>/module-index.json` → 重载 | 模块管理列出可安装/可更新项、下载与 SHA 校验通过、客户端能装上。**当前不能验，也不许写成已验** |
+| S-7 | 技能按钮点不动：修复后复核（2026-09-30 根因已修，见§四同名小节） | 进一局，让技能按钮出现（自己回合内），F12 控制台依次跑下面三条；然后**点一次技能按钮**，把控制台新出现的红字整段抄回 | 见本节末「S-7 三条探针」。**修复生效的硬判据是探针 1 的 `pluginsMap` 里含 `lbtn` 与 `skill`**（修复前必缺），随后点技能按钮应能确认发动 |
 
 **S-1 探针**（每套切换、游戏自动重启后各跑一次；六条都是单行单表达式，不依赖 `ui`/`lib` 全局是否可见。写法约束：粘进控制台前不折行，串与串之间只允许 ASCII 空格，不用裸 `||` 与换行——真机踩过被截断成 `SyntaxError`）：
 
@@ -786,6 +804,15 @@
 | 名将杀 | `codename` / Alt+6 | 玩家框；死亡特效 `image/styles/codename/dead_*.png` |
 
 > 六套 CSS 与图片内容互不相同这点已在 Node 里按文件指纹核过（`p15-style-switch-contract` 第 5 节）。所以目测仍"两套一模一样"时，请按探针 2／3 取证据 —— 那是**没加载或加载错**，不是包重复。
+
+**S-7 三条探针**（技能按钮点不动的定位；都是单行单表达式，第二条走 `console.log`，跑完等一下看打印）：
+
+1. `JSON.stringify(Object.keys(window.app?.pluginsMap ?? {}))`
+   判据：必须含 `lbtn` 与 `skill`（`character` 可被配置 `characterPlugin` 关掉，缺它不算异常）。**缺 `skill`/`lbtn` ⇒ 皮肤模块的动态 import 失败、插件静默缺席**（catch 见 `ui/skill/skins/index.js:41`），这就是"点了没反应"的直接成因，再看第 2 条报什么。
+2. `Promise.allSettled(["skill","lbtn","character"].map(k=>import(window.decadeUIPath+"modules/"+window.decadeUI.style.id+"/1.4.2/ui/"+k+"/skins/"+window.decadeUI.style.skin+".js"))).then(r=>console.log(JSON.stringify(r.map(x=>[x.status, x.reason?.message ?? Object.keys(x.value)]))))`
+   判据：三项都 `fulfilled` 且第二项是导出名数组。任何 `rejected` 的 message 就是根因（404 / `Failed to resolve module specifier` / MIME 不符）。
+3. `JSON.stringify([window.decadeUI.style.id, window.decadeUI.style.skin, window.decadeUIPath, window.lib?.config?.touchscreen ?? "lib不可见"])`
+   判据：前两项是第 2 条拼路径用的当前套与皮肤名；`decadeUIPath` 必须是**带协议的绝对地址**（若是 `extension/...` 这种相对串，动态 `import()` 会按裸模块名直接失败，而 `<link>`/`<script>` 不会 —— 这正好解释"CSS 全在、插件却缺席"）；末项若为 `true`，按钮绑的是 `touchend` 而非 `click`（`ui/skill/skins/base.js:75`），是另一条独立成因。
 
 ### P13 部分（旧版本迁移，必须在游戏内验）
 

@@ -93,6 +93,30 @@ export function createResourceLoader({ getBasePath, moduleManager, getModuleBase
 			return `${getModuleBase(moduleId)}${path}`;
 		},
 
+		/**
+		 * 动态 import() 专用的绝对 URL。
+		 * 本体的 `lib.assetURL` 可以是空串（`noname/util/index.js:2`），于是 decadeUIPath
+		 * 形如 `extension/<name>/` —— `<link href>`/`<script src>` 会按文档基址解析它，
+		 * 但 ES module 的说明符解析不接受裸名，直接 import() 必抛。故动态 import 必须走这里。
+		 * 解析基址与 <link> 用的是同一个 document.baseURI（回落 location.href）；
+		 * 两者都拿不到时退回 getAsset 的原串，不引入新失败模式。
+		 * @param {string} moduleId - 模块ID
+		 * @param {string} path - 模块根目录下的相对路径
+		 * @returns {string} 绝对 URL，或无法解析时的原串
+		 */
+		getModuleUrl(moduleId, path) {
+			const raw = this.getAsset(moduleId, path);
+			const doc = typeof document !== "undefined" ? document : null;
+			const loc = typeof location !== "undefined" ? location : null;
+			const base = doc?.baseURI || loc?.href || "";
+			if (!base) return raw;
+			try {
+				return new URL(raw, base).href;
+			} catch {
+				return raw;
+			}
+		},
+
 		/** 加载模块JS脚本（复用loader.js版本缓存与去重；isAsync=true时fire-and-forget） */
 		loadJS(moduleId, path, isAsync = false) {
 			return createScriptElement(this.getAsset(moduleId, path), isAsync);

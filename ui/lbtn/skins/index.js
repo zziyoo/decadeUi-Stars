@@ -33,7 +33,7 @@ export async function createLbtnPluginForSkin(skinName, lib, game, ui, get, ai, 
 		const styleId = STYLE_TO_MODULE[readRawStyleValue() ?? DEFAULT_STYLE_VALUE] || "decade";
 		const { moduleManager, resourceLoader } = getModuleSystem();
 		const specifier = moduleManager.getInstallState(styleId).independent
-			? resourceLoader.getAsset(styleId, `ui/lbtn/skins/${skinName}.js`)
+			? resourceLoader.getModuleUrl(styleId, `ui/lbtn/skins/${skinName}.js`)
 			: `./${skinName}.js`;
 		const module = await import(/* @vite-ignore */ specifier);
 		const creator = module[`create${skinName.charAt(0).toUpperCase() + skinName.slice(1)}LbtnPlugin`];
