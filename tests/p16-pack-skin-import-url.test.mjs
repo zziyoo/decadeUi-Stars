@@ -19,15 +19,23 @@
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { createResourceLoader } from "../src/core/resourceLoader.js";
 
 /** 真机形状：lib.assetURL 为空串 ⇒ decadeUIPath 是相对串 */
 const PACK_VERSION = JSON.parse(fs.readFileSync("info.json", "utf8")).version;
-const REL_BASE = "extension/十周年UI-Stars/";
-/** 部署形状之一：lib.assetURL 非空（本地 HTTP 服务）⇒ decadeUIPath 已是绝对地址 */
-const ABS_BASE = "http://127.0.0.1:8192/extension/十周年UI-Stars/";
+
+/**
+ * 布局无关地复刻真机形状。`decadeUIPath` = 「从文档根到扩展目录」的相对串，
+ * 本机仓库恰好就是游戏加载目录（`resources/app/extension/十周年UI-Stars`），
+ * CI 的 checkout 在 `/home/runner/work/<repo>/<repo>` —— 所以文档根与相对串都必须
+ * 按当前仓库位置推出来，写死 "extension/十周年UI-Stars/" 会在别的布局上指到不存在的文件。
+ */
+const ROOT_URL = pathToFileURL(`${process.cwd()}/`).href;
+const DOC_BASE = new URL("../../", ROOT_URL).href; // 文档根 = 扩展目录的上两级
+const REL_BASE = ROOT_URL.slice(DOC_BASE.length);  // 形如 extension/十周年UI-Stars/
+/** 另一种部署形状：lib.assetURL 非空 ⇒ decadeUIPath 本身就是绝对地址 */
+const ABS_BASE = ROOT_URL;
 
 /** 六套都已独立安装（真机探针 5 的结论）：getModuleRel 走 modules/<id>/<version>/ */
 const installedManager = {
@@ -54,10 +62,10 @@ const absLoader = createResourceLoader({ getBasePath: () => ABS_BASE, moduleMana
 
 // -------------------------------------------------- 2. 修复契约：解析成绝对 URL 后真能 import
 {
-	// 文档基址：真机上页面在 `resources/app/`（扩展目录是它下面的 `extension/<name>/`），
-	// 所以 `extension/十周年UI-Stars/modules/...` 这种相对串按文档基址解析才对得上磁盘。
+	// 文档基址按当前仓库位置推出（见上面 DOC_BASE 的注释）：真机上页面在 `resources/app/`，
+	// 扩展目录是它下面的 `extension/<name>/`，所以相对串按文档基址解析才对得上磁盘。
 	// 这与 <link href> 用的是同一套解析规则 —— "CSS 能加载"就证明这个基址是对的。
-	globalThis.document.baseURI = pathToFileURL(path.join(process.cwd(), "..", "..", "index.html")).href;
+	globalThis.document.baseURI = DOC_BASE;
 	// 皮肤模块求值期会引用本体注入的全局（浏览器里由 extension.js 挂上）
 	globalThis.decadeUIPath = REL_BASE;
 	globalThis.decadeUIName = "十周年UI-Stars";
@@ -80,9 +88,8 @@ const absLoader = createResourceLoader({ getBasePath: () => ABS_BASE, moduleMana
 // -------------------------------------------------- 3. 已是绝对地址时不得二次加工
 {
 	const url = absLoader.getModuleUrl("yjcm", "ui/skill/skins/xinsha.js");
-	// new URL() 会把非 ASCII 段按百分号转义（与 <link href> 交给浏览器的最终请求同一套编码），
-	// 所以这里按解码后的形状比对，不锁死转义细节。
-	assert.equal(decodeURI(url), `${ABS_BASE}modules/yjcm/${PACK_VERSION}/ui/skill/skins/xinsha.js`);
+	// ABS_BASE 本身就是规范化的 file URL，绝对地址进 `new URL()` 原样出来，不该被二次加工。
+	assert.equal(url, `${ABS_BASE}modules/yjcm/${PACK_VERSION}/ui/skill/skins/xinsha.js`);
 	assert.ok(!url.includes("//modules"), "不该出现被拼坏的双斜杠路径");
 
 	// 无文档基址（Node 里没 DOM 的极端情形）时退回原串，不抛
