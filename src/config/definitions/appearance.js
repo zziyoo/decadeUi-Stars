@@ -33,6 +33,25 @@ export const newConfigWindow = {
 };
 
 /**
+ * 模块管理入口配置（Stars 独有）
+ *
+ * 走的是与「打开新版菜单」完全相同的机制：`clear: true` 的按钮项，由本体 `addOptions`
+ * 渲染进扩展设置页。为什么不能只挂在配置窗口里：手机上没有键盘（`Ctrl+Shift+C` 按不出来），
+ * 而模块管理是损坏包**唯一**的应用内自愈入口（文件管理器进不去 app 私有目录）。
+ * @type {Object}
+ */
+export const moduleManagerWindow = {
+	name: "打开模块管理界面",
+	intro: "查看已装样式与功能包，安装、更新、修复、卸载",
+	clear: true,
+	onclick() {
+		if (window.decadeUI?.showModuleManager) {
+			window.decadeUI.showModuleManager();
+		}
+	},
+};
+
+/**
  * 调试助手配置
  * @type {Object}
  */
@@ -179,6 +198,7 @@ export const outward_title_end = createCollapseEnd("outward_title");
 export const appearanceConfigs = {
 	extensionToggle,
 	newConfigWindow,
+	moduleManagerWindow,
 	eruda,
 	outward_title,
 	newDecadeStyle,

@@ -173,4 +173,21 @@ async function healthOf(installer, ids) {
 	);
 }
 
+// ---------------------------------------------------------------- 4. 入口可达性：本体扩展设置页里要有「打开模块管理界面」
+//
+// 手机上没有键盘（Ctrl+Shift+C 按不出来），而模块管理是损坏包唯一的应用内自愈通道 ——
+// 入口不能只藏在配置窗口里面。做法与原版一致：`clear:true` 的按钮项交给本体 addOptions 渲染。
+{
+	const { config } = await import("../src/config/index.js");
+	const entry = config.moduleManagerWindow;
+	assert.ok(entry, "本体扩展设置页里必须有打开模块管理的按钮项");
+	assert.equal(entry.clear, true, "按钮项不该往 lib.config 里写值");
+	assert.match(entry.name, /模块管理/);
+	const keys = Object.keys(config);
+	assert.equal(keys.indexOf("moduleManagerWindow"), keys.indexOf("newConfigWindow") + 1, "紧跟「打开新版菜单」，两个窗口在同一处");
+
+	const src = readFileSync(fileURLToPath(new URL("../src/config/definitions/appearance.js", import.meta.url)), "utf8");
+	assert.match(src, /window\.decadeUI\?\.showModuleManager/, "点击要走 decadeUI.showModuleManager（与配置窗口里那行同一个入口，不另起一套）");
+}
+
 console.log("p18-repair-wiring: OK（损坏→修复入口的端到端与接线都在）");
