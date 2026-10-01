@@ -2756,6 +2756,20 @@ P0 审计
 - **行尾那条被现实咬到了一次**：本轮重构建后 `baby-1.4.2.zip` 从 112085 → 112150 字节、`module-index.json` 与整包 sha 随之变化，而**内容一字未动** —— 起因是昨天为还原测试态跑过一次 `git checkout`，autocrlf 把包内 27 个文件 smudge 成 CRLF。连续两次构建仍然完全一致（确定性没问题），漂的是 checkout 之间。按用户决定仍不加 `.gitattributes`，所以上传以当次 `RELEASE-NOTES.md` 的 9 项 sha 为准（已重新生成并自验一致）
 - **仍待真机**（§八「P15 复测步骤」给了准确操作与判据）：六套逐套目测（每套必须重载）、online 与 card-skin 卸载、手机布局与横屏、Android/SAF、联网分支（要等 P10 的 Release 建好）。这些一律标"代码检查通过 / 真机待验"，不许算成已验
 
+## v1.30（2026-10-01）损坏看得见、修得了：目录搬运全等校验 + 应用内「修复」入口
+
+v1.29 修的是"写坏"这一刀。这一刀之后还剩三个洞：损坏**检测不到**、检测到了**没有入口**、而入口本身走的是**会把内容毁掉的目录搬运**。另外他手机上文件管理器看到的 `extension/` 是空的（app 私有目录，SAF 不暴露），所以"手工改台账再重装"这种恢复方案在 Android 上根本不成立 —— 应用内入口不是"更方便"，是**唯一**通道。
+
+- **D3 损坏判据**（`src/core/moduleHealth.js`）：`assessModule` 以前写 `if (manifest.id && ...)`，字段**整个缺失时判 ok** —— 而真机上那份坏清单恰好是合法 JSON 对象（`{"0":123,"1":34,...}`），所以它一路绿灯，启动自动回退也不触发。现在要求清单是**非数组对象**且 `id`/`version` 都在，缺失即 `corrupt`；`null`/数字/数组同样判损坏（`JSON.parse` 不抛错 ≠ 是清单）
+- **D2 目录搬运**（`src/core/moduleIo.js`）：`copyTree` 以前对读不到的条目 `if (buffer !== null)` 静默跳过，而 `movePath` 的目录分支复制完**不校验**就 `removeTree` 删源 —— 两个洞叠起来，一次"改名"就能永久销毁包内容（**文件**分支 `moveFileNonAtomic` 早就有读回校验，只有目录分支没有）。现在逐文件 读 → 写 → 读回 `sameBytes` 比对，子目录先建出来（空目录不再会在搬运中消失），任何不符立刻抛错，于是"删源"只可能发生在整棵树被确认之后
+- **D4 应用内「修复」**（`moduleAdmin.js` + `moduleManagerWindow.js` + `moduleSystem.js`）：`verifyInstalled` 一直能给出 `action:{kind:"restore"|"reinstall"}`，只是没人消费。`buildRows` 新增 `health` 入参：判损坏的行 ⇒ 徽标「已损坏（需修复）」+「修复」按钮（`restore` 走本地改名回退，**没配模块源也能点**；`reinstall` 走 `install(spec,{force:true})`，规格取**台账版本**而不是索引 latest —— 修复不是顺带升级），并把那一行必然被 `NOT_INDEPENDENT` 拒绝的「卸载」置灰、写明原因。窗口并发探测台账里的每个包（单包查失败只让那一行少个按钮，不许拖垮整窗），汇总行加「待修复 N」、提示行点名 id；启动文案改成"打开「模块管理」点该模块的「修复」"
+- **D5 撤销，不改代码**：卸载不涉解压能力，`uninstall` 只查 `!io` 是对的。它被立案是因为我把**探针的编排产物**当成了证据 —— `Promise.all([ready(), isAvailable()])` 里 `isAvailable()` 是同步快照，同一 tick 求值 ⇒ 必然读在异步探测之前，`ready:false` 不是缺陷。我差点为此立案"D6 探测成功却仍报不可用"并去修一个不存在的问题
+- **夹具单一来源**：p17 的 Android `game.*` 替身抽成 `tests/helpers/fake-android-game.mjs`（p17/p18 共用），并加三个故障注入：`hidden`（列得出来却 `checkFile` 说不是文件）、`truncateOnWrite`（半截落盘）、`failOnWrite`（回调 Error）。上一轮 p5 的夹具是"共犯"，这次不再让两个夹具各说各话
+- **门禁**：236 个 JS/mjs `node --check` ✓；**28 套**测试 ✓（新增 `p18-dir-move-verify`、`p18-repair-wiring`，p6 加 7 组 D4 用例含"不传 health 时逐字一致"的回归基线，p12 加 D3 三条；每条都先 RED 再 GREEN）；verify-pack 875/越界 6/已知死引用 17/未知缺失 0、check-skin-imports 37/0 ✓；`pnpm build` + `verify:release` exit=0 ✓
+- **仍待真机**（§八 S-8 已按上面的事实改写，并补了两条只读探针 A/B）：手机上覆盖装新 Core → 「修复」四个坏包 → `manifest.json` 回到 751 量级、七个包 `independent` 全 `true`、汇总行不再出现「待修复」。这三条同时是 D1/D2/D3/D4 的真机验收，Node 绿不算
+
+
+
 ## v1.29（2026-10-01）Android 上"卸载一次就把包内容写坏"：Cordova 桥把 typed array JSON 化了
 
 用户手机上卸载样式包后：报 `codename 未以独立包形式注册，拒绝删除`、样式像被删、又没有任何入口能装回来。五条探针把它钉成了**数据损坏**，不是状态错乱。
