@@ -97,17 +97,24 @@ export function createUpdateNotice(data, repairs = [], legacy = []) {
 	const list1 = Array.isArray(legacy) ? legacy.filter(Boolean) : [];
 	const hasLegacy = list1.length > 0;
 	const hasUpdates = Boolean(data?.updates?.length || data?.core?.behind);
+	// 标题不许替玩家下结论：`kind:"reinstall"` 那条**什么都没修**（只是查出来坏了），
+	// 以前一律写"已自动修复模块"，玩家看到会以为不用管了。
+	const repaired = list0.some(note => note.kind === "restored");
 	const overlay = el("decade-update-overlay", document.body);
 	const close = () => overlay.remove();
 
 	const dialog = el("decade-update-dialog", overlay);
 	const head = el("decade-update-head", dialog);
 	el("decade-update-title", head).textContent = hasUpdates
-		? (list0.length || hasLegacy ? "模块更新与自动修复" : "发现可更新的模块")
+		? list0.length || hasLegacy
+			? `模块更新与${repaired ? "自动修复" : "修复提示"}`
+			: "发现可更新的模块"
 		: list0.length && hasLegacy
 			? "模块修复与旧版本迁移"
 			: list0.length
-				? "已自动修复模块"
+				? repaired
+					? "已自动修复模块"
+					: "发现需要修复的模块"
 				: hasLegacy
 					? "旧版本迁移"
 					: "提示";
