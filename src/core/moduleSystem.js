@@ -169,7 +169,7 @@ export async function registerInstalledModules() {
 				to: null,
 				reasons: health.reasons,
 				registered: false,
-				message: `${id} 损坏且没有可用的上一版，需要重装（原因：${health.reasons.join("；")}）`,
+				message: `${id} 损坏且没有可用的上一版，需要重装：打开「模块管理」点该模块的「修复」（原因：${health.reasons.join("；")}）`,
 			});
 			console.warn(`[十周年UI-Stars] ${id} 损坏且无法回退，请重装：${health.reasons.join("；")}`);
 			continue;

@@ -98,6 +98,33 @@ function collectFeatureStates(api) {
 	return states;
 }
 
+/**
+ * 逐包健康检查（结构级四项，D4 的入口数据源）。
+ *
+ * 并发跑：手机上串行探测会把首屏拖成"每个包四次 IO × 包数"。任何一个包查失败（IO 抖动、
+ * 端口不可用、抛异常）都只让**那一行**没有修复按钮，不许拖垮整窗——列表仍可浏览是本窗的底线。
+ * @param {Object} installer - decadeUI.packageInstaller
+ * @param {string[]} ids - 台账里记着的模块 id
+ * @returns {Promise<Object>} `{ id: { status, reasons, action } }`
+ */
+async function collectHealth(installer, ids) {
+	if (typeof installer?.verifyInstalled !== "function") return {};
+	const results = await Promise.all(
+		ids.map(async id => {
+			try {
+				const verified = await installer.verifyInstalled(id);
+				if (!verified?.ok) return [id, null];
+				return [id, { status: verified.status, reasons: verified.reasons || [], action: verified.action || null }];
+			} catch {
+				return [id, null];
+			}
+		})
+	);
+	const health = {};
+	for (const [id, value] of results) if (value) health[id] = value;
+	return health;
+}
+
 /** 读取当前数据并整窗重绘 */
 async function refresh() {
 	if (!currentOverlay) return;
@@ -143,6 +170,7 @@ async function refresh() {
 	const installedResult = await installer.readInstalled();
 	const ledger = installedResult.ok ? installedResult.data.modules || {} : {};
 	if (!installedResult.ok) notes.push(`读取安装台账失败：${resultText(installedResult)}`);
+	const health = await collectHealth(installer, Object.keys(ledger));
 
 	const sourceUrl = String(lib.config[indexKey()] || "").trim();
 	let index = null;
@@ -171,10 +199,17 @@ async function refresh() {
 		coreVersion: api?.version ?? null,
 		featureStates: collectFeatureStates(api),
 		installBlocker,
+		health,
 	});
+	if (summary.corrupt) {
+		// 损坏行可能不在首屏，提示行里点名，否则玩家只会看到"卸不掉"
+		const ids = rows.filter(row => row.statusKind === "corrupt").map(row => row.id);
+		const lead = notes.length ? `${notes.join("；")}；` : "";
+		noteBox.textContent = `${lead}已损坏 ${summary.corrupt} 个（${ids.join("、")}）：点该行的「修复」`;
+	}
 	summaryBox.textContent = `共 ${summary.total} 个模块 · 已独立安装 ${summary.installed} · 可更新 ${summary.updatable} · 可安装 ${summary.installable}${
-		installBlocker ? " · 本平台不支持安装/卸载" : available.atomicRename ? "" : " · 本平台发布非原子（中断后请重做一次）"
-	}`;
+		summary.corrupt ? ` · 待修复 ${summary.corrupt}` : ""
+	}${installBlocker ? " · 本平台不支持安装/卸载" : available.atomicRename ? "" : " · 本平台发布非原子（中断后请重做一次）"}`;
 	renderRows(listBox, rows);
 	noticeBox.textContent = notice?.text || "";
 	noticeBox.className = `decade-module-notice${notice ? ` is-${notice.tone}` : ""}`;
@@ -183,7 +218,7 @@ async function refresh() {
 function badgeTone(statusKind) {
 	if (statusKind === "in_use") return "is-ok";
 	if (statusKind === "update_available") return "is-warn";
-	if (statusKind === "incompatible" || statusKind === "dep_missing") return "is-error";
+	if (statusKind === "incompatible" || statusKind === "dep_missing" || statusKind === "corrupt") return "is-error";
 	return "is-muted";
 }
 
@@ -292,6 +327,18 @@ async function runAction(row, action, rowEl) {
 			result = await installer.install(action.spec, { onProgress, signal: controller.signal, index: indexSnapshot, indexUrl: indexBaseUrl });
 		} else if (action.kind === "update") {
 			result = await installer.update(row.id, { spec: action.spec, onProgress, signal: controller.signal, index: indexSnapshot, indexUrl: indexBaseUrl });
+		} else if (action.kind === "repair") {
+			// restore 是本地改名回退到健康的上一版（不下载）；reinstall 按**台账版本**从模块源覆盖重装
+			result =
+				action.repairKind === "restore"
+					? await installer.rollback(row.id, action.version ? { version: action.version } : {})
+					: await installer.install(action.spec, {
+							force: true,
+							onProgress,
+							signal: controller.signal,
+							index: indexSnapshot,
+							indexUrl: indexBaseUrl,
+						});
 		} else {
 			result = await installer.uninstall(row.id, { onProgress });
 		}

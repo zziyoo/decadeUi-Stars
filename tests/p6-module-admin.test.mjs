@@ -229,7 +229,7 @@ assert.deepEqual(rows.map(item => item.id), ["core", "decade", "mobile", "online
 }
 
 // 汇总
-assert.deepEqual(summary, { total: 9, installed: 5, updatable: 1, installable: 1, inUse: 1 });
+assert.deepEqual(summary, { total: 9, installed: 5, updatable: 1, installable: 1, inUse: 1, corrupt: 0 }, "没有 health 输入时 corrupt 恒为 0");
 
 // ------------------------------------------------------------------ 无索引（离线）
 
@@ -243,7 +243,7 @@ assert.deepEqual(summary, { total: 9, installed: 5, updatable: 1, installable: 1
 	assert.equal(offlineDecade.actions[0].enabled, false, "使用中仍然不许卸载");
 	assert.equal(offline.rows.find(item => item.id === "yjcm").actions[0].enabled, false);
 	assert.match(offline.rows.find(item => item.id === "yjcm").actions[0].reason, /模块源/);
-	assert.deepEqual(summarize(offline.rows), { total: 9, installed: 5, updatable: 0, installable: 0, inUse: 1 });
+	assert.deepEqual(summarize(offline.rows), { total: 9, installed: 5, updatable: 0, installable: 0, inUse: 1, corrupt: 0 });
 }
 
 // ------------------------------------------------------------------ 缺省输入
@@ -251,8 +251,8 @@ assert.deepEqual(summary, { total: 9, installed: 5, updatable: 1, installable: 1
 {
 	const empty = buildRows({});
 	assert.deepEqual(empty.rows, []);
-	assert.deepEqual(empty.summary, { total: 0, installed: 0, updatable: 0, installable: 0, inUse: 0 });
-	assert.deepEqual(summarize([]), { total: 0, installed: 0, updatable: 0, installable: 0, inUse: 0 });
+	assert.deepEqual(empty.summary, { total: 0, installed: 0, updatable: 0, installable: 0, inUse: 0, corrupt: 0 });
+	assert.deepEqual(summarize([]), { total: 0, installed: 0, updatable: 0, installable: 0, inUse: 0, corrupt: 0 });
 }
 
 // ------------------------------------------------------------------ Feature 行（任务书§45/§16 启用·禁用）
@@ -300,7 +300,7 @@ const fRow = (result, id) => {
 	assert.equal(pack.actions[0].enabled, true);
 	assert.equal(pack.actions[0].spec.url, "https://test/card-skin-1.0.0.zip");
 
-	assert.deepEqual(result.summary, { total: 4, installed: 0, updatable: 0, installable: 1, inUse: 1 });
+	assert.deepEqual(result.summary, { total: 4, installed: 0, updatable: 0, installable: 1, inUse: 1, corrupt: 0 });
 }
 
 // 拆包型已装：卸载与禁用并存（两条通道互不替代）
@@ -495,6 +495,164 @@ const fRow = (result, id) => {
 {
 	const result = buildRows({ installed: {}, index: featureIndex, modules: featureModules, currentStyleId: null, coreVersion: "1.4.2", featureStates });
 	assert.equal(fRow(result, "card-skin").actions[0].enabled, true, "缺省（可用）时安装按钮照旧点亮");
+}
+
+// ------------------------------------------------------------------ 损坏行的修复入口（D4）
+//
+// 真机死锁（2026-10-01 Android）：包被写坏 → 启动注册不过 → 注册表里 `independent:false`，
+// 而台账仍写着"已安装"。于是行上是「卸载」，点下去被 `NOT_INDEPENDENT` 拒绝；
+// 「安装/更新」又因为 `isInstalled` 而不出现——删不掉也装不回，而他手机上的文件管理器
+// 根本进不去 app 私有目录，界面上没有第二条路。`verifyInstalled` 早就能给出
+// `action:{kind:"restore"|"reinstall"}`，只是没人消费它。
+
+const dLedger = {
+	decade: { version: "1.5.0" },
+	online: { version: "1.5.0", previousVersion: "1.4.2" },
+	baby: { version: "1.5.0" },
+	mobile: { version: "1.5.0" },
+};
+const dModules = [
+	{ id: "core", name: "核心", type: "core", version: "1.5.0", dependencies: [] },
+	{ id: "decade", name: "十周年样式", type: "style", version: "1.5.0", dependencies: ["core"] },
+	{ id: "online", name: "Online样式", type: "style", version: "1.5.0", dependencies: ["core"] },
+	{ id: "baby", name: "欢乐三国杀样式", type: "style", version: "1.5.0", dependencies: ["core"] },
+	{ id: "mobile", name: "移动版样式", type: "style", version: "1.5.0", dependencies: ["core"] },
+];
+const dIndex = {
+	schema: 1,
+	modules: {
+		decade: { latest: "1.5.0", url: "https://test/decade-1.5.0.zip", sha256: "c".repeat(64), size: 4096, core: ">=1.5.0" },
+		baby: { latest: "1.5.0", url: "", core: ">=1.5.0" },
+		online: { latest: "1.5.0", url: "https://test/online-1.5.0.zip", core: ">=1.5.0" },
+		mobile: { latest: "1.5.0", url: "https://test/mobile-1.5.0.zip", core: ">=1.5.0" },
+	},
+};
+const dRow = (result, id) => {
+	const found = result.rows.find(item => item.id === id);
+	assert.ok(found, `应存在 ${id} 行`);
+	return found;
+};
+const damaged = (kind, extra = {}) => ({ status: "corrupt", reasons: ["manifest.json 缺少 id 字段"], action: { kind }, ...extra });
+
+// 1) 损坏 + 有模块源 ⇒ 修复（重装）可点，规格取自索引；卸载置灰并指向修复
+{
+	const result = buildRows({
+		installed: dLedger,
+		index: dIndex,
+		modules: dModules,
+		coreVersion: "1.5.0",
+		health: { decade: damaged("reinstall") },
+	});
+	const row = dRow(result, "decade");
+	assert.equal(row.statusKind, "corrupt");
+	assert.match(row.statusText, /损坏/);
+	const repair = row.actions.find(action => action.kind === "repair");
+	assert.ok(repair, "损坏行必须给出修复入口，否则玩家只剩一个会被拒绝的卸载按钮");
+	assert.equal(repair.repairKind, "reinstall");
+	assert.equal(repair.enabled, true, `有下载地址就该能重装：${repair.reason}`);
+	assert.equal(repair.spec.url, "https://test/decade-1.5.0.zip");
+	assert.equal(repair.spec.expectedVersion, "1.5.0", "修复要装回台账记的那一版");
+	assert.equal(repair.spec.expectedSha256, "c".repeat(64));
+	const uninstall = row.actions.find(action => action.kind === "uninstall");
+	assert.equal(uninstall.enabled, false, "损坏行别让人先点那个必然失败的卸载");
+	assert.match(uninstall.reason, /损坏|修复/);
+}
+
+// 2) 台账版本与索引 latest 不同也不能装错版（重装按台账 version，不是 latest）
+{
+	const result = buildRows({
+		installed: { ...dLedger, mobile: { version: "1.4.9" } },
+		index: { schema: 1, modules: { mobile: { latest: "1.5.0", url: "https://test/mobile-1.5.0.zip", core: ">=1.5.0" } } },
+		modules: dModules,
+		coreVersion: "1.5.0",
+		health: { mobile: damaged("reinstall") },
+	});
+	const repair = dRow(result, "mobile").actions.find(action => action.kind === "repair");
+	assert.equal(repair.spec.expectedVersion, "1.4.9", "重装是修复当前台账记录，不是顺带升级");
+}
+
+// 3) 有健康的上一版 ⇒ restore（回退不下载，**没配模块源也能修**）
+{
+	const result = buildRows({
+		installed: dLedger,
+		index: null,
+		modules: dModules,
+		coreVersion: "1.5.0",
+		health: { online: damaged("restore", { action: { kind: "restore", version: "1.4.2" } }) },
+	});
+	const repair = dRow(result, "online").actions.find(action => action.kind === "repair");
+	assert.equal(repair.repairKind, "restore");
+	assert.equal(repair.enabled, true, `回退不联网，未配置模块源也必须能点：${repair.reason}`);
+	assert.equal(repair.version, "1.4.2");
+}
+
+// 4) 装不回的条件不成立 ⇒ 修复出现但置灰，理由写清楚
+{
+	const result = buildRows({
+		installed: dLedger,
+		index: dIndex,
+		modules: dModules,
+		coreVersion: "1.5.0",
+		health: { baby: damaged("reinstall"), mobile: damaged("reinstall") },
+	});
+	const noUrl = dRow(result, "baby").actions.find(action => action.kind === "repair");
+	assert.equal(noUrl.enabled, false, "索引里这个条目没有下载地址，不能让人点了才发现修不了");
+	assert.match(noUrl.reason, /下载地址|模块源/);
+	const offline = buildRows({
+		installed: dLedger,
+		index: null,
+		modules: dModules,
+		coreVersion: "1.5.0",
+		health: { mobile: damaged("reinstall") },
+	});
+	const off = dRow(offline, "mobile").actions.find(action => action.kind === "repair");
+	assert.equal(off.enabled, false);
+	assert.match(off.reason, /模块源/);
+}
+
+// 5) 平台剥夺安装能力 ⇒ 修复同样置灰（它要落盘）
+{
+	const result = buildRows({
+		installed: dLedger,
+		index: dIndex,
+		modules: dModules,
+		coreVersion: "1.5.0",
+		health: { decade: damaged("reinstall") },
+		installBlocker: "本平台不支持安装/卸载（缺少：文件系统端口）",
+	});
+	const repair = dRow(result, "decade").actions.find(action => action.kind === "repair");
+	assert.equal(repair.enabled, false, "没有文件端口时回退/重装都落不了盘");
+	assert.match(repair.reason, /文件系统端口/);
+}
+
+// 6) 没坏（health 缺失或 ok）⇒ 行与引入该参数之前逐字一致
+{
+	const without = buildRows({ installed: dLedger, index: dIndex, modules: dModules, coreVersion: "1.5.0" });
+	const withOk = buildRows({
+		installed: dLedger,
+		index: dIndex,
+		modules: dModules,
+		coreVersion: "1.5.0",
+		health: { decade: { status: "ok", reasons: [], action: null }, online: null },
+	});
+	assert.deepEqual(withOk.rows, without.rows, "健康检查说 ok（或没查成）时不许改动任何一行");
+	for (const id of ["decade", "online"]) {
+		assert.equal(dRow(without, id).actions.some(action => action.kind === "repair"), false);
+	}
+	assert.equal(dRow(without, "online").actions.find(a => a.kind === "uninstall").enabled, true, "正常行的卸载仍然可点");
+}
+
+// 7) 汇总把待修复的行数单独报出来（界面顶部一行字要能提示"有 N 个包需要修复"）
+{
+	const result = buildRows({
+		installed: dLedger,
+		index: dIndex,
+		modules: dModules,
+		coreVersion: "1.5.0",
+		health: { decade: damaged("reinstall"), online: damaged("restore") },
+	});
+	assert.equal(result.summary.corrupt, 2);
+	assert.equal(result.summary.installed, 4, "损坏不等于未安装，台账口径不变");
 }
 
 console.log("P6 module-admin tests: all passed ✓");

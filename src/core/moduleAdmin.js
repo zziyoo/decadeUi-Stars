@@ -103,6 +103,33 @@ function specFromEntry(id, entry) {
 }
 
 /**
+ * 损坏行的修复动作（D4，2026-10-01 Android 真机死锁）。
+ *
+ * `verifyInstalled` 早就给出 `action`，只是没人消费：包坏掉 ⇒ 启动注册失败 ⇒ 注册表里
+ * `independent:false`，而台账仍写"已安装" ⇒ 行上只有一个必然被 `NOT_INDEPENDENT` 拒绝的
+ * 卸载按钮，安装/更新又因为 `isInstalled` 不出现——删不掉也装不回。手机上文件管理器
+ * 进不去 app 私有目录，所以这个按钮是**唯一**恢复通道。
+ *
+ * 两种修法按健康检查的计划走：
+ *   - `restore`：上一版自己健康 ⇒ 本地改名回退，不下载、**不要求配置模块源**；
+ *   - `reinstall`：没有可用上一版 ⇒ 按**台账记的版本**（不是索引 latest）从模块源重装，
+ *     顺带升级会把"修复"变成另一件事。
+ */
+function repairAction(damage, id, entry, version, coreCheck) {
+	const plan = damage.action || {};
+	if (plan.kind === "restore") {
+		return { kind: "repair", label: "修复", repairKind: "restore", version: plan.version || null, enabled: true, reason: "", spec: null };
+	}
+	const blocker = !entry || !entry.url
+		? "未配置模块源，或模块源没给这个模块的下载地址，无法重装"
+		: !coreCheck.ok
+			? coreCheck.message
+			: "";
+	const spec = entry ? { ...specFromEntry(id, entry), expectedVersion: version || entry.latest || entry.version || "" } : null;
+	return { kind: "repair", label: "修复", repairKind: "reinstall", version: version || null, enabled: !blocker, reason: blocker, spec };
+}
+
+/**
  * 汇总行状态（界面顶部一行字）
  * @param {Array} rows - buildRows 产出的行
  * @returns {{total: number, installed: number, updatable: number, installable: number, inUse: number}}
@@ -116,6 +143,7 @@ export function summarize(rows = []) {
 		updatable: list.filter(hasEnabled("update")).length,
 		installable: list.filter(hasEnabled("install")).length,
 		inUse: list.filter(row => row.statusKind === "in_use").length,
+		corrupt: list.filter(row => row.statusKind === "corrupt").length,
 	};
 }
 
@@ -135,10 +163,24 @@ export function summarize(rows = []) {
  *   它只把 `install/update/uninstall` 三个动作置灰并**附加**到既有理由之前，
  *   不许影响 Feature 的启用/禁用（启停不碰文件系统，任务书§16 第一阶段就要它），
  *   也不许顺手清掉 `spec`（置灰不等于没有可装的东西）。
+ * @param {Object} [input.health] - `verifyInstalled(id)` 的结果按 id 归档：
+ *   `{ id: { status:"ok"|"corrupt", reasons:string[], action:null|{kind:"restore"|"reinstall", version?} } }`。
+ *   缺省、或某 id 缺失/判 ok 时，那一行与引入本参数之前**逐字一致**；
+ *   判 corrupt 的行换成"修复 + 置灰的卸载"（理由见 repairAction，是真机上唯一的恢复通道）。
  * @returns {{rows: Array, summary: Object}}
  */
-export function buildRows({ installed = {}, index = null, modules = [], currentStyleId = null, coreVersion = null, featureStates = {}, installBlocker = null } = {}) {
+export function buildRows({
+	installed = {},
+	index = null,
+	modules = [],
+	currentStyleId = null,
+	coreVersion = null,
+	featureStates = {},
+	installBlocker = null,
+	health = {},
+} = {}) {
 	const ledger = installed && typeof installed === "object" ? installed : {};
+	const healthMap = health && typeof health === "object" ? health : {};
 	const registry = asArray(modules).filter(item => item && item.id);
 	const registryIds = new Set(registry.map(item => item.id));
 	const entries = index && typeof index.modules === "object" ? index.modules : null;
@@ -159,6 +201,8 @@ export function buildRows({ installed = {}, index = null, modules = [], currentS
 	const rows = order.map(item => {
 		const ledgerEntry = ledger[item.id] || null;
 		const isInstalled = Boolean(ledgerEntry);
+		// 损坏判定只作用于"台账说装着"的行：health 来自 verifyInstalled，未装的包没有可查的目录
+		const damage = isInstalled && healthMap[item.id] && healthMap[item.id].status === "corrupt" ? healthMap[item.id] : null;
 		const entry = entries?.[item.id] || null;
 		const isCore = item.type === "core";
 		const inUse = Boolean(currentStyleId) && item.id === currentStyleId;
@@ -181,10 +225,11 @@ export function buildRows({ installed = {}, index = null, modules = [], currentS
 		const updatable = Boolean(isInstalled && latest && version && compareVersions(latest, version) > 0);
 		const dependents = order.filter(other => other.id !== item.id && other.dependencies.includes(item.id)).map(other => other.id);
 
-		// 状态优先级：core > 内置功能 > 使用中 > 不兼容 > 依赖缺失 > 有更新 > 已安装 > 未安装
+		// 状态优先级：core > 内置功能 > 已损坏 > 使用中 > 不兼容 > 依赖缺失 > 有更新 > 已安装 > 未安装
 		let statusKind = "not_installed";
 		if (isCore) statusKind = "core";
 		else if (builtIn) statusKind = "built_in";
+		else if (damage) statusKind = "corrupt";
 		else if (inUse) statusKind = "in_use";
 		else if (entry && !coreCheck.ok) statusKind = "incompatible";
 		else if (missingDeps.length) statusKind = "dep_missing";
@@ -194,7 +239,9 @@ export function buildRows({ installed = {}, index = null, modules = [], currentS
 		const actions = [];
 		if (!isCore) {
 			if (!builtIn) {
-				if (!isInstalled) {
+				if (damage) {
+					actions.push(repairAction(damage, item.id, entry, version, coreCheck));
+				} else if (!isInstalled) {
 					if (!index) {
 						actions.push({ kind: "install", label: "安装", enabled: false, reason: "未配置模块源（P10 产出索引后可安装）", spec: null });
 					} else if (!entry || !entry.url) {
@@ -211,7 +258,15 @@ export function buildRows({ installed = {}, index = null, modules = [], currentS
 				}
 			}
 			if (isInstalled) {
-				const blocker = inUse ? "正在使用中，请先切换到其他样式再卸载" : dependents.length ? `被以下模块依赖，请先卸载它们：${dependents.join("、")}` : "";
+				// 损坏行别让人先点那个必然失败的卸载：包坏掉时启动注册没通过，
+				// 注册表里它不是独立安装（independent:false），卸载守卫会按 NOT_INDEPENDENT 拒绝。
+				const blocker = damage
+					? "包已损坏：请先点「修复」（它此刻没以独立包形式注册，卸载会被拒绝）"
+					: inUse
+						? "正在使用中，请先切换到其他样式再卸载"
+						: dependents.length
+							? `被以下模块依赖，请先卸载它们：${dependents.join("、")}`
+							: "";
 				actions.push({ kind: "uninstall", label: "卸载", enabled: !blocker, reason: blocker, spec: null });
 			}
 			if (canToggle) {
@@ -229,6 +284,7 @@ export function buildRows({ installed = {}, index = null, modules = [], currentS
 			core: "核心组件（随扩展发布）",
 			built_in: "内置功能",
 			in_use: "当前使用",
+			corrupt: "已损坏（需修复）",
 			incompatible: "与当前 Core 不兼容",
 			dep_missing: "缺少依赖",
 			update_available: "有更新",
@@ -236,10 +292,10 @@ export function buildRows({ installed = {}, index = null, modules = [], currentS
 			not_installed: "未安装",
 		};
 
-		// 平台剥夺安装能力：只挡落盘/删目录那三个动作，Feature 的启停不受影响
+		// 平台剥夺安装能力：只挡落盘/删目录那四个动作（repair 也要落盘），Feature 的启停不受影响
 		if (installBlocker) {
 			for (const action of actions) {
-				if (action.kind !== "install" && action.kind !== "update" && action.kind !== "uninstall") continue;
+				if (!["install", "update", "uninstall", "repair"].includes(action.kind)) continue;
 				action.enabled = false;
 				action.reason = action.reason ? `${installBlocker}；${action.reason}` : String(installBlocker);
 			}
