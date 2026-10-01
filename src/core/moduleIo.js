@@ -72,6 +72,28 @@ const sameBytes = (a, b) => {
 	return true;
 };
 
+/**
+ * 校验失败时的差异摘要。
+ *
+ * 只说"落盘校验失败"在真机上等于没说：分不清是**写被截断**、**内容被改写**、还是**读回根本读不到**。
+ * 这三者修法完全不同（分块写 / 查编码链路 / 查路径），所以把期望长度、实得长度、首个不同的字节
+ * 下标一起塞进错误消息——Android 排查 copyTree 就是靠这一行定下来的。
+ */
+const diffNote = (expected, actual) => {
+	const want = expected instanceof ArrayBuffer ? new Uint8Array(expected) : null;
+	const got = actual instanceof ArrayBuffer ? new Uint8Array(actual) : null;
+	if (!want || !got) return `期望 ${want ? want.byteLength : "?"} 字节，读回 ${got ? "?" : "读不到"}`;
+	let index = -1;
+	const shared = Math.min(want.length, got.length);
+	for (let offset = 0; offset < shared; offset++) {
+		if (want[offset] !== got[offset]) {
+			index = offset;
+			break;
+		}
+	}
+	return `期望 ${want.byteLength} 字节，实得 ${got.byteLength} 字节，首个不同 @${index}${index < 0 ? "" : `(${want[index]}→${got[index]})`}`;
+};
+
 /** 事务临时件后缀：同目录并发搬运也不撞名 */
 let txnSeq = 0;
 const txnId = () => `${Date.now().toString(36)}-${(txnSeq++).toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
@@ -355,11 +377,11 @@ export function createNonameIo(options = {}) {
 	 * **文件**分支 moveFileNonAtomic 早就有读回校验，目录分支补上同一条不变量：
 	 * 宁可整体失败让调用方保留源目录，也不交出一棵"看着搬完了"的树。
 	 */
-	async function copyTree(srcRel, destRel) {
+	async function copyTree(srcRel, destRel, state = { files: 0 }) {
 		const { dirs, files } = await listDir(srcRel);
 		for (const dir of dirs) {
 			await ensureDir(`${destRel}/${dir}`);
-			await copyTree(`${srcRel}/${dir}`, `${destRel}/${dir}`);
+			await copyTree(`${srcRel}/${dir}`, `${destRel}/${dir}`, state);
 		}
 		for (const file of files) {
 			const from = `${srcRel}/${file}`;
@@ -367,9 +389,11 @@ export function createNonameIo(options = {}) {
 			const buffer = await readBinary(from);
 			if (buffer === null) throw new IoError("IO_FAILED", `[ModuleIo] copy 源文件不可读: ${from}`);
 			await writeBinary(to, buffer);
-			if (!sameBytes(await readBinary(to), buffer)) {
-				throw new IoError("IO_FAILED", `[ModuleIo] copy 落盘校验失败: ${from} → ${to}`);
+			const landed = await readBinary(to);
+			if (!sameBytes(landed, buffer)) {
+				throw new IoError("IO_FAILED", `[ModuleIo] copy 落盘校验失败: ${from} → ${to} ${diffNote(buffer, landed)}，本次已复制 ${state.files} 个文件`);
 			}
+			state.files++;
 		}
 	}
 
@@ -458,7 +482,7 @@ export function createNonameIo(options = {}) {
 			await writeBinary(tempDest, source);
 			const staged = await readBinary(tempDest);
 			if (!sameBytes(staged, source)) {
-				throw new IoError("IO_FAILED", `[ModuleIo] move 临时目标校验失败（源与目标均未动）: ${srcRel} → ${tempDest}`);
+				throw new IoError("IO_FAILED", `[ModuleIo] move 临时目标校验失败（源与目标均未动）: ${srcRel} → ${tempDest} ${diffNote(source, staged)}`);
 			}
 			if (backupDest) {
 				previous = await readBinary(destRel);
@@ -478,7 +502,7 @@ export function createNonameIo(options = {}) {
 			await writeBinary(destRel, source);
 			const landed = await readBinary(destRel);
 			if (!sameBytes(landed, source)) {
-				throw new IoError("IO_FAILED", `[ModuleIo] move 正式目标校验失败（源已保留）: ${srcRel} → ${destRel}`);
+				throw new IoError("IO_FAILED", `[ModuleIo] move 正式目标校验失败（源已保留）: ${srcRel} → ${destRel} ${diffNote(source, landed)}`);
 			}
 		} catch (error) {
 			const problem = await restoreDest();

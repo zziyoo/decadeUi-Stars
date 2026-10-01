@@ -54,6 +54,11 @@ async function seedPack(io) {
 	);
 	assert.ok(error, "写入被截断（真机上 Cordova 覆盖写就会这样）必须被读回校验抓到");
 	assert.match(String(error.message ?? error), /校验/, `实际错误：${error?.message ?? error}`);
+	assert.match(
+		String(error.message ?? error),
+		/期望 \d+ 字节，实得 \d+ 字节/,
+		`错误消息必须自带差异摘要（只说"落盘校验失败"分不清是截断还是内容漂移）：${error?.message ?? error}`
+	);
 	assert.equal(textOf(await io.readBinary("pack/manifest.json")), MANIFEST, "源目录必须还是完整内容");
 	assert.equal(textOf(await io.readBinary("pack/ui/skins/special.js")), "export const x=1;\n");
 }
