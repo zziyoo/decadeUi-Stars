@@ -14,7 +14,9 @@ const probe = (overrides = {}) => ({
 	dirExists: true,
 	manifestExists: true,
 	manifestParsed: true,
-	manifest: { id: "baby", version: "1.4.2", entry: { js: [], css: [] } },
+	// 默认是一份**完整**清单：健康判据与 moduleManager.register 用的 validateManifest 同口径
+	// （id/name/version/type），少任何一个都算"注册得上"这件事不成立
+	manifest: { id: "baby", name: "欢乐三国杀样式", version: "1.4.2", type: "style", entry: { js: [], css: [] } },
 	missingEntries: [],
 	...overrides,
 });
@@ -89,6 +91,18 @@ const probe = (overrides = {}) => ({
 	assert.equal(parsedNumber.ok, false);
 }
 {
+	// 与注册表同口径：`moduleManager.register` 跑 validateManifest（id/name/version/type），
+	// 健康判 ok 的**含义**就是"启动时注册得上"。少 name/type 却判 ok，就又回到
+	// "台账说装着、注册表不认"的那个死锁。
+	const noName = assessModule({ id: "baby", version: "1.4.2", ...probe({ manifest: { id: "baby", version: "1.4.2", type: "style" } }) });
+	assert.equal(noName.ok, false);
+	assert.match(noName.reasons.join("；"), /缺.*name/, `实际：${noName.reasons.join("；")}`);
+
+	const badType = assessModule({ id: "baby", version: "1.4.2", ...probe({ manifest: { id: "baby", name: "n", version: "1.4.2", type: "skin" } }) });
+	assert.equal(badType.ok, false, `type 不在允许集合里 ⇒ 注册必失败，不许判 ok：${JSON.stringify(badType)}`);
+	assert.match(badType.reasons.join("；"), /type/);
+}
+{
 	const missingEntry = assessModule({ id: "baby", version: "1.4.2", ...probe({ missingEntries: ["ui/baby.js", "player.css"] }) });
 	assert.equal(missingEntry.ok, false);
 	assert.match(missingEntry.reasons.join("；"), /入口文件缺失：ui\/baby\.js、player\.css/);
@@ -98,7 +112,7 @@ const probe = (overrides = {}) => ({
 
 {
 	// 一切正常 ⇒ 什么都不做
-	const plan = planRepair({ id: "baby", version: "1.4.2", previousVersion: "1.4.1", probe: probe(), previousProbe: probe({ manifest: { id: "baby", version: "1.4.1" } }) });
+	const plan = planRepair({ id: "baby", version: "1.4.2", previousVersion: "1.4.1", probe: probe(), previousProbe: probe({ manifest: { id: "baby", name: "欢乐三国杀样式", version: "1.4.1", type: "style" } }) });
 	assert.deepEqual(plan, { status: "ok", reasons: [], action: null });
 }
 
@@ -109,7 +123,7 @@ const probe = (overrides = {}) => ({
 		version: "1.4.3",
 		previousVersion: "1.4.2",
 		probe: probe({ manifestExists: false }),
-		previousProbe: probe({ manifest: { id: "baby", version: "1.4.2" } }),
+		previousProbe: probe({ manifest: { id: "baby", name: "欢乐三国杀样式", version: "1.4.2", type: "style" } }),
 	});
 	assert.equal(plan.status, "corrupt");
 	assert.deepEqual(plan.action, { kind: "restore", version: "1.4.2" });

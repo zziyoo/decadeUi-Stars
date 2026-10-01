@@ -10,6 +10,8 @@
  *   - `manifest.json` 缺失，或存在但解析失败；
  *   - `manifest.id` / `manifest.version` 缺失或与台账不符（**缺失同样算损坏**：
  *     Android 真机上被写坏的清单是"字节数组的 JSON"，它解析得过、就是没有这两个字段）；
+ *   - `manifest.name` / `manifest.type` 缺失或非法（与 `manifest.js` 的 `validateManifest` 同口径，
+ *     因为"判 ok"的意思就是"启动时注册得上"）；
  *   - 清单声明的 `entry.js` / `entry.css` 文件在盘上不存在。
  *
  * 两条刻意的边界：
@@ -17,6 +19,8 @@
  *     一次读盘抖动不许把好包判死——这也是本模块只吃"探测结果"而不自己碰 IO 的原因。
  *   - **不许把坏的换上来**：回退目标自己也得过同一套判据（目录在、清单在且对得上、入口文件在）。
  */
+
+import { MODULE_TYPES } from "./manifest.js";
 
 /**
  * 单个版本目录的健康判据。
@@ -47,6 +51,9 @@ export function assessModule({ id, version, dirExists, manifestExists, manifestP
 		// 缺字段**就是**损坏。曾经这里写的是 `if (manifest.id && ...)`，于是 Android 上
 		// "字节数组被 JSON 化"出来的合法对象（有 "0":"123" 这类键、没有 id/version）被判成健康，
 		// 损坏在整个 P12 链路（启动检测→自动回退→界面提示）里全程隐形。
+		// 四个字段都要查：`moduleManager.register` 跑的是 manifest.js 的 validateManifest
+		// （id/name/version/type），健康判 ok 的**含义**就是"启动时注册得上"——
+		// 两处口径不一致就是"台账说装着、注册表不认"的那个死锁。
 		if (manifest.id === undefined || manifest.id === null || String(manifest.id) === "") {
 			reasons.push("manifest.json 缺少 id 字段");
 		} else if (String(manifest.id) !== String(id)) {
@@ -56,6 +63,10 @@ export function assessModule({ id, version, dirExists, manifestExists, manifestP
 			reasons.push("manifest.json 缺少 version 字段");
 		} else if (String(manifest.version) !== String(version)) {
 			reasons.push(`manifest.version=${manifest.version} 与台账 ${version} 不符`);
+		}
+		if (typeof manifest.name !== "string" || !manifest.name) reasons.push("manifest.json 缺少 name 字段");
+		if (!MODULE_TYPES.includes(manifest.type)) {
+			reasons.push(`manifest.json 的 type 非法或缺失：${manifest.type}（允许：${MODULE_TYPES.join("/")}）`);
 		}
 	}
 	const missing = Array.isArray(missingEntries) ? missingEntries.filter(Boolean) : [];
