@@ -158,7 +158,16 @@ function createLegacyGame(initial = {}) {
 		if (entry.times <= 0) game.failMatch.splice(index, 1);
 		return true;
 	};
-	const bytesOf = value => (value instanceof Uint8Array ? value : encoder.encode(String(value)));
+	/**
+	 * 与 Cordova 桥一致：字符串按文本、ArrayBuffer 按字节，**其余（含 typed array）会被 JSON 序列化**。
+	 * 之前这里把 Uint8Array 当字节原样存下，等于替实现掩盖了真机上"字节数组被写成 JSON"的损坏。
+	 */
+	const bytesOf = value =>
+		typeof value === "string"
+			? encoder.encode(value)
+			: value instanceof ArrayBuffer
+				? new Uint8Array(value)
+				: encoder.encode(JSON.stringify(value));
 
 	const game = {
 		store,

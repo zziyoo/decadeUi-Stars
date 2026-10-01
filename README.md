@@ -2756,6 +2756,17 @@ P0 审计
 - **行尾那条被现实咬到了一次**：本轮重构建后 `baby-1.4.2.zip` 从 112085 → 112150 字节、`module-index.json` 与整包 sha 随之变化，而**内容一字未动** —— 起因是昨天为还原测试态跑过一次 `git checkout`，autocrlf 把包内 27 个文件 smudge 成 CRLF。连续两次构建仍然完全一致（确定性没问题），漂的是 checkout 之间。按用户决定仍不加 `.gitattributes`，所以上传以当次 `RELEASE-NOTES.md` 的 9 项 sha 为准（已重新生成并自验一致）
 - **仍待真机**（§八「P15 复测步骤」给了准确操作与判据）：六套逐套目测（每套必须重载）、online 与 card-skin 卸载、手机布局与横屏、Android/SAF、联网分支（要等 P10 的 Release 建好）。这些一律标"代码检查通过 / 真机待验"，不许算成已验
 
+## v1.29（2026-10-01）Android 上"卸载一次就把包内容写坏"：Cordova 桥把 typed array JSON 化了
+
+用户手机上卸载样式包后：报 `codename 未以独立包形式注册，拒绝删除`、样式像被删、又没有任何入口能装回来。五条探针把它钉成了**数据损坏**，不是状态错乱。
+
+- **决定性证据**：`decade` 的 `manifest.json` 现在是 57593 字节、以 `{"0":123,"1":34,"2":48,...}` 开头，而没被卸载过的 `yjcm` 仍是 751 字节合法 JSON —— `JSON.stringify(new Uint8Array([123,34,...]))` 正是这个形状
+- **根因**：`writeBinary` 的 legacy 分支把 `ArrayBuffer` 转成 `Uint8Array` 再交给本体 `game.writeFile`，而 Cordova 桥对非 `ArrayBuffer` 参数按 JSON 序列化传递 ⇒ 落盘的是"字节数组的 JSON"。文本写入传字符串所以没事 ⇒ `installed.json` 完好、包内文件全废。卸载在非原子平台是 `copyTree` + 删源，"让位 → 回滚"这一对复制把原内容彻底换成了坏内容。修：legacy 分支改传 `ArrayBuffer`（视图按 `byteOffset/byteLength` 切精确长度）
+- **我上一轮的判断错在哪**：我拿 `verifyInstalled` 的 `status:"ok"` 当"文件没问题"的证据。`assessModule` 只在字段**有值但不符**时报错（`if (manifest.id && ...)`），字段整个缺失时判 ok —— 这条探针**对这类损坏是瞎的**。同类错误本轮第二次犯（上一次是"CSS 层判据"），已把"采信探针前先读它到底测什么"记进方法论
+- **夹具是共犯**：`p5-installer` 的假 `game.writeFile` 把 typed array 忠实存下（`bytesOf` 只认 `Uint8Array`），所以 Android 分支被大量使用却从没暴露过这个形状。已把夹具改成与桥一致（字符串按文本、`ArrayBuffer` 按字节、其余 JSON 化），改完 p5 仍全绿 ⇒ 两个独立夹具互证；新增 `tests/p17-android-binary-write.test.mjs` 先 RED（复现 `{"0":` 形状）再 GREEN，覆盖 `writeBinary` 逐字节与目录搬运后每个文件保真。套件 25 → **26 套**全绿，`node --check` 233 文件 ✓
+- **仍未修（已定案，按优先级）**：D2 `copyTree` 对读失败文件静默跳过、且目录搬运后不校验就删源（文件路径有校验，目录没有）；D3 健康检查对"字段缺失"失明 ⇒ P12 自动回退也不会触发；D4 行模型"已安装"来自台账而卸载守卫来自注册表 ⇒ 分叉即"删不掉也装不回"（`verifyInstalled` 已能给出 `reinstall` 动作却没被消费）；D5 `uninstall` 不查 `isAvailable()`
+- **发布影响**：七个分包与索引本身没问题（损坏发生在用户设备上卸载/更新时，不在发布物里），受影响的是 Core 代码，而 Core 随扩展本体分发。整包 `full.zip` 还没上传 ⇒ 等这笔修复合入后**重新构建再传整包**，别传修复前那份
+- **必须做一次的真机验收**：手机上删掉台账里那四条 → 重启 → 逐个重装 → `manifest.json` 应回到 751 字节量级且含 `"schema": 1`、七个 `independent` 全 true。这一步同时才是 D1 的真机验收 —— Node 夹具绿不等于手机上的桥行为变了
 ## v1.28（2026-10-01）1.5.0：与上游同号发两个独立发行物，删掉 Stars 自绘的快捷键
 
 决定是「当两个不同的版本发行」，不做就地覆盖。顺带把版本发布形态与入口收干净。

@@ -289,10 +289,18 @@ export function createNonameIo(options = {}) {
 	}
 
 	async function writeBinary(rel, data) {
-		const bytes = data instanceof ArrayBuffer ? new Uint8Array(data) : data;
-		if (fs) return desktopWrite(rel, bytes);
+		if (fs) return desktopWrite(rel, data instanceof ArrayBuffer ? new Uint8Array(data) : data);
 		await legacyPrepareDir(rel);
-		return legacyWrite(rel, bytes);
+		/**
+		 * 非桌面端必须把 **ArrayBuffer** 交给 game.writeFile：Cordova 桥对非 ArrayBuffer 的
+		 * 参数按 JSON 序列化传递，`Uint8Array` 会被写成 `{"0":123,"1":34,...}` —— 真机上
+		 * 卸载（copy+remove）把包内每个文件都写成了这种"字节数组的 JSON"，内容彻底报废。
+		 * 视图若只是大缓冲的一段，要切出精确长度，不能整块 buffer 递出去。
+		 */
+		const payload = ArrayBuffer.isView(data)
+			? data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength)
+			: data;
+		return legacyWrite(rel, payload);
 	}
 
 	async function listDir(rel) {
