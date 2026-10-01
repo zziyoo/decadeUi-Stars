@@ -1689,4 +1689,40 @@ assert.equal(checkCoreRequirement("~1.5.0", "1.9.0").ok, false, "不认识的写
 	}
 }
 
+// ------------------------------------------------------------------ 卸载：让位残留不得被当成版本（D7，2026-10-01 Android 真机）
+//
+// 真机截图上的那句：`让位 modules/codename/.removing-1.5.0-ssv5jl 失败：[ModuleIo] copy 落盘校验失败:
+// … → modules/codename/.removing-.removing-1.5.0-ssv5jl-ahfjet/…（先前让位的目录已全部改回原位）`。
+// 源是一个 `.removing-*` 目录 ⇒ 卸载把**上一次失败留下的让位残留**当成版本又让位了一次。
+// 桌面端看不见这件事只因为 `desktopListDir` 顺手跳过了点开头条目；legacy 端口（game.getFileList）不跳。
+
+{
+	const packages = {
+		"https://test/b.zip": makePackage(
+			{ schema: 1, id: "shared-ui", name: "公共", version: "1.0.0", type: "shared", core: ">=1.0.0", dependencies: [], entry: { css: ["ui.css"] } },
+			{ "ui.css": "x" }
+		),
+	};
+	const { io, installer } = makeEnv({ packages, manifest: styleManifest("placeholder", "0.0.0") });
+	assert.equal((await installer.install({ id: "shared-ui", version: "1.0.0", url: "https://test/b.zip" })).ok, true);
+
+	// 上一次失败的卸载留下的残骸（真机上它就躺在 modules/<id>/ 下面）
+	io.files.set("modules/shared-ui/.removing-0.9.0-old/debris.css", new TextEncoder().encode("旧残骸"));
+
+	const result = await installer.uninstall("shared-ui");
+	assert.equal(result.ok, true, result.message);
+	assert.deepEqual(result.removedVersions, ["1.0.0"], "让位残留不是版本，不许被再 park 一次");
+	assert.equal(
+		[...io.files.keys()].filter(key => key.includes(".removing-.removing-")).length,
+		0,
+		"把 .removing-* 当版本会造出 .removing-.removing-* —— 真机上卸载因此变成一次注定失败的深层复制"
+	);
+	assert.equal(io.files.has("modules/shared-ui/1.0.0/ui.css"), false, "在位的版本要被删掉");
+	assert.equal(
+		io.files.has("modules/shared-ui/.removing-0.9.0-old/debris.css"),
+		false,
+		"卸载成功后这个模块的目录该整体干净：手机上文件管理器进不去 app 私有目录，残骸没人能手删"
+	);
+}
+
 console.log("P5 installer tests: all passed ✓");

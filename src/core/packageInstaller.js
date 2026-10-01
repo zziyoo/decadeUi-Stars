@@ -195,6 +195,18 @@ export function createPackageInstaller(deps = {}) {
 	const packDir = (id, version) => `${paths.modulesRoot}/${id}/${version}`;
 
 	/**
+	 * 让位/隔离中的暂存目录名（安装器自己造的，不是版本目录）。
+	 *
+	 * 端口的两条分支口径不同：桌面 `desktopListDir` 顺手跳过点开头条目，legacy（`game.getFileList`）
+	 * 不跳。2026-10-01 Android 真机上卸载把上一次失败留下的 `.removing-1.5.0-*` 当成版本又让位一次，
+	 * 造出 `.removing-.removing-1.5.0-*` 并在复制校验处失败 —— 所以**凡按"版本"枚举 `modules/<id>/`
+	 * 的地方都必须过这道筛子**，不许依赖端口过滤。
+	 */
+	const PARKED_DIR = /\.(removing|replacing|corrupt)-/;
+	const isParkedDir = name => PARKED_DIR.test(String(name));
+	const versionDirs = dirs => (Array.isArray(dirs) ? dirs : []).filter(name => !isParkedDir(name));
+
+	/**
 	 * 探测某个版本目录的健康状况（结构级四项，喂给 moduleHealth 的判据）。
 	 * **IO 错误一律抛出**，由调用方转成 IO_FAILED——不许把"读盘失败"当成"文件不存在"，
 	 * 否则一次读盘抖动就会让 planRepair 把好包判成损坏。
@@ -1017,6 +1029,8 @@ export function createPackageInstaller(deps = {}) {
 				} catch (error) {
 					return toIoFailure(error, "checking", { id, message: `检查 ${root} 失败: ${error?.message ?? error}` });
 				}
+				/** 上一次失败留下的让位残骸：不是版本，但卸载成功后要一并带走（手机上没人能手删 app 私有目录） */
+				let debris = [];
 				if (rootKind === "dir") {
 					let dirs = [];
 					try {
@@ -1024,7 +1038,8 @@ export function createPackageInstaller(deps = {}) {
 					} catch (error) {
 						return toIoFailure(error, "checking", { message: `列举 ${root} 失败: ${error?.message ?? error}` });
 					}
-					for (const version of dirs) {
+					debris = dirs.filter(isParkedDir).map(name => `${root}/${name}`);
+					for (const version of versionDirs(dirs)) {
 						const live = `${root}/${version}`;
 						const park = `${root}/.removing-${version}-${random()}`;
 						try {
@@ -1082,6 +1097,13 @@ export function createPackageInstaller(deps = {}) {
 						await io.removeTree(item.from);
 					} catch (error) {
 						notes.push(`让位目录删除失败（不影响卸载结果，可手工删 ${item.from}）: ${error?.message ?? error}`);
+					}
+				}
+				for (const dir of debris) {
+					try {
+						await io.removeTree(dir);
+					} catch (error) {
+						notes.push(`让位残骸清理失败（不影响卸载结果，可手工删 ${dir}）: ${error?.message ?? error}`);
 					}
 				}
 				if (registry?.unregister) registry.unregister(id);
@@ -1232,7 +1254,7 @@ export function createPackageInstaller(deps = {}) {
 			if (rootKind !== "dir") return success({ id, versions: [] });
 			try {
 				const { dirs } = await io.listDir(root);
-				return success({ id, versions: dirs.filter(dir => !/\.(replacing|removing|corrupt)-/.test(dir)) });
+				return success({ id, versions: versionDirs(dirs) });
 			} catch (error) {
 				return toIoFailure(error, "listing", { message: `列举 ${root} 失败: ${error?.message ?? error}` });
 			}
