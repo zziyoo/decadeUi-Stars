@@ -57,6 +57,38 @@ const probe = (overrides = {}) => ({
 	assert.match(wrongId.reasons.join("；"), /manifest\.id=online/);
 }
 {
+	// D3（2026-10-01 Android 真机）：清单被写成"字节数组的 JSON"时是**合法对象**，
+	// 只是没有 id/version/entry。旧判据 `if (manifest.id && ...)` 对缺字段判 ok，
+	// 于是五个坏包的健康检查全绿、启动自动回退也不触发。缺字段必须算损坏。
+	const bytesJson = assessModule({
+		id: "decade",
+		version: "1.5.0",
+		...probe({ manifest: { 0: 123, 1: 34, 2: 100, 3: 101 } }),
+	});
+	assert.equal(bytesJson.ok, false, "字节数组 JSON 化的清单必须判损坏");
+	assert.match(bytesJson.reasons.join("；"), /缺.*id/, `实际：${bytesJson.reasons.join("；")}`);
+	assert.match(bytesJson.reasons.join("；"), /缺.*version/);
+}
+{
+	const noVersion = assessModule({ id: "baby", version: "1.4.2", ...probe({ manifest: { id: "baby" } }) });
+	assert.equal(noVersion.ok, false);
+	assert.match(noVersion.reasons.join("；"), /version/);
+
+	const emptyStringId = assessModule({ id: "baby", version: "1.4.2", ...probe({ manifest: { id: "", version: "1.4.2" } }) });
+	assert.equal(emptyStringId.ok, false, "空串 id 等同没有 id");
+}
+{
+	// JSON.parse 不抛错但结果不是对象（null / 数字 / 数组）同样是被写坏
+	const parsedNull = assessModule({ id: "baby", version: "1.4.2", ...probe({ manifest: null }) });
+	assert.equal(parsedNull.ok, false, `manifestParsed:true + null 不该判健康：${JSON.stringify(parsedNull)}`);
+
+	const parsedArray = assessModule({ id: "baby", version: "1.4.2", ...probe({ manifest: [] }) });
+	assert.equal(parsedArray.ok, false, "数组不是清单形状");
+
+	const parsedNumber = assessModule({ id: "baby", version: "1.4.2", ...probe({ manifest: 123 }) });
+	assert.equal(parsedNumber.ok, false);
+}
+{
 	const missingEntry = assessModule({ id: "baby", version: "1.4.2", ...probe({ missingEntries: ["ui/baby.js", "player.css"] }) });
 	assert.equal(missingEntry.ok, false);
 	assert.match(missingEntry.reasons.join("；"), /入口文件缺失：ui\/baby\.js、player\.css/);

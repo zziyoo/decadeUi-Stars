@@ -8,7 +8,8 @@
  * 判据是结构级四项（用户决定 2026-09-28）：
  *   - 包目录不存在；
  *   - `manifest.json` 缺失，或存在但解析失败；
- *   - `manifest.id` / `manifest.version` 与台账不符；
+ *   - `manifest.id` / `manifest.version` 缺失或与台账不符（**缺失同样算损坏**：
+ *     Android 真机上被写坏的清单是"字节数组的 JSON"，它解析得过、就是没有这两个字段）；
  *   - 清单声明的 `entry.js` / `entry.css` 文件在盘上不存在。
  *
  * 两条刻意的边界：
@@ -39,9 +40,23 @@ export function assessModule({ id, version, dirExists, manifestExists, manifestP
 		reasons.push("manifest.json 缺失");
 	} else if (!manifestParsed) {
 		reasons.push("manifest.json 解析失败");
-	} else if (manifest && typeof manifest === "object") {
-		if (manifest.id && String(manifest.id) !== String(id)) reasons.push(`manifest.id=${manifest.id} 与台账 ${id} 不符`);
-		if (manifest.version && String(manifest.version) !== String(version)) reasons.push(`manifest.version=${manifest.version} 与台账 ${version} 不符`);
+	} else if (!manifest || typeof manifest !== "object" || Array.isArray(manifest)) {
+		// JSON.parse 不抛错不代表是清单：null / 数字 / 数组都是被写坏的内容
+		reasons.push("manifest.json 的内容不是对象（已损坏）");
+	} else {
+		// 缺字段**就是**损坏。曾经这里写的是 `if (manifest.id && ...)`，于是 Android 上
+		// "字节数组被 JSON 化"出来的合法对象（有 "0":"123" 这类键、没有 id/version）被判成健康，
+		// 损坏在整个 P12 链路（启动检测→自动回退→界面提示）里全程隐形。
+		if (manifest.id === undefined || manifest.id === null || String(manifest.id) === "") {
+			reasons.push("manifest.json 缺少 id 字段");
+		} else if (String(manifest.id) !== String(id)) {
+			reasons.push(`manifest.id=${manifest.id} 与台账 ${id} 不符`);
+		}
+		if (manifest.version === undefined || manifest.version === null || String(manifest.version) === "") {
+			reasons.push("manifest.json 缺少 version 字段");
+		} else if (String(manifest.version) !== String(version)) {
+			reasons.push(`manifest.version=${manifest.version} 与台账 ${version} 不符`);
+		}
 	}
 	const missing = Array.isArray(missingEntries) ? missingEntries.filter(Boolean) : [];
 	if (missing.length) reasons.push(`清单声明的入口文件缺失：${missing.join("、")}`);
