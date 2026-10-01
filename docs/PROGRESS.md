@@ -478,6 +478,13 @@
 
 ## 五、已知问题与风险
 
+0. **【已定案两条 + 主因待定】Android 卸载样式包后"删不掉也装不回"的死锁（2026-10-01 用户真机报）**。现象：模块管理里点卸载报 `codename 未以独立包形式注册，拒绝删除（避免误删单体资源）`，同时该样式界面像被删（无样式），且没有任何入口能装回来。
+
+   - **用户五条探针得到的事实**（手机 eruda，全部单行表达式）：①注册表 `getInstallState().independent` —— 他点过卸载的四个（`decade/online/baby/codename`）全 `false`，没点过的三个（`yjcm/mobile/card-skin`）全 `true`；②`isAvailable()` = `{available:false, missingIo:false, missingExtractor:false, atomicRename:false, ready:false}`；③`fetch(decadeUIPath+"modules/codename/1.5.0/manifest.json")` = **HTTP 200**；④`verifyInstalled()` 五个模块**全部 `status:"ok"`、`reasons:[]`**（走 io 端口 `game.checkFile/readFile`，即目录与 entry 文件都在、健康）；⑤`fetch` 读的台账与 `readInstalled()` 读的台账**键集合与条目完全一致**（7 条全在，`codename` 两边都是 `{version:"1.5.0"}`）。
+   - **被这些事实否定的两个假设**：✗「Android 上 `fetch` 相对路径不可用」（③④都成）；「卸载把目录删了 / 读写不同一」（④说盘上包健康、⑤说两份台账同源）。所以**"样式被删除"是假象**：文件在、台账在，只是注册表里那四个不是 `installed` 来源 ⇒ `decadeModule.js:99-100` 不加载包 CSS、`ui/*/skins/index.js` 走未安装分支去 import 已被搬走的单体皮肤 JS ⇒ 无样式 + 插件缺席。
+   - **已定案缺陷一（结构，跨平台）**：行模型的"已安装"来自**台账**（`moduleAdmin.js:161 isInstalled = Boolean(ledgerEntry)`），卸载守卫来自**注册表**（`packageInstaller.js:993` 用 `getInstallState().independent`）。两者一旦分叉 → 行只给「卸载」、卸载必拒、又不给「安装」入口 ⇒ **用户无法自愈**。`verifyInstalled` 其实已经能给出 `action:{kind:"reinstall"}`，但行模型没消费它。
+   - **已定案缺陷二（待复核触发条件）**：`isAvailable().available === false` 时，`uninstall` 路径**只检查 `if (!io) NO_IO`，没检查 available**（`packageInstaller.js:971-995`），而窗口侧靠 `installBlocker` 置灰。他手机上 available 已经是 false，却仍出现了"注册表被注销"的后果（`packageInstaller.js:1087` 卸载成功路径会 `registry.unregister(id)`）⇒ 要么置灰没生效，要么 `available` 是在那之后才翻假的。这条要单独定案。
+   - **主因待定，下一步是重启差分**：注册只发生在启动一次（`precontent.js:37` 调 `registerInstalledModules()`），运行中不会自愈。彻底退出再进后重跑探针 1：四个变 `true` ⇒ 定案为"运行中注册表被注销、盘上文件后来恢复，注册表不自愈"；仍是 `false` ⇒ 启动注册对这四个失败，去控制台找 `[十周年UI-Stars] 注册模块失败：<id>（<reason>）`（`moduleSystem.js:180`）那条的 reason。
 0. **【已修复，真机闭环】技能按钮点不动（2026-09-30 用户报，六套皆然）**——根因与修复见§四「技能按钮点不动：包内皮肤 JS 的动态 import 说明符不可解析」。现象：对局内点技能按钮无法确认发动技能（截图里濒死提示只剩「取消」）。已完成的静态取证（**未改任何代码**）：
    - 点击链路 `ui/character/skins/base.js:431-445`（`.skillbutton` → `btn.func = lib.skill[name].clickable` → `btn.listen(ui.click.skillbutton)`）与**原版逐行一致**；本体侧 `ui.click.skillbutton`（`noname/ui/click/index.js:4445`）与 `HTMLDivElement.prototype.listen`（`noname/init/polyfill.js:208`）都在 ⇒ 这一条不是搬坏的；
    - 三个 UI 插件（lbtn/skill/character）由 `src/content.js:112-143` 异步装载，皮肤模块走 `ui/*/skins/index.js` 里的**动态 import**，失败会被 catch 成 `[SkillSkin] 加载失败` 并返回 null ⇒ **插件静默缺席**，表现正是"点了没反应"；
@@ -791,6 +798,7 @@
 | S-5 | Android / SAF | Android 上装/卸/回退各一次，并中途杀进程再启 | 不写坏台账（读坏会拒覆盖）、非原子发布的中断能被下一次启动纠正、UI 如实提示"本平台发布非原子" |
 | S-6 | 联网分支（依赖 P10） | 等正式 Release 建好、9 项资产传上去后，把模块源地址填成真实 `…/releases/download/<tag>/module-index.json` → 重载 | 模块管理列出可安装/可更新项、下载与 SHA 校验通过、客户端能装上。**当前不能验，也不许写成已验** |
 | S-7 | 技能按钮点不动：修复后复核（2026-09-30 根因已修，见§四同名小节） | 进一局，让技能按钮出现（自己回合内），F12 控制台依次跑下面三条；然后**点一次技能按钮**，把控制台新出现的红字整段抄回 | 见本节末「S-7 三条探针」。**修复生效的硬判据是探针 1 的 `pluginsMap` 里含 `lbtn` 与 `skill`**（修复前必缺），随后点技能按钮应能确认发动 |
+| S-8 | Android 卸载死锁的恢复与定案（2026-10-01 新增，配合§五同名条目） | 手机上**彻底退出游戏进程再进**（不是重载），然后重跑§五那五条探针里的第 1 条；再按结果决定：若四个恢复 `true`，切到该样式看 CSS 是否回来；若仍 `false`，把控制台里 `[十周年UI-Stars] 注册模块失败` 那一整行抄回 | 判据：重启后七个模块的 `independent` **应全为 true**（盘上包健康已由 `verifyInstalled` 五例 `status:"ok"` 证明）。恢复 ⇒ 缺陷定性为"运行中状态不自愈"，修法是给分叉态一个修复入口；不恢复 ⇒ 启动注册失败，reason 直接指向根因 |
 
 **S-1 探针**（每套切换、游戏自动重启后各跑一次；六条都是单行单表达式，不依赖 `ui`/`lib` 全局是否可见。写法约束：粘进控制台前不折行，串与串之间只允许 ASCII 空格，不用裸 `||` 与换行——真机踩过被截断成 `SyntaxError`）：
 
