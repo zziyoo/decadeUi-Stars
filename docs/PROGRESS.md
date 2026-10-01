@@ -881,14 +881,29 @@ E. `JSON.stringify((window.lib?.config?.["extension_十周年UI-Stars_moduleInde
    判据：非空。键名从 `moduleManagerWindow.js:51 indexKey()` 读出来的，不是猜的。空 ⇒ `reinstall` 分支没有下载地址，先在窗口工具栏填 `https://github.com/zziyoo/decadeUi-Stars/releases/download/v1.5.0/module-index.json`。
 
 F. **手机上装的 Core 是哪一笔**（恢复动作是 QQ 的解压做的，装修复前的整包也会得到同样的健康状态 ⇒ 光看 A/B/C 证明不了代码已修）
-   `Promise.all(["src/core/moduleIo.js","src/core/moduleHealth.js","src/core/moduleAdmin.js"].map(p=>fetch(decadeUIPath+p+"?ts="+Date.now(),{cache:"no-store"}).then(r=>r.text()).then(t=>[p.split("/").pop(),[["D1","ArrayBuffer.isView(data)"],["D2","copy 落盘校验失败"],["D3","缺少 id 字段"],["D4","repairAction"]].filter(x=>t.includes(x[1])).map(x=>x[0])]))).then(a=>console.log(JSON.stringify(a))).catch(e=>console.log("F失败",e.message))`
-   判据：应为 `moduleIo.js:["D1","D2"]`、`moduleHealth.js:["D3"]`、`moduleAdmin.js:["D4"]`（四个串都从源码里 grep 到才写进这条，出处见 §四本轮处置）。任一项是 `[]` ⇒ 那台机器上还是修复前的 Core，**下一次卸载/同版本覆盖重装会再写坏一遍**，要先换 CI 的 `Manual Package` artifact（run 36833226844 起）。带 `?ts=` 与 `no-store` 是因为本体 service worker 会缓存已编译模块（见[[project-sw-inmemory-module-cache]]），否则会读到内存里的旧 JS。
+   ~~`Promise.all([...])` 用 `ArrayBuffer.isView(data)` 当 D1 标记~~ —— **这条探针我自己写错了，已被真机否掉**：`ArrayBuffer.isView(data)` 在 `readBinary` 里早就有（`moduleIo.js:287`），任何版本都会命中，所以它**根本没有区分力**；而真机输出里 D1 位却是空的、D2 位有值，这两件事在任何一份仓库版本里都不同时成立 ⇒ 那次读取不可信，改用下面这条按**字节长度 + 尾部原文**判的探针（长度能同时区分版本与"响应被截断"，尾部原文用来证明确实读到了文件末尾）。
+   `Promise.all(["src/core/moduleIo.js","src/core/moduleHealth.js","src/core/moduleAdmin.js"].map(p=>fetch(decadeUIPath+p+"?ts="+Date.now(),{cache:"no-store"}).then(r=>r.text()).then(t=>[p.split("/").pop(),t.length,t.includes("Cordova 桥对非 ArrayBuffer 的")?"D1":"-",t.includes("copy 落盘校验失败")?"D2":"-",t.includes("name 字段")?"D3b":"-",t.includes("repairAction")?"D4":"-",t.slice(-16)]))).then(a=>console.log(JSON.stringify(a))).catch(e=>console.log("F2失败",e.message))`
+   判据（长度取自 `git show <sha>:<path> | wc -c`，而工作树上这三个文件的磁盘大小与 blob **完全相等**（都是 LF），所以本地打包与 CI 构建出的长度同一张表）：
+   | 文件 | 长度 | 对应提交 |
+   |---|---|---|
+   | `moduleIo.js` | 32776 | ≤ `ddf0170`（无 D2） |
+   | `moduleIo.js` | 34301 | ≥ `1d90488`（含 D2） |
+   | `moduleHealth.js` | 4147 | < `ddf0170`（无 D3） |
+   | `moduleHealth.js` | 5124 | `ddf0170`…`19709fe`（D3 初版，只查 id/version） |
+   | `moduleHealth.js` | 5907 | = `2c023f1`（D3 续，补齐 name/type） |
+   | `moduleAdmin.js` | 13528 | < `a04b895`（**没有 D4 修复入口**） |
+   | `moduleAdmin.js` | 16473 | ≥ `a04b895`（含 D4） |
+   D1 用 `Cordova 桥对非 ArrayBuffer 的` 判（`git show da4d1f8` 计数 0、`2d8bb14` 起计数 1 —— 这次是先验证过区分力才写的）。尾部原文若不是文件真正的最后 16 字节 ⇒ 响应被截断，长度与标记一律作废重读。
 
 **S-8 真机回填（2026-10-01，用户手机 eruda 原文）**：A `["decade清单",623,"{\n\t\"schema\": 1,\n\t\""]`；B `["mobile",[[core,false],[decade,true],[mobile,true],[yjcm,true],[online,true],[baby,true],[codename,true],[kill-effect,false],[card-skin,true]]]`；C `[true,"ok",null,null,[]]`；D `["ready",{ok:true,reason:""},"再问available",{available:true,missingIo:false,missingExtractor:false,atomicRename:false,ready:true}]`；E `""`。
 
 - **读法与核对**：623 不是"接近 751"，而是**出厂包内 `decade/1.5.0/manifest.json` 的 LF 字节数**——我本地工作树那份被 autocrlf smudge 成 637（差 14 个行尾），同一条比例在 `yjcm` 上再次对上（手机 751 / 本地 763，差 12）。加上头部是真实制表符与换行、B 里七个包 `independent` 全 `true`、C 判 `ok` ⇒ 盘上就是发布物本体，**`{"0":123,…}` 那种 JSON 化字节数组已消失 ⇒ D1 真机闭环**（不是"Node 绿了就当验过"）。D 的 `atomicRename:false` 确认这一组数据来自 Android（legacy `game.*` 端口），`available:true`  ⇒ 解压能力在，安装/修复通道不会因为能力缺失被置灰。
 - **仍不能由这批数据下的结论（如实记）**：①**手机上现在装的是哪一笔 Core 没被证明**——恢复动作是 QQ 的解压做的，装的是修复前的整包也会得到同样的健康状态，所以 D2/D3/D4 三刀**都没有在真机上走到**（包现在是好的，健康检查判 `ok`，界面上根本不会出现「已损坏」徽标与「修复」按钮）。要确认 Core 里有没有这三刀的代码，看源码标记探针（下一条）。②`E` 为空 ⇒ 模块源没填，`reinstall` 分支点不动；将来真坏了只剩"重新解压"这条手工路。③D2 的"半截复制不许删源"只有**同版本覆盖/更新**那一条路会经过 `copyTree`+`removeTree`，卸载→重装走不到那一支。
 - **远端事实（匿名 API 核实，2026-10-01）**：`origin/main` = `2c023f1`（committer ziyoo，07:40:02Z）⇒ 本轮五笔已 push。CI 在这个 sha 上两条都 success：`build` run 36832725230（07:50Z）、`Manual Package` run 36833226844（07:55Z）——**含 D2/D3/D4 的整包 artifact 已经在这个 run 里**，取它就行，不必重跑；已发布的 1.5.0 分包与索引本轮没动，`修复`/`安装` 下载仍指向它们。
+- **探针 F 第一次读数（同日）**：`[["moduleIo.js",["D2"]],["moduleHealth.js",["D3"]],["moduleAdmin.js",[]]]`。
+  - 能定的：`moduleAdmin.js` 里没有 `repairAction` ⇒ 那台机器**没有 D4 的修复入口**（这不影响他现在的数据，但影响"下次坏了能不能自愈"）。
+  - **不能定的**：D1 位是空的这件事，与仓库里任何一份 `moduleIo.js` 都对不上（`ArrayBuffer.isView(data)` 在改动之前就存在于 `readBinary`，任何版本都会命中）⇒ 不是"手机上是旧代码"，是**我这条探针没有区分力**，同时不排除响应被截断。按长度表重读一次（F2）才能把"哪一笔构建"钉下来。
+  - 教训（同类第四次）：给探针挑标记串时，必须**先在改动前的那个提交上 grep 一次**，确认它是 0 命中；只验证"改动后有"是不够的 —— 一个改动前就存在的串，永远测不出"没修"。
 
 ### P13 部分（旧版本迁移，必须在游戏内验）
 
