@@ -13,93 +13,11 @@
  * 不是字节本身。文本写入走字符串不受影响 ⇒ 所以 installed.json 完好、包内文件全废。
  * 卸载在非原子平台是 copyTree + 删源，于是"让位→回滚"这一对复制把原内容彻底换成了坏内容。
  *
- * 夹具刻意复刻桥的这个行为（见 bridgeSerialize），否则这条用例只会自证自。
+ * 夹具刻意复刻桥的这个行为（`tests/helpers/fake-android-game.mjs`，与 p18 共用），否则这条用例只会自证自。
  */
 import assert from "node:assert/strict";
 import { createNonameIo } from "../src/core/moduleIo.js";
-
-const dirOf = p => {
-	const parts = p.split("/");
-	parts.pop();
-	return parts.join("/");
-};
-const nameOf = p => p.split("/").pop();
-
-/** 桥的序列化规则：字符串原样、ArrayBuffer 按字节，其余一律 JSON 化（真机实测到的那一条） */
-const bridgeSerialize = data => {
-	if (typeof data === "string") return data;
-	if (data instanceof ArrayBuffer) return new Uint8Array(data);
-	if (ArrayBuffer.isView(data)) return JSON.stringify(data);
-	return JSON.stringify(data);
-};
-
-const toBuffer = stored => (typeof stored === "string" ? new TextEncoder().encode(stored).buffer : stored.slice().buffer);
-
-/** 最小可用的 game.* 假端口：内存文件系统 + 桥的序列化规则 */
-function makeFakeGame() {
-	const files = new Map();
-	const dirs = new Set(["", "extension"]);
-	const later = (fn, ...args) => setTimeout(() => fn?.(...args), 0);
-	const isUnder = dir => [...dirs].some(d => d === dir || d.startsWith(`${dir}/`));
-
-	return {
-		files,
-		checkFile(path, ok, err) {
-			if (files.has(path)) return later(ok, 1);
-			if (dirs.has(path) || isUnder(path)) return later(ok, 0);
-			return later(ok, -1);
-		},
-		createDir(path, ok, err) {
-			dirs.add(path);
-			let cursor = dirOf(path);
-			while (cursor && !dirs.has(cursor)) {
-				dirs.add(cursor);
-				cursor = dirOf(cursor);
-			}
-			return later(ok, null);
-		},
-		writeFile(data, path, name, callback) {
-			dirs.add(path);
-			files.set(`${path}/${name}`, bridgeSerialize(data));
-			return later(callback, null);
-		},
-		readFile(path, ok, err) {
-			const stored = files.get(path);
-			if (stored === undefined) return later(err, new Error(`ENOENT ${path}`));
-			return later(ok, typeof stored === "string" ? stored : stored.slice());
-		},
-		getFileList(path, ok, err) {
-			const folders = [];
-			const found = [];
-			const prefix = `${path}/`;
-			for (const key of files.keys()) {
-				if (!key.startsWith(prefix)) continue;
-				const rest = key.slice(prefix.length);
-				const slash = rest.indexOf("/");
-				if (slash === -1) found.push(rest);
-				else if (!folders.includes(rest.slice(0, slash))) folders.push(rest.slice(0, slash));
-			}
-			for (const d of dirs) {
-				if (!d.startsWith(prefix) || d === path) continue;
-				const rest = d.slice(prefix.length);
-				if (!rest.includes("/") && !folders.includes(rest)) folders.push(rest);
-			}
-			return later(ok, folders, found);
-		},
-		removeFile(path, callback) {
-			files.delete(path);
-			return later(callback, null);
-		},
-		removeDir(path, ok, err) {
-			for (const key of [...files.keys()]) if (key === path || key.startsWith(`${path}/`)) files.delete(key);
-			for (const d of [...dirs]) if (d === path || d.startsWith(`${path}/`)) dirs.delete(d);
-			return later(ok, null);
-		},
-	};
-}
-
-const bytesOf = text => Uint8Array.from(new TextEncoder().encode(text)).buffer;
-const textOf = buffer => new TextDecoder().decode(new Uint8Array(buffer));
+import { bridgeSerialize, makeFakeGame, bytesOf, textOf } from "./helpers/fake-android-game.mjs";
 
 // ---------------------------------------------------------- 1. 夹具自证：它真的会 JSON 化 typed array
 {

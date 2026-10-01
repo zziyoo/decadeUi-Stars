@@ -334,14 +334,42 @@ export function createNonameIo(options = {}) {
 		);
 	}
 
+	/** 显式建目录（两端都只认这条；写文件时的隐式建目录不保证空目录也在树里） */
+	const ensureDir = rel =>
+		fs
+			? desktopMkdir(fsAbs(rel))
+			: settle(
+					(ok, err) => {
+						if (typeof game?.createDir !== "function") return ok(null);
+						game.createDir(abs(rel), () => ok(null), err);
+					},
+					{ label: `createDir ${rel}`, stallMs }
+				);
+
+	/**
+	 * 目录复制：逐文件**读 → 写 → 读回逐字节比对**，任何一处不符立刻抛错。
+	 *
+	 * 曾经这里是 `if (buffer !== null) await writeBinary(...)`——列得出来却读不到的条目被静默跳过，
+	 * 而调用方（movePath 的目录分支）复制完不校验就删源。两个洞叠起来，一次"目录改名"就能把包内容
+	 * 永久销毁（2026-10-01 Android：四个样式包在这种半截复制之后被删掉了源）。
+	 * **文件**分支 moveFileNonAtomic 早就有读回校验，目录分支补上同一条不变量：
+	 * 宁可整体失败让调用方保留源目录，也不交出一棵"看着搬完了"的树。
+	 */
 	async function copyTree(srcRel, destRel) {
 		const { dirs, files } = await listDir(srcRel);
-		for (const file of files) {
-			const buffer = await readBinary(`${srcRel}/${file}`);
-			if (buffer !== null) await writeBinary(`${destRel}/${file}`, buffer);
-		}
 		for (const dir of dirs) {
+			await ensureDir(`${destRel}/${dir}`);
 			await copyTree(`${srcRel}/${dir}`, `${destRel}/${dir}`);
+		}
+		for (const file of files) {
+			const from = `${srcRel}/${file}`;
+			const to = `${destRel}/${file}`;
+			const buffer = await readBinary(from);
+			if (buffer === null) throw new IoError("IO_FAILED", `[ModuleIo] copy 源文件不可读: ${from}`);
+			await writeBinary(to, buffer);
+			if (!sameBytes(await readBinary(to), buffer)) {
+				throw new IoError("IO_FAILED", `[ModuleIo] copy 落盘校验失败: ${from} → ${to}`);
+			}
 		}
 	}
 
@@ -517,7 +545,8 @@ export function createNonameIo(options = {}) {
 		 * 必须按源类型分流：copyTree 只列举目录条目，拿它搬**文件**会"一个字节都不复制、
 		 * 却把源删掉"（Android/SAF 上表现为 installed.json 永远没被替换、临时文件消失）。
 		 * 文件走 moveFileNonAtomic 的完整事务（暂存 → 校验 → 备份旧目标 → 提交 → 校验 → 删源），
-		 * 目录仍然只是 copyTree + removeTree（本次不动目录事务）。
+		 * 目录是 copyTree + removeTree：copyTree 自己逐文件读回校验，任何一处不符就抛出，
+		 * 于是"删源"只可能发生在整棵树都被确认落盘之后（源目录在失败时保持原样）。
 		 */
 		movePath: async (srcRel, destRel) => {
 			const sourceKind = await kind(srcRel);
