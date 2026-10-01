@@ -478,6 +478,13 @@
 
 ## 五、已知问题与风险
 
+0. **【已修，待真机复测】D7：卸载把"让位残骸"当成版本再让位一次（2026-10-01 用户手机截图报出）**。截图那行红字是：`名将杀样式：让位 modules/codename/.removing-1.5.0-ssv5jl 失败：[ModuleIo] copy 落盘校验失败: …/fx_ui_fusu03.png → modules/codename/.removing-.removing-1.5.0-ssv5jl-ahfjet/…（先前让位的目录已全部改回原位）`。
+   - **读出来的事实**：①**D2 在真机上第一次生效** —— 它抓住了一次不完整的目录复制并拒绝删源，安装器把已让位的目录全部改回，这正是当初销毁四个包的那一步；②让位的**源**是一个 `.removing-*` 目录 ⇒ 卸载把上一次失败留下的残骸当成"在位的版本"又 park 了一次，造出 `.removing-.removing-1.5.0-*`；③汇总行 `本平台发布非原子` 与 `atomicRename:false` 一致，模块源已连上（索引 schema 1）。
+   - **根因（口径不对称）**：`desktopListDir` 会跳过 `.`/`_` 开头的条目（`moduleIo.js:161` 的注释甚至写着"与本体 getFileList 一致"），而 **legacy 分支直接把 `game.getFileList` 的结果原样交出，不过滤**。`uninstall` 拿 `io.listDir(modules/<id>)` 的返回当"版本列表"逐个让位（`packageInstaller.js:1027` 旧行号），桌面上看不见这个差异，手机上就暴露了。`localVersions` 早就自己过滤过一遍（说明这个坑已被认识一次），但卸载这条**破坏性**路径没有。
+   - **修法（在调用方，不在端口）**：端口里加一个 `isParkedDir`/`versionDirs` 的共用筛子，`uninstall` 与 `localVersions` 都过它；**不改 `listDir` 本身** —— 因为 `copyTree`/`removeTree` 也用它，端口层过滤会让"删掉一个含点开头条目的目录"变成静默漏删（桌面分支其实早就有这个问题，记进§五）。另外卸载成功后把该模块的让位残骸一并清掉：手机上文件管理器进不去 app 私有目录，留下就是永久占位。
+   - **测试**：`p5-installer` 新增一节（先 RED：`removedVersions` 实际是 `["1.0.0", ".removing-0.9.0-old"]`，正是真机那条行为的复现），断言四件事——不把残骸当版本、不许出现 `.removing-.removing-`、在位版本被删、残骸被带走。28 套全绿。
+   - **还没定案的一半**：那次 `copy 落盘校验失败` 究竟是"真写坏"还是"双层点号路径让 Cordova 写歪了"。倾向后者，因为**同一批 PNG 在前一层 park 时复制成功过**（否则不会有 `.removing-1.5.0-ssv5jl` 留下）。判据是现成的：装上含 D7 的构建后**再卸一次 codename** —— 成功 ⇒ D7 就是那个复制失败的成因；仍在单层 park 上报落盘校验失败 ⇒ 是设备的写不可靠，届时按文件加重试并在超大二进制上退化成"大小+抽样校验 + 明示告警"，不猜。
+
 0. **【已定案两条 + 主因待定】Android 卸载样式包后"删不掉也装不回"的死锁（2026-10-01 用户真机报）**。现象：模块管理里点卸载报 `codename 未以独立包形式注册，拒绝删除（避免误删单体资源）`，同时该样式界面像被删（无样式），且没有任何入口能装回来。
 
    - **用户五条探针得到的事实**（手机 eruda，全部单行表达式）：①注册表 `getInstallState().independent` —— 他点过卸载的四个（`decade/online/baby/codename`）全 `false`，没点过的三个（`yjcm/mobile/card-skin`）全 `true`；②`isAvailable()` = `{available:false, missingIo:false, missingExtractor:false, atomicRename:false, ready:false}`；③`fetch(decadeUIPath+"modules/codename/1.5.0/manifest.json")` = **HTTP 200**；④`verifyInstalled()` 五个模块**全部 `status:"ok"`、`reasons:[]`**（走 io 端口 `game.checkFile/readFile`，即目录与 entry 文件都在、健康）；⑤`fetch` 读的台账与 `readInstalled()` 读的台账**键集合与条目完全一致**（7 条全在，`codename` 两边都是 `{version:"1.5.0"}`）。
@@ -665,6 +672,7 @@
    - Cordova 的 `game.writeFile` 走 `getFile(name, {create:true})`（**不带 `overwrite:true`**），覆盖已存在文件的真实行为未知：可能直接被拒。本轮已做成"写失败即保留源文件、并恢复旧目标（`29a69e3` 的目标事务）"，但**能否成功替换 `installed.json` 必须真机实测**；若稳定失败，需要评估"先删目标再写"或改用其他本体 API。
    - 事务临时/备份件命名 `<dest>.moving-<txn>` / `<dest>.moving-backup-<txn>`（不以下划线或点开头，本体 `getFileList` 会列出）。正常事务结束即删；只有 `IO_ROLLBACK_FAILED` 时故意保留备份供人工恢复（`residual` 字段会点名路径）。
    - **2026-10-01 新增（决定设计的一条事实）**：他手机上系统文件管理器看到的 `extension/` 目录**是空的、也不可写/可删**（无名杀的扩展装在 app 私有目录，SAF 不暴露）。 ⇒ 一切"手工改 `installed.json` / 手工删坏目录"的恢复方案在 Android 上都不成立，**应用内的「修复」入口是唯一的自愈通道**（D4 由"应该做"升级为"必须做"，见§四本轮处置）。装新 Core 走他自己的路子：QQ 收到 zip →「用其他应用打开」→ 由 QQ 解压到 `extension/`。
+   - **`io.listDir` 两条分支口径不同（D7 的成因，本轮只在调用方防住，端口未改）**：桌面 `desktopListDir` 主动跳过 `.`/`_` 开头的条目，legacy 分支把 `game.getFileList` 的结果原样返回。凡是"按版本枚举目录"的调用方都必须自己过滤（`versionDirs`）；反过来 `copyTree`/`removeTree` 依赖 `listDir` 拿全量 ⇒ **桌面分支现在删不掉含点开头条目的目录**（会静默漏删，`removeTree` 之后 `kind` 仍报 dir）。这条本轮没动（没有真机证据说它咬到过谁），留作 Android 收尾项。
 
 ### P6 部分（模块管理界面，UI 层必须在游戏内验）
 
