@@ -13,14 +13,24 @@
 		"online": {
 			"version": "1.5.0"
 		},
-		"baby": {
+		"card-skin": {
 			"version": "1.5.0"
 		},
 		"codename": {
-			"version": "1.5.0"
+			"version": "1.5.0",
+			"installedAt": 1790847926880,
+			"source": "local",
+			"size": 961848,
+			"sha256": "169c0a032250d8db2cc50068a8e144e26628cc08eb42d3396b9bf66ed57f00d1",
+			"hashVerified": true
 		},
-		"card-skin": {
-			"version": "1.5.0"
+		"baby": {
+			"version": "1.5.0",
+			"installedAt": 1790853113905,
+			"source": "local",
+			"size": 111949,
+			"sha256": "ebe5609881e59817621fb0135101cb07f260b4fd720016ab6198de332c2d623e",
+			"hashVerified": true
 		}
 	}
 }
