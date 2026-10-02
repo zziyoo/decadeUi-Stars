@@ -77,6 +77,7 @@
 | 2026-10-02 | **module-index 两处小修**：①`loadBuiltInIndex` 结构校验加固（schema===1 / modules 拒数组 / core.version / 带尾斜杠 https 的 releaseBase，缺一项即 STRUCTURE_INVALID；旧行为"缺 releaseBase 也算读成功"已作废）；②`verifyAll` 补第三份——三份 module-index（release / dist/modules / modules）逐字节一致（新导出 `verifyIndexCopies`；篡改反验：改开发态索引→`--verify` exit 1 点名→还原 exit 0） | `d98e204` |
 | 2026-10-03 | **真机反馈三连收尾**（详见§五 8）：①online 转技/限定技图标 404 修复（`7532ea5`，包路由基址引用的文件未入包；p19 §C-4 扫描）；②手杀"取消按钮"破图修复（`ab89d92`，共享文件 QX.png 被改走包路由；p19 §C-5 扫描）；③**开发态内置索引基址分叉为本机发布源**（`f3288b6`：模块源地址留空即可全本地装卸、脱离 GitHub 旧资产；回环 http 校验豁免；verifyAll 双检） | `ab89d92` + `f3288b6` |
 | 2026-10-03 | **移除设置页「模块源地址」入口**（`f7b141f`，用户点名）：本地索引免配置后，本体扩展设置页与自绘配置窗口的该行一并删除（`definitions/misc.js` 定义与注册 + `handlers/module-handlers.js` 整文件 + `config-window.js` 同一行）；运行时保留键与"空值＝内置源"语义，模块管理窗口内仍可改/恢复默认 | `f7b141f` |
+| 2026-10-03 | **发布前清理与最终产物**（用户决定：**覆盖 v1.5.0 资产**）：tmp/ 工具目录 57 项全清（探针/审计/放大工具/本地源夹具，本地源进程已停）；最终门禁全过（30 套 / `node --check` 240 / `pnpm build` / `verify:release` / verify-pack 875-6-17-0-0 / verify:skins 37-0）；9 项资产以 `dist/release/RELEASE-NOTES.md` 为准（整包 `5f4a12345137…`、索引 `475b1b6733a4…`、七包 sha 见说明），上传（`gh release upload v1.5.0 … --clobber`）由用户执行 | 本笔 docs |
 
 ## 四、进行中（当前任务指针）
 
