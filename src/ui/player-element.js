@@ -4,6 +4,7 @@
  */
 
 import { readRawStyleValue } from "./../core/styleRuntime.js";
+import { getModuleSystem } from "./../core/moduleSystem.js";
 import { lib, game, ui, get, ai, _status } from "noname";
 import { element } from "../utils/element.js";
 
@@ -123,16 +124,21 @@ function setupIdentityDisplay(realIdentity, player) {
 				this.style.visibility = "hidden";
 
 				const style = readRawStyleValue();
-				/** @type {Record<string, string>} */
+				// 身份图资源边界：on/othersOff 共用 decade 的 identity_ 族（跨样式共享，留扩展根）；
+				// 其余样式专属图已迁入各自样式包，经 resourceLoader 按安装状态寻址（未安装回落扩展根=404，
+				// onerror 恢复文字身份——既有的"包不在样式不可用而 Core 正常"回退语义）。
+				/** @type {Record<string, [string, string]>} [模块ID, 包内镜像路径前缀] */
 				const srcMap = {
-					onlineUI: "image/styles/online/identity2_",
-					babysha: "image/styles/baby/identity3_",
-					on: "image/styles/decade/identity_",
-					othersOff: "image/styles/decade/identity_",
-					codename: "image/styles/codename/identity5_",
+					onlineUI: ["online", "image/styles/online/identity2_"],
+					babysha: ["baby", "image/styles/baby/identity3_"],
+					codename: ["codename", "image/styles/codename/identity5_"],
+					off: ["mobile", "image/styles/shousha/identity2_"],
 				};
-				const srcPrefix = srcMap[style] || "image/styles/shousha/identity2_";
-				const src = decadeUIPath + srcPrefix + filename + ".png";
+				const sharedPrefix = "image/styles/decade/identity_";
+				const routed = srcMap[style];
+				const src = routed
+					? getModuleSystem().resourceLoader.getAsset(routed[0], routed[1] + filename + ".png")
+					: decadeUIPath + sharedPrefix + filename + ".png";
 
 				const image = new Image();
 				image.node = this;

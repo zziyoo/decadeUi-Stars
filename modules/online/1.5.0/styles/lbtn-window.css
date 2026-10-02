@@ -138,7 +138,7 @@
 
 /* 历史记录栏 */
 .bigbgjilu {
-	background-image: url("../../../../ui/assets/lbtn/OL_line/jilu/lsbigdialog.png");
+	background-image: url("../ui/assets/lbtn/OL_line/jilu/lsbigdialog.png");
 	background-size: 100% 100%;
 	left: 0%;
 	top: 0%;
@@ -151,7 +151,7 @@
 	top: 7%;
 	width: 40%;
 	height: 92%;
-	background-image: url("../../../../ui/assets/lbtn/OL_line/jilu/lsbigdialog2.png");
+	background-image: url("../ui/assets/lbtn/OL_line/jilu/lsbigdialog2.png");
 	background-size: 100% 100%;
 	overflow: auto;
 	z-index: 7;
@@ -171,7 +171,7 @@
 }
 
 .bigbgjilu > .content > .namebg > .jiluanniu {
-	background-image: url("../../../../ui/assets/lbtn/OL_line/jilu/kuang.png");
+	background-image: url("../ui/assets/lbtn/OL_line/jilu/kuang.png");
 	background-size: 100% 100%;
 	width: 30px;
 	height: 30px;
@@ -185,7 +185,7 @@
 }
 
 .bigbgjilu > .content > .namebg > .jiluanniu > .gou {
-	background-image: url("../../../../ui/assets/lbtn/OL_line/jilu/gou.png");
+	background-image: url("../ui/assets/lbtn/OL_line/jilu/gou.png");
 	background-size: 100% 100%;
 	width: 35px;
 	height: 35px;
@@ -215,7 +215,7 @@
 
 .bigbgjilu > .content > .namebg > .namebgbg::before {
 	content: "";
-	background-image: url("../../../../ui/assets/lbtn/OL_line/jilu/jianfeng.png");
+	background-image: url("../ui/assets/lbtn/OL_line/jilu/jianfeng.png");
 	background-size: 100% 100%;
 	width: 120px;
 	height: 5px;
@@ -304,7 +304,7 @@
 	height: var(--h);
 	position: absolute;
 	top: -48px;
-	background-image: url("../../../../ui/assets/lbtn/OL_line/uibutton/jiluShow.png");
+	background-image: url("../ui/assets/lbtn/OL_line/uibutton/jiluShow.png");
 	background-size: 100% 100%;
 	z-index: 5;
 	left: 0px;
@@ -450,7 +450,7 @@
 
 .giftcost::before {
 	content: "";
-	background-image: url("../../../../ui/assets/lbtn/OL_line/gift/hua.png");
+	background-image: url("../ui/assets/lbtn/OL_line/gift/hua.png");
 	background-size: contain;
 	background-repeat: no-repeat;
 	display: inline-block;
@@ -488,7 +488,7 @@
 
 /* 聊天面板 */
 .talkbg {
-	background-image: url("../../../../ui/assets/lbtn/OL_line/talk/talkbg.png");
+	background-image: url("../ui/assets/lbtn/OL_line/talk/talkbg.png");
 	background-size: 100% 100%;
 	height: 100%;
 	width: 35%;
@@ -504,7 +504,7 @@
 }
 
 .typechange {
-	background-image: url("../../../../ui/assets/lbtn/OL_line/talk/btnn1.png");
+	background-image: url("../ui/assets/lbtn/OL_line/talk/btnn1.png");
 	background-size: 100% 100%;
 	height: 33%;
 	width: 100%;
@@ -520,7 +520,7 @@
 }
 
 .typechangelight {
-	background-image: url("../../../../ui/assets/lbtn/OL_line/talk/btnn2.png");
+	background-image: url("../ui/assets/lbtn/OL_line/talk/btnn2.png");
 	background-size: 100% 100%;
 	height: 33%;
 	width: 100%;
@@ -556,7 +556,7 @@
 
 .talkquick::before {
 	content: "";
-	background-image: url("../../../../ui/assets/lbtn/OL_line/jilu/jianfeng.png");
+	background-image: url("../ui/assets/lbtn/OL_line/jilu/jianfeng.png");
 	background-size: 100% 100%;
 	width: 100%;
 	height: 5px;
@@ -583,7 +583,7 @@
 
 .talkhistory::before {
 	content: "";
-	background-image: url("../../../../ui/assets/lbtn/OL_line/jilu/jianfeng.png");
+	background-image: url("../ui/assets/lbtn/OL_line/jilu/jianfeng.png");
 	background-size: 100% 100%;
 	width: 100%;
 	height: 5px;
@@ -594,7 +594,7 @@
 }
 
 .dazi {
-	background-image: url("../../../../ui/assets/lbtn/OL_line/talk/btnn2.png");
+	background-image: url("../ui/assets/lbtn/OL_line/talk/btnn2.png");
 	background-size: 100% 100%;
 	display: flex;
 	justify-content: center;
@@ -632,7 +632,7 @@
 	background-size: 100% 100%;
 	margin-top: 9%;
 	position: relative;
-	background-image: url("../../../../ui/assets/lbtn/OL_line/uibutton/gameanniubuttonsbg.png");
+	background-image: url("../ui/assets/lbtn/OL_line/uibutton/gameanniubuttonsbg.png");
 	background-size: 100% 100%;
 	font-size: 20px;
 	font-weight: 550;
@@ -646,7 +646,7 @@
 
 /* 菜单按钮 */
 .caidanbutton {
-	background-image: url("../../../../ui/assets/lbtn/OL_line/uibutton/caidan.png");
+	background-image: url("../ui/assets/lbtn/OL_line/uibutton/caidan.png");
 	background-size: 100% 100%;
 	display: block;
 	width: 53px;
@@ -708,7 +708,7 @@
 }
 
 .control > div {
-	background-image: url("../../../../ui/assets/lbtn/OL_line/uibutton/seatui_btns_ingnore.png");
+	background-image: url("../ui/assets/lbtn/OL_line/uibutton/seatui_btns_ingnore.png");
 	background-size: 100% 100%;
 	line-height: var(--h);
 	padding: 4px 23px !important;
@@ -748,7 +748,7 @@
 	font-weight: 500;
 	background-size: 100% 100%;
 	background-repeat: no-repeat;
-	background-image: url("../../../../ui/assets/lbtn/OL_line/uibutton/seatui_btns_confirm_2.png");
+	background-image: url("../ui/assets/lbtn/OL_line/uibutton/seatui_btns_confirm_2.png");
 	overflow: visible;
 	transition: none;
 	text-shadow:
@@ -771,7 +771,7 @@
 	margin-top: 0px !important;
 	margin-bottom: -15px !important;
 	background-size: 100% 100%;
-	background-image: url("../../../../ui/assets/lbtn/OL_line/uibutton/seatui_btns_ingnore.png");
+	background-image: url("../ui/assets/lbtn/OL_line/uibutton/seatui_btns_ingnore.png");
 	text-shadow:
 		1px 1px 0px #5d4022,
 		-1px -1px 0px #5d4022;
@@ -799,7 +799,7 @@
 	--h: 46px;
 	width: var(--w);
 	height: var(--h);
-	background-image: url("../../../../ui/assets/lbtn/OL_line/uibutton/round_info_time_bg.png");
+	background-image: url("../ui/assets/lbtn/OL_line/uibutton/round_info_time_bg.png");
 	background-size: 100% 100%;
 	background-color: transparent;
 	position: relative;

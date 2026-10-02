@@ -28,7 +28,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import JSZip from "jszip";
-import { checkCoreRequirement, compareVersions, validateManifest } from "../src/core/manifest.js";
+import { checkCoreRequirement, compareVersions, findMissingResources, validateManifest } from "../src/core/manifest.js";
 import { resolveModuleUrl } from "../src/core/packageInstaller.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -390,6 +390,14 @@ export async function verifyArtifacts({ packs, index, coreVersion, outDir = OUT_
 			for (const rel of Array.isArray(packed.entry?.[kind]) ? packed.entry[kind] : []) {
 				if (!names.includes(rel)) fail(`${pack.id}：manifest.entry.${kind} 声明的 ${rel} 不在包里`);
 			}
+		}
+
+		// 资源边界声明必须可达（资源热插拔）：缺资源却放行，等于把"CSS 在而图 404"的损坏包
+		// 发给玩家。与 verify-pack / 安装器共用 manifest.findMissingResources 一套语义。
+		if (Array.isArray(packed.resources)) {
+			const missingResources = findMissingResources(packed.resources, names);
+			if (missingResources.length) fail(`${pack.id}：manifest.resources 声明的资源缺失：${missingResources.join("、")}`);
+			notes.push(`${pack.id}：resources 声明 ${packed.resources.length} 项全部可达`);
 		}
 
 		// card-skin 这类数据包：按 manifest 自己声明的数量快照逐套核对

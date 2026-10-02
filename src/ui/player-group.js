@@ -4,6 +4,7 @@
  */
 
 import { lib, game, ui, get, ai, _status } from "noname";
+import { getModuleSystem } from "./../core/moduleSystem.js";
 
 /**
  * 处理势力样式V2（强制样式2）
@@ -54,13 +55,18 @@ function handleGroupStyleV2(group) {
 			}
 
 			try {
-				const prefix =
-					decadeUI.config.newDecadeStyle === "off"
-						? "image/styles/shousha/name2_"
-						: decadeUI.config.newDecadeStyle === "babysha"
-							? "image/styles/baby/hs_"
-							: "image/styles/decade/name_";
-				const url = decadeUIPath + prefix + group + ".png";
+				// 势力图资源边界：off→mobile 包（name2_）、babysha→baby 包（hs_）为样式专属，已迁入包；
+				// 其余样式共用 decade 的 name_ 族（跨样式共享，留扩展根）。
+				const style = decadeUI.config.newDecadeStyle;
+				const routed =
+					style === "off"
+						? ["mobile", "image/styles/shousha/name2_"]
+						: style === "babysha"
+							? ["baby", "image/styles/baby/hs_"]
+							: null;
+				const url = routed
+					? getModuleSystem().resourceLoader.getAsset(routed[0], routed[1] + group + ".png")
+					: decadeUIPath + "image/styles/decade/name_" + group + ".png";
 				await loadImage(url);
 				this.node.campWrap.node.campName.style.backgroundImage = `url("${url}")`;
 				return;

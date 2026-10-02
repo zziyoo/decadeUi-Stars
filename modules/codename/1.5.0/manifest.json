@@ -35,5 +35,17 @@
 		"desktop",
 		"mobile"
 	],
-	"author": "子右"
+	"author": "子右",
+	"resources": [
+		"image/styles/codename/",
+		"ui/assets/lbtn/CD/codecaidan.png",
+		"ui/assets/lbtn/uibutton/btnn_code.png",
+		"ui/assets/lbtn/uibutton/btnn_code1.png",
+		"ui/assets/lbtn/uibutton/cd_juli.png",
+		"ui/assets/lbtn/uibutton/cd_liaotian.png",
+		"ui/assets/lbtn/uibutton/cd_liwu.png",
+		"ui/assets/lbtn/uibutton/code_zhengli.png",
+		"ui/assets/lbtn/uibutton/codepaidui.png",
+		"ui/assets/skill/codename/"
+	]
 }

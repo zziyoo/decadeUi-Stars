@@ -5,6 +5,7 @@
  */
 
 import { readRawStyleValue } from "./../../core/styleRuntime.js";
+import { getModuleSystem } from "./../../core/moduleSystem.js";
 import { lib, game, ui, get, ai, _status } from "noname";
 import { getBasePlayerMethods } from "./base.js";
 
@@ -26,7 +27,8 @@ async function checkZhuanhuanjiImage(skill) {
 		return zhuanhuanjiImageCache.get(skill);
 	}
 
-	const url = `${decadeUIPath}ui/assets/skill/shousha/zhuanhuanji/${skill}_yang.png`;
+	// 转换技阴阳图是 mobile 样式专属资产（已迁入 mobile 包），按安装状态寻址
+	const url = getModuleSystem().resourceLoader.getAsset("mobile", `ui/assets/skill/shousha/zhuanhuanji/${skill}_yang.png`);
 
 	return new Promise(resolve => {
 		const img = new Image();
@@ -135,7 +137,8 @@ function toggleYinYangClass(mark) {
  * @private
  */
 function toggleYinYangImage(player, mark, skill) {
-	const basePath = `${decadeUIPath}ui/assets/skill/shousha/zhuanhuanji/`;
+	// 已迁入 mobile 包，经 resourceLoader 按安装状态寻址（未安装回落扩展根）
+	const basePath = getModuleSystem().resourceLoader.getAsset("mobile", "ui/assets/skill/shousha/zhuanhuanji/");
 	const yangUrl = `${basePath}${skill}_yang.png`;
 	const yingUrl = `${basePath}${skill}_ying.png`;
 	const defaultYangUrl = `${basePath}ditu_yang.png`;

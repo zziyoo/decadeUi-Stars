@@ -303,7 +303,7 @@
 	top: -18px;
 	width: 55px;
 	height: 187px;
-	background: url("../../../image/styles/xinsha/new_border_camp.png") no-repeat;
+	background: url("image/styles/xinsha/new_border_camp.png") no-repeat;
 	background-size: 100% 100%;
 }
 
@@ -315,7 +315,7 @@
 
 #arena.decadeUI[data-border-level="two"] .player > .camp-wrap > .camp-border,
 .player[data-border-level="two"] > .camp-wrap > .camp-border {
-	background-image: url("../../../image/styles/xinsha/new_border_camp2.png");
+	background-image: url("image/styles/xinsha/new_border_camp2.png");
 	left: -5px;
 	width: 52px;
 	height: 190px;
@@ -323,7 +323,7 @@
 
 #arena.decadeUI[data-border-level="three"] .player > .camp-wrap > .camp-border,
 .player[data-border-level="three"] > .camp-wrap > .camp-border {
-	background-image: url("../../../image/styles/xinsha/new_border_camp3.png");
+	background-image: url("image/styles/xinsha/new_border_camp3.png");
 	left: -5px;
 	width: 50px;
 	height: 190px;
@@ -331,7 +331,7 @@
 
 #arena.decadeUI[data-border-level="four"] .player > .camp-wrap > .camp-border,
 .player[data-border-level="four"] > .camp-wrap > .camp-border {
-	background-image: url("../../../image/styles/xinsha/new_border_camp4.png");
+	background-image: url("image/styles/xinsha/new_border_camp4.png");
 	left: -4px;
 	width: 52px;
 	height: 190px;
@@ -339,11 +339,11 @@
 
 #arena.decadeUI[data-border-level="five"] .player > .camp-wrap > .camp-border,
 .player[data-border-level="five"] > .camp-wrap > .camp-border {
-	background-image: url("../../../image/styles/xinsha/new_border_camp.png");
+	background-image: url("image/styles/xinsha/new_border_camp.png");
 }
 
 #arena.decadeUI[data-border-style="dragon2"] .player > .camp-wrap > .camp-border {
-	background-image: url("../../../image/styles/xinsha/dragon2_big_gradation_5.png");
+	background-image: url("image/styles/xinsha/dragon2_big_gradation_5.png");
 	left: -36px;
 	top: -35px;
 	width: 108px;
@@ -357,7 +357,7 @@
 
 #arena.decadeUI[data-border-style="dragon2"][data-border-level="two"] .player > .camp-wrap > .camp-border,
 #arena.decadeUI[data-border-style="dragon2"] .player[data-border-level="two"] > .camp-wrap > .camp-border {
-	background-image: url("../../../image/styles/xinsha/new_border_camp2.png");
+	background-image: url("image/styles/xinsha/new_border_camp2.png");
 	left: -5px;
 	top: -16%;
 	width: 52px;
@@ -366,7 +366,7 @@
 
 #arena.decadeUI[data-border-style="dragon2"][data-border-level="three"] .player > .camp-wrap > .camp-border,
 #arena.decadeUI[data-border-style="dragon2"] .player[data-border-level="three"] > .camp-wrap > .camp-border {
-	background-image: url("../../../image/styles/xinsha/new_border_camp3.png");
+	background-image: url("image/styles/xinsha/new_border_camp3.png");
 	left: -5px;
 	top: -16%;
 	width: 50px;
@@ -375,7 +375,7 @@
 
 #arena.decadeUI[data-border-style="dragon2"][data-border-level="four"] .player > .camp-wrap > .camp-border,
 #arena.decadeUI[data-border-style="dragon2"] .player[data-border-level="four"] > .camp-wrap > .camp-border {
-	background-image: url("../../../image/styles/xinsha/new_border_camp4.png");
+	background-image: url("image/styles/xinsha/new_border_camp4.png");
 	left: -4px;
 	top: -16%;
 	width: 52px;
@@ -383,7 +383,7 @@
 }
 
 #arena.decadeUI[data-border-style="dragon3"] .player > .camp-wrap > .camp-border {
-	background-image: url("../../../image/styles/xinsha/dragon3_big_gradation_5.png");
+	background-image: url("image/styles/xinsha/dragon3_big_gradation_5.png");
 	left: -36px;
 	top: -35px;
 	width: 108px;
@@ -397,7 +397,7 @@
 
 #arena.decadeUI[data-border-style="dragon3"][data-border-level="two"] .player > .camp-wrap > .camp-border,
 #arena.decadeUI[data-border-style="dragon3"] .player[data-border-level="two"] > .camp-wrap > .camp-border {
-	background-image: url("../../../image/styles/xinsha/new_border_camp2.png");
+	background-image: url("image/styles/xinsha/new_border_camp2.png");
 	left: -5px;
 	top: -16%;
 	width: 52px;
@@ -406,7 +406,7 @@
 
 #arena.decadeUI[data-border-style="dragon3"][data-border-level="three"] .player > .camp-wrap > .camp-border,
 #arena.decadeUI[data-border-style="dragon3"] .player[data-border-level="three"] > .camp-wrap > .camp-border {
-	background-image: url("../../../image/styles/xinsha/new_border_camp3.png");
+	background-image: url("image/styles/xinsha/new_border_camp3.png");
 	left: -5px;
 	top: -16%;
 	width: 50px;
@@ -415,7 +415,7 @@
 
 #arena.decadeUI[data-border-style="dragon3"][data-border-level="four"] .player > .camp-wrap > .camp-border,
 #arena.decadeUI[data-border-style="dragon3"] .player[data-border-level="four"] > .camp-wrap > .camp-border {
-	background-image: url("../../../image/styles/xinsha/new_border_camp4.png");
+	background-image: url("image/styles/xinsha/new_border_camp4.png");
 	left: -4px;
 	top: -16%;
 	width: 52px;
@@ -423,7 +423,7 @@
 }
 
 #arena.decadeUI[data-border-style="dragon4"] .player > .camp-wrap > .camp-border {
-	background-image: url("../../../image/styles/xinsha/border_camp.png");
+	background-image: url("image/styles/xinsha/border_camp.png");
 	left: -27px;
 	top: -25%;
 	width: 215%;
@@ -432,27 +432,27 @@
 
 #arena.decadeUI[data-border-style="dragon4"][data-border-level="one"] .player > .camp-wrap > .camp-border,
 #arena.decadeUI[data-border-style="dragon4"] .player[data-border-level="one"] > .camp-wrap > .camp-border {
-	background-image: url("../../../image/styles/xinsha/border_camp1.png");
+	background-image: url("image/styles/xinsha/border_camp1.png");
 }
 
 #arena.decadeUI[data-border-style="dragon4"][data-border-level="two"] .player > .camp-wrap > .camp-border,
 #arena.decadeUI[data-border-style="dragon4"] .player[data-border-level="two"] > .camp-wrap > .camp-border {
-	background-image: url("../../../image/styles/xinsha/border_camp2.png");
+	background-image: url("image/styles/xinsha/border_camp2.png");
 }
 
 #arena.decadeUI[data-border-style="dragon4"][data-border-level="three"] .player > .camp-wrap > .camp-border,
 #arena.decadeUI[data-border-style="dragon4"] .player[data-border-level="three"] > .camp-wrap > .camp-border {
-	background-image: url("../../../image/styles/xinsha/border_camp3.png");
+	background-image: url("image/styles/xinsha/border_camp3.png");
 }
 
 #arena.decadeUI[data-border-style="dragon4"][data-border-level="four"] .player > .camp-wrap > .camp-border,
 #arena.decadeUI[data-border-style="dragon4"] .player[data-border-level="four"] > .camp-wrap > .camp-border {
-	background-image: url("../../../image/styles/xinsha/border_camp4.png");
+	background-image: url("image/styles/xinsha/border_camp4.png");
 }
 
 #arena.decadeUI[data-border-style="dragon4"][data-border-level="five"] .player > .camp-wrap > .camp-border,
 #arena.decadeUI[data-border-style="dragon4"] .player[data-border-level="five"] > .camp-wrap > .camp-border {
-	background-image: url("../../../image/styles/xinsha/border_camp5.png");
+	background-image: url("image/styles/xinsha/border_camp5.png");
 }
 
 /** 武将名称 */
@@ -627,7 +627,7 @@
 	border-width: 12px 8px 21px 82px;
 	border-style: solid;
 	border-color: transparent;
-	border-image-source: url("../../../image/styles/xinsha/new_border_hp.png");
+	border-image-source: url("image/styles/xinsha/new_border_hp.png");
 	border-image-slice: 32 6 25 113 fill;
 	pointer-events: none;
 	transition:
@@ -645,7 +645,7 @@
 	border-width: 24px 5px 21px 82px;
 	border-style: solid;
 	border-color: transparent;
-	border-image-source: url("../../../image/styles/xinsha/border_hp.png");
+	border-image-source: url("image/styles/xinsha/border_hp.png");
 	border-image-slice: 32 6 25 113 fill;
 }
 
@@ -658,7 +658,7 @@
 	border-width: 24px 5px 21px 82px;
 	border-style: solid;
 	border-color: transparent;
-	border-image-source: url("../../../image/styles/xinsha/dragon2_big_hp_grade_5.png");
+	border-image-source: url("image/styles/xinsha/dragon2_big_hp_grade_5.png");
 	border-image-slice: 32 6 25 113 fill;
 }
 
@@ -671,7 +671,7 @@
 	border-width: 24px 5px 21px 82px;
 	border-style: solid;
 	border-color: transparent;
-	border-image-source: url("../../../image/styles/xinsha/dragon2_big_hp_grade_5.png");
+	border-image-source: url("image/styles/xinsha/dragon2_big_hp_grade_5.png");
 	border-image-slice: 32 6 25 113 fill;
 }
 
@@ -775,27 +775,27 @@
 }
 
 #arena.decadeUI[data-border-style="dragon4"] .player[data-border-level="one"] > .hp-wrap {
-	border-image-source: url("../../../image/styles/xinsha/border_hp1.png");
+	border-image-source: url("image/styles/xinsha/border_hp1.png");
 }
 
 #arena.decadeUI[data-border-style="dragon4"][data-border-level="two"] .player > .hp-wrap,
 #arena.decadeUI[data-border-style="dragon4"] .player[data-border-level="two"] > .hp-wrap {
-	border-image-source: url("../../../image/styles/xinsha/border_hp2.png");
+	border-image-source: url("image/styles/xinsha/border_hp2.png");
 }
 
 #arena.decadeUI[data-border-style="dragon4"][data-border-level="three"] .player > .hp-wrap,
 #arena.decadeUI[data-border-style="dragon4"] .player[data-border-level="three"] > .hp-wrap {
-	border-image-source: url("../../../image/styles/xinsha/border_hp3.png");
+	border-image-source: url("image/styles/xinsha/border_hp3.png");
 }
 
 #arena.decadeUI[data-border-style="dragon4"][data-border-level="four"] .player > .hp-wrap,
 #arena.decadeUI[data-border-style="dragon4"] .player[data-border-level="four"] > .hp-wrap {
-	border-image-source: url("../../../image/styles/xinsha/border_hp4.png");
+	border-image-source: url("image/styles/xinsha/border_hp4.png");
 }
 
 #arena.decadeUI[data-border-style="dragon4"][data-border-level="five"] .player > .hp-wrap,
 #arena.decadeUI[data-border-style="dragon4"] .player[data-border-level="five"] > .hp-wrap {
-	border-image-source: url("../../../image/styles/xinsha/border_hp.png");
+	border-image-source: url("image/styles/xinsha/border_hp.png");
 }
 
 /* 护甲 */
@@ -896,7 +896,7 @@
 
 /* 血量状态图标 */
 .hp:not(.text):not(.actcount):not(.treasure)[data-condition="high"] > div:not(.lost):not(.shield) {
-	background: url("../../../image/styles/xinsha/glass1.png") no-repeat;
+	background: url("image/styles/xinsha/glass1.png") no-repeat;
 	background-size: 100% 100%;
 	transform: scale(1.4);
 	box-shadow: none;
@@ -906,7 +906,7 @@
 }
 
 .hp:not(.text):not(.actcount):not(.treasure)[data-condition="mid"] > div:not(.lost):not(.shield) {
-	background: url("../../../image/styles/xinsha/glass2.png") no-repeat;
+	background: url("image/styles/xinsha/glass2.png") no-repeat;
 	background-size: 100% 100%;
 	transform: scale(1.4);
 	box-shadow: none;
@@ -916,7 +916,7 @@
 }
 
 .hp:not(.text):not(.actcount):not(.treasure)[data-condition="low"] > div:not(.lost):not(.shield) {
-	background: url("../../../image/styles/xinsha/glass3.png") no-repeat;
+	background: url("image/styles/xinsha/glass3.png") no-repeat;
 	background-size: 100% 100%;
 	transform: scale(1.4);
 	box-shadow: none;
@@ -926,7 +926,7 @@
 }
 
 .hp:not(.text):not(.actcount):not(.treasure) > .lost {
-	background: url("../../../image/styles/xinsha/glass4.png") no-repeat;
+	background: url("image/styles/xinsha/glass4.png") no-repeat;
 	background-size: 100% 100%;
 	transform: scale(1.4);
 	box-shadow: none;
@@ -1519,7 +1519,7 @@
 	border: none;
 	border-radius: 0;
 	box-shadow: none;
-	background: url("../../../image/styles/xinsha/new_card_count6.png") no-repeat;
+	background: url("image/styles/xinsha/new_card_count6.png") no-repeat;
 	background-size: 100% 100%;
 	background-position: 0 -1px;
 	transition: transform, opacity;

@@ -70,12 +70,12 @@
 		0 0 2px #fff;
 	font-family: "yuanli";
 	font-weight: 500;
-	background-image: url("../../../../ui/assets/skill/codename/btnn1.png");
+	background-image: url("../ui/assets/skill/codename/btnn1.png");
 	background-size: 100% 100%;
 }
 
 .skill-control > .combined > .skillitem.enable-skill.select {
-	background-image: url("../../../../ui/assets/skill/codename/btnn3.png");
+	background-image: url("../ui/assets/skill/codename/btnn3.png");
 	filter: brightness(1.2);
 }
 
@@ -97,12 +97,12 @@
 	font-family: "yuanli";
 	font-weight: 500;
 	font-size: 15px;
-	background-image: url("../../../../ui/assets/skill/codename/btnn2.png");
+	background-image: url("../ui/assets/skill/codename/btnn2.png");
 	background-size: 100% 100%;
 }
 
 .skill-control > .combined > .xiandingji.enable-skill.select {
-	background-image: url("../../../../ui/assets/skill/codename/btnn2.png");
+	background-image: url("../ui/assets/skill/codename/btnn2.png");
 }
 
 .skill-control > .combined > .xiandingji.enable-skill:not(.usable):not(.select) {
@@ -120,7 +120,7 @@
 	color: #f7f5e7;
 	font-family: "yuanli";
 	font-weight: 500;
-	background-image: url("../../../../ui/assets/skill/codename/btnn.png");
+	background-image: url("../ui/assets/skill/codename/btnn.png");
 	background-size: 100% 100%;
 	text-shadow: 0.3px 0px 1.8px #332c18;
 }
@@ -149,7 +149,7 @@
 }
 
 .skillMarkItem.xiandingji {
-	background-image: url("../../../../ui/assets/skill/codename/xiandingji.png");
+	background-image: url("../ui/assets/skill/codename/xiandingji.png");
 	background-size: 100% 100%;
 	text-shadow: none;
 }

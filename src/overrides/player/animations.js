@@ -6,6 +6,7 @@
 
 import { lib, game, ui, get, ai, _status } from "noname";
 import { getDui } from "./base.js";
+import { getModuleSystem } from "../../core/moduleSystem.js";
 
 /**
  * 伤害动画动作映射
@@ -257,9 +258,11 @@ export function playerDieAfter() {
 	};
 
 	if ((player._trueMe || player) !== game.me && player !== game.me && style === "off") {
+		// likai.png 仅移动版渲染（style==="off"），已迁入 mobile 包
+		const likaiUrl = getModuleSystem().resourceLoader.getAsset("mobile", "image/ui/misc/likai.png");
 		player.node.dieidentity.innerHTML = `
 			<div style="width:21px; height:81px; left:22.5px; top:-12px; position:absolute;
-				background-image: url(${decadeUIPath}image/ui/misc/likai.png);
+				background-image: url(${likaiUrl});
 				background-size: 100% 100%;">
 			</div>
 		`;
@@ -287,24 +290,27 @@ export function playerDieAfter() {
  * @private
  */
 function getDeathImageUrl(style, identity, player) {
-	const basePath = window.decadeUIPath + "image/styles/";
-
+	// 资源边界：on/othersOff 共用 decade 的 dead_ 族（跨样式共享，留扩展根）；
+	// 其余样式专属死亡图已迁入各自样式包，经 resourceLoader 按安装状态寻址。
+	const { resourceLoader } = getModuleSystem();
 	const styleMap = {
-		onlineUI: `online/dead4_${identity}.png`,
-		babysha: `baby/dead3_${identity}.png`,
-		codename: `codename/dead_${identity}.png`,
-		on: `decade/dead_${identity}.png`,
-		othersOff: `decade/dead_${identity}.png`,
+		onlineUI: ["online", `image/styles/online/dead4_${identity}.png`],
+		babysha: ["baby", `image/styles/baby/dead3_${identity}.png`],
+		codename: ["codename", `image/styles/codename/dead_${identity}.png`],
 	};
 
 	if (styleMap[style]) {
-		return basePath + styleMap[style];
+		return resourceLoader.getAsset(styleMap[style][0], styleMap[style][1]);
+	}
+
+	if (style === "on" || style === "othersOff") {
+		return window.decadeUIPath + `image/styles/decade/dead_${identity}.png`;
 	}
 
 	if (player !== game.me) {
-		return basePath + `shousha/dead2_${identity}.png`;
+		return resourceLoader.getAsset("mobile", `image/styles/shousha/dead2_${identity}.png`);
 	}
-	return basePath + "shousha/dead2_me.png";
+	return resourceLoader.getAsset("mobile", "image/styles/shousha/dead2_me.png");
 }
 
 /**

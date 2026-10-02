@@ -90,7 +90,7 @@
 	position: relative;
 	height: 35px;
 	width: 280px;
-	background-image: url("../../../../ui/assets/character/shousha/pub_red_bg1.png");
+	background-image: url("../ui/assets/character/shousha/pub_red_bg1.png");
 	background-size: 100% 100%;
 	margin: 5px 0 8px 23px;
 }
@@ -141,7 +141,7 @@
 	height: 45px;
 	top: 40%;
 	right: 5%;
-	background-image: url("../../../../ui/assets/character/shousha/useless1.png");
+	background-image: url("../ui/assets/character/shousha/useless1.png");
 	background-size: 100% 100%;
 	font-family: "shousha";
 	font-size: 17px;
@@ -162,7 +162,7 @@
 	width: var(--w);
 	height: var(--h);
 	position: absolute;
-	background-image: url("../../../../ui/assets/character/shousha/dialogx1.png");
+	background-image: url("../ui/assets/character/shousha/dialogx1.png");
 	background-size: 100% 100%;
 }
 
@@ -199,7 +199,7 @@
 
 .xing > .item {
 	position: relative;
-	background: url("../../../../ui/assets/character/shousha/pubui_starm.png");
+	background: url("../ui/assets/character/shousha/pubui_starm.png");
 	background-size: cover;
 	width: 20px;
 	height: 20px;
@@ -208,7 +208,7 @@
 }
 
 .xing > .item.huixing {
-	background: url("../../../../ui/assets/character/shousha/pubui_starm.png");
+	background: url("../ui/assets/character/shousha/pubui_starm.png");
 	filter: grayscale(100%);
 	background-size: cover;
 }
@@ -473,7 +473,7 @@
 
 .shanchang .kuang .xing > .item {
 	position: relative;
-	background: url("../../../../ui/assets/character/shousha/pubui_starm.png");
+	background: url("../ui/assets/character/shousha/pubui_starm.png");
 	background-size: cover;
 	width: 20px;
 	height: 20px;
@@ -482,7 +482,7 @@
 }
 
 .shanchang .kuang .xing > .item.huixing {
-	background: url("../../../../ui/assets/character/shousha/pubui_starm.png");
+	background: url("../ui/assets/character/shousha/pubui_starm.png");
 	filter: grayscale(100%);
 	background-size: cover;
 }
@@ -542,7 +542,7 @@
 .shanchang .huanfu {
 	width: 40px;
 	height: 40px;
-	background-image: url("../../../../ui/assets/character/shousha/personui_change_skin_btn.png");
+	background-image: url("../ui/assets/character/shousha/personui_change_skin_btn.png");
 	background-size: 100% 100%;
 	z-index: 99;
 	right: -10px;
@@ -573,7 +573,7 @@
 	top: 13.3%;
 	height: 33.9%;
 	width: 13.2%;
-	background-image: url("../../../../ui/assets/character/shousha/skinFrm1_rare.png");
+	background-image: url("../ui/assets/character/shousha/skinFrm1_rare.png");
 	background-size: 100% 100%;
 	z-index: 60;
 	text-align: center;
@@ -671,7 +671,7 @@
 /* 进度条 */
 .typeleft {
 	left: 43%;
-	background: url("../../../../ui/assets/character/shousha/dengjie/left.png");
+	background: url("../ui/assets/character/shousha/dengjie/left.png");
 	background-size: 100% 100%;
 	background-color: black;
 	border-radius: 3px;
@@ -683,7 +683,7 @@
 
 .typeright {
 	left: 42.5%;
-	background: url("../../../../ui/assets/character/shousha/dengjie/right.png");
+	background: url("../ui/assets/character/shousha/dengjie/right.png");
 	background-size: 100% 100%;
 	height: 18px;
 	top: 12.7%;
@@ -785,7 +785,7 @@
 	height: 131px;
 	top: 0%;
 	right: 0%;
-	background-image: url("../../../../ui/assets/character/shousha/dengjie/diaozhui.png");
+	background-image: url("../ui/assets/character/shousha/dengjie/diaozhui.png");
 	background-size: 100% 100%;
 	z-index: 100;
 	position: absolute;

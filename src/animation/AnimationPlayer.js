@@ -71,6 +71,13 @@ export class AnimationPlayer {
 		this.BUILT_ID = 0;
 		this._dprAdaptive = false;
 		this.unpackPremultipliedAlpha = false;
+		/**
+		 * 可选的加载路径解析钩子（资源热插拔）：传入"裸动画名"，返回**相对 pathPrefix** 的
+		 * 加载路径。assets/skeletons 仍按裸名键控，游戏侧 API（hasSpine/playSpine/…）不变。
+		 * 未设置时行为与旧版完全一致（pathPrefix + 裸名）。
+		 * @type {((filename: string) => string)|undefined}
+		 */
+		this.assetResolver = undefined;
 
 		Object.defineProperties(this, {
 			dprAdaptive: {
@@ -174,6 +181,8 @@ export class AnimationPlayer {
 		const type = (skelType || "skel").toLowerCase();
 		const manager = this.spine.assetManager;
 		const assets = this.spine.assets;
+		// 加载路径可被 assetResolver 重定向（样式专属动画在样式包内）；键控仍用裸名
+		const resolved = typeof this.assetResolver === "function" ? this.assetResolver(filename) : filename;
 
 		const reader = {
 			filename,
@@ -207,7 +216,7 @@ export class AnimationPlayer {
 
 			ontextLoad: (path, data) => {
 				const atlasReader = new spine.TextureAtlasReader(data);
-				const prefix = this._getPathPrefix(filename);
+				const prefix = this._getPathPrefix(resolved);
 				let imageName = null;
 
 				while (true) {
@@ -227,11 +236,11 @@ export class AnimationPlayer {
 		};
 
 		if (type === "json") {
-			manager.loadText(filename + ".json", reader.onload, reader.onerror);
+			manager.loadText(resolved + ".json", reader.onload, reader.onerror);
 		} else {
-			manager.loadBinary(filename + ".skel", reader.onload, reader.onerror);
+			manager.loadBinary(resolved + ".skel", reader.onload, reader.onerror);
 		}
-		manager.loadText(filename + ".atlas", reader.ontextLoad, reader.onerror);
+		manager.loadText(resolved + ".atlas", reader.ontextLoad, reader.onerror);
 	}
 
 	/**
@@ -272,16 +281,18 @@ export class AnimationPlayer {
 
 		const asset = assets[filename];
 		const manager = this.spine.assetManager;
+		// 与 loadSpine 同一解析规则：manager 缓存按解析路径，键控按裸名
+		const resolved = typeof this.assetResolver === "function" ? this.assetResolver(filename) : filename;
 
 		if (!asset.skelRawData) {
-			const prefix = this._getPathPrefix(filename);
-			const atlas = new spine.TextureAtlas(manager.get(filename + ".atlas"), path => manager.get(prefix + path));
+			const prefix = this._getPathPrefix(resolved);
+			const atlas = new spine.TextureAtlas(manager.get(resolved + ".atlas"), path => manager.get(prefix + path));
 			const atlasLoader = new spine.AtlasAttachmentLoader(atlas);
 			asset.skelRawData = asset.skelType === "json" ? new spine.SkeletonJson(atlasLoader) : new spine.SkeletonBinary(atlasLoader);
 			asset.ready = true;
 		}
 
-		const data = asset.skelRawData.readSkeletonData(manager.get(`${filename}.${asset.skelType}`));
+		const data = asset.skelRawData.readSkeletonData(manager.get(`${resolved}.${asset.skelType}`));
 		const skeleton = new spine.Skeleton(data);
 		skeleton.name = filename;
 		skeleton.completed = true;

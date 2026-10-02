@@ -65,7 +65,49 @@ export function validateManifest(manifest) {
 	if (manifest.platform !== undefined && !Array.isArray(manifest.platform)) {
 		errors.push("platform 必须为数组");
 	}
+	if (manifest.resources !== undefined && !Array.isArray(manifest.resources)) {
+		errors.push("resources 必须为数组");
+	} else if (Array.isArray(manifest.resources)) {
+		// 资源边界声明（资源热插拔）：目录以 / 结尾（递归覆盖），否则是单文件路径。
+		// 这里只做形状校验（POSIX 相对路径、不越界）；存在性由 verify-pack / 安装器 /
+		// 构建门禁按各自的数据源核对（findMissingResources）。
+		for (const entry of manifest.resources) {
+			if (typeof entry !== "string" || !entry) {
+				errors.push("resources 每项必须为非空字符串");
+				break;
+			}
+			if (entry.includes("\\")) {
+				errors.push(`resources 路径必须用 POSIX 分隔符：${entry}`);
+				break;
+			}
+			if (entry.startsWith("/") || entry.split("/").includes("..")) {
+				errors.push(`resources 路径必须是包内相对路径且不得上溯：${entry}`);
+				break;
+			}
+		}
+	}
 	return { ok: errors.length === 0, errors };
+}
+
+/**
+ * 展开清单的 resources 声明并与实际文件对账（纯函数，verify-pack / 构建门禁共用）。
+ *
+ * 语义（资源热插拔的任务书要求：Manifest 必须能表达资源边界、可验证完整性）：
+ *   - 以 "/" 结尾的声明是目录声明，覆盖其下全部文件（递归）；
+ *   - 其余声明是单文件；
+ *   - 声明在文件集里一个文件都罩不到 ⇒ 缺失（"声明了却不存在"）。
+ *
+ * @param {string[]} declared - manifest.resources（形状已由 validateManifest 校验）
+ * @param {string[]} files - 包内实际文件（包根相对 POSIX 路径）
+ * @returns {string[]} 缺失的声明（原样返回，便于报错指认）；全部可达时为空数组
+ */
+export function findMissingResources(declared, files) {
+	const missing = [];
+	for (const entry of declared || []) {
+		const covered = entry.endsWith("/") ? files.some(f => f.startsWith(entry)) : files.includes(entry);
+		if (!covered) missing.push(entry);
+	}
+	return missing;
 }
 
 /**

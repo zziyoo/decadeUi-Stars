@@ -502,6 +502,34 @@ export function createPackageInstaller(deps = {}) {
 		if (missing.length) {
 			return failure(INSTALL_CODES.ENTRY_MISSING, `entry 声明的文件缺失: ${missing.join(", ")}`, { stage: "verifying", missing });
 		}
+		// 资源边界声明必须可达（资源热插拔）：文件声明逐个 kindOf，目录声明列到任一内容即算命中。
+		// 与 verify-pack / build-release --verify 共用同一语义（manifest.findMissingResources）。
+		if (Array.isArray(manifest.resources) && manifest.resources.length) {
+			const missingResources = [];
+			for (const entry of manifest.resources) {
+				if (entry.endsWith("/")) {
+					let listed = null;
+					try {
+						listed = typeof io.listDir === "function" ? await io.listDir(`${dir}/${entry}`) : null;
+					} catch (error) {
+						return toIoFailure(error, "verifying", { message: `检查资源目录 ${entry} 失败: ${error?.message ?? error}` });
+					}
+					const hasAny = listed && ((listed.files?.length ?? 0) > 0 || (listed.dirs?.length ?? 0) > 0);
+					if (!hasAny) missingResources.push(entry);
+				} else {
+					let type;
+					try {
+						type = await kindOf(`${dir}/${entry}`);
+					} catch (error) {
+						return toIoFailure(error, "verifying", { message: `检查资源 ${entry} 失败: ${error?.message ?? error}` });
+					}
+					if (type === null) missingResources.push(entry);
+				}
+			}
+			if (missingResources.length) {
+				return failure(INSTALL_CODES.ENTRY_MISSING, `resources 声明的资源缺失: ${missingResources.join(", ")}`, { stage: "verifying", missing: missingResources });
+			}
+		}
 		return success({ manifest, coreVersionUnknown: coreCheck.unknown });
 	}
 

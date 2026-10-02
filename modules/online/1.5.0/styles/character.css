@@ -46,7 +46,7 @@
 	width: var(--w);
 	height: var(--h);
 	position: absolute;
-	background-image: url("../../../../ui/assets/character/online/dialog4.png");
+	background-image: url("../ui/assets/character/online/dialog4.png");
 	background-size: 100% 100%;
 }
 
@@ -192,7 +192,7 @@
 
 /* 资料页启动按钮 */
 .online-character-dialog .xinxi {
-	background: url("../../../../ui/assets/character/online/xinxi.png");
+	background: url("../ui/assets/character/online/xinxi.png");
 	background-size: 100% 100%;
 	bottom: -305%;
 	right: -24.5%;
@@ -202,7 +202,7 @@
 
 /* 双将切换按钮 */
 .online-character-dialog .sjright {
-	background: url("../../../../ui/assets/character/online/sj_btn.png");
+	background: url("../ui/assets/character/online/sj_btn.png");
 	background-size: 100% 100%;
 	width: 25px;
 	height: 25px;
@@ -211,7 +211,7 @@
 }
 
 .online-character-dialog .sjleft {
-	background: url("../../../../ui/assets/character/online/sj_btn.png");
+	background: url("../ui/assets/character/online/sj_btn.png");
 	background-size: 100% 100%;
 	width: 25px;
 	height: 25px;
@@ -228,7 +228,7 @@
 	left: 0;
 	width: 100%;
 	height: 100%;
-	background-image: url("../../../../ui/assets/character/online/border_diwen.png");
+	background-image: url("../ui/assets/character/online/border_diwen.png");
 	background-size: 100% 100%;
 	border-radius: 4px 0 0 4px;
 	opacity: 0.18;
@@ -284,7 +284,7 @@
 }
 
 .online-character-dialog div.right .xcaption {
-	background: url("../../../../ui/assets/character/online/quyu4.png") center/contain no-repeat;
+	background: url("../ui/assets/character/online/quyu4.png") center/contain no-repeat;
 	background-size: 260px 30px;
 	background-origin: content-box;
 	text-align: center;
@@ -325,7 +325,7 @@
 	overflow: hidden;
 	text-overflow: ellipsis;
 	box-sizing: border-box;
-	border-image: url("../../../../ui/assets/character/online/btn4.png") 0 25 fill / 0 15px stretch;
+	border-image: url("../ui/assets/character/online/btn4.png") 0 25 fill / 0 15px stretch;
 	border-width: 0 0px;
 	border-style: solid;
 }
@@ -379,7 +379,7 @@
 
 .online-character-dialog div.right > div > div.xskill > span.yanshengji::before {
 	content: "";
-	background-image: url("../../../../ui/assets/character/online/ysjineg.png");
+	background-image: url("../ui/assets/character/online/ysjineg.png");
 	background-size: contain;
 	background-repeat: no-repeat;
 	display: inline-block;
@@ -406,7 +406,7 @@
 /* 大资料主页 */
 .online-detail-popup .bigdialog {
 	position: absolute;
-	background: url("../../../../ui/assets/character/online/bigdialog.png");
+	background: url("../ui/assets/character/online/bigdialog.png");
 	background-size: 100% 100%;
 	width: 73.8%;
 	height: 95%;
@@ -422,7 +422,7 @@
 	height: 40px;
 	top: 2%;
 	right: 6%;
-	background-image: url("../../../../ui/assets/character/online/diaozhui.png");
+	background-image: url("../ui/assets/character/online/diaozhui.png");
 	background-size: 100% 100%;
 	z-index: 100;
 	position: absolute;
@@ -534,7 +534,7 @@
 
 /* 将灯底图 */
 .online-detail-popup .jddialog {
-	background: url("../../../../ui/assets/character/online/jddialog.png");
+	background: url("../ui/assets/character/online/jddialog.png");
 	background-size: 100% 100%;
 	z-index: 77;
 	width: 42%;
@@ -559,7 +559,7 @@
 	z-index: 69;
 	position: relative;
 	filter: drop-shadow(5px 5px 5px rgba(0, 0, 0, 0.5));
-	background: url("../../../../ui/assets/character/online/jdditu.png");
+	background: url("../ui/assets/character/online/jdditu.png");
 	background-size: 100% 100%;
 }
 
@@ -637,8 +637,8 @@
 	height: 100%;
 	background-size: 100% 100%;
 	animation: flowingLights 4s linear infinite;
-	--first-image: url("../../../../ui/assets/character/online/biao1.png");
-	--second-image: url("../../../../ui/assets/character/online/biao2.png");
+	--first-image: url("../ui/assets/character/online/biao1.png");
+	--second-image: url("../ui/assets/character/online/biao2.png");
 }
 
 .online-detail-popup .jdcuidonghua {
@@ -646,8 +646,8 @@
 	height: 100%;
 	background-size: 100% 100%;
 	animation: flowingLights 4s linear infinite;
-	--first-image: url("../../../../ui/assets/character/online/cui1.png");
-	--second-image: url("../../../../ui/assets/character/online/cui2.png");
+	--first-image: url("../ui/assets/character/online/cui1.png");
+	--second-image: url("../ui/assets/character/online/cui2.png");
 }
 
 .online-detail-popup .jdguodonghua {
@@ -655,8 +655,8 @@
 	height: 100%;
 	background-size: 100% 100%;
 	animation: flowingLights 4s linear infinite;
-	--first-image: url("../../../../ui/assets/character/online/guo1.png");
-	--second-image: url("../../../../ui/assets/character/online/guo2.png");
+	--first-image: url("../ui/assets/character/online/guo1.png");
+	--second-image: url("../ui/assets/character/online/guo2.png");
 }
 
 .online-detail-popup .jdjiangdonghua {
@@ -664,8 +664,8 @@
 	height: 100%;
 	background-size: 100% 100%;
 	animation: flowingLights 4s linear infinite;
-	--first-image: url("../../../../ui/assets/character/online/jiang1.png");
-	--second-image: url("../../../../ui/assets/character/online/jiang2.png");
+	--first-image: url("../ui/assets/character/online/jiang1.png");
+	--second-image: url("../ui/assets/character/online/jiang2.png");
 }
 
 .online-detail-popup .jdjiangjiedonghua {
@@ -673,8 +673,8 @@
 	height: 100%;
 	background-size: 100% 100%;
 	animation: flowingLights 4s linear infinite;
-	--first-image: url("../../../../ui/assets/character/online/jiangjie1.png");
-	--second-image: url("../../../../ui/assets/character/online/jiangjie2.png");
+	--first-image: url("../ui/assets/character/online/jiangjie1.png");
+	--second-image: url("../ui/assets/character/online/jiangjie2.png");
 }
 
 .online-detail-popup .jdjiedonghua {
@@ -682,8 +682,8 @@
 	height: 100%;
 	background-size: 100% 100%;
 	animation: flowingLights 4s linear infinite;
-	--first-image: url("../../../../ui/assets/character/online/jie1.png");
-	--second-image: url("../../../../ui/assets/character/online/jie2.png");
+	--first-image: url("../ui/assets/character/online/jie1.png");
+	--second-image: url("../ui/assets/character/online/jie2.png");
 }
 
 .online-detail-popup .jdmoudonghua {
@@ -691,8 +691,8 @@
 	height: 100%;
 	background-size: 100% 100%;
 	animation: flowingLights 4s linear infinite;
-	--first-image: url("../../../../ui/assets/character/online/mou1.png");
-	--second-image: url("../../../../ui/assets/character/online/mou2.png");
+	--first-image: url("../ui/assets/character/online/mou1.png");
+	--second-image: url("../ui/assets/character/online/mou2.png");
 }
 
 .online-detail-popup .jdqidonghua {
@@ -700,8 +700,8 @@
 	height: 100%;
 	background-size: 100% 100%;
 	animation: flowingLights 4s linear infinite;
-	--first-image: url("../../../../ui/assets/character/online/qi1.png");
-	--second-image: url("../../../../ui/assets/character/online/qi2.png");
+	--first-image: url("../ui/assets/character/online/qi1.png");
+	--second-image: url("../ui/assets/character/online/qi2.png");
 }
 
 .online-detail-popup .jdshandonghua {
@@ -709,8 +709,8 @@
 	height: 100%;
 	background-size: 100% 100%;
 	animation: flowingLights 4s linear infinite;
-	--first-image: url("../../../../ui/assets/character/online/shan1.png");
-	--second-image: url("../../../../ui/assets/character/online/shan2.png");
+	--first-image: url("../ui/assets/character/online/shan1.png");
+	--second-image: url("../ui/assets/character/online/shan2.png");
 }
 
 .online-detail-popup .jdshendonghua {
@@ -718,8 +718,8 @@
 	height: 100%;
 	background-size: 100% 100%;
 	animation: flowingLights 4s linear infinite;
-	--first-image: url("../../../../ui/assets/character/online/shen1.png");
-	--second-image: url("../../../../ui/assets/character/online/shen2.png");
+	--first-image: url("../ui/assets/character/online/shen1.png");
+	--second-image: url("../ui/assets/character/online/shen2.png");
 }
 
 .online-detail-popup .jdspdonghua {
@@ -727,8 +727,8 @@
 	height: 100%;
 	background-size: 100% 100%;
 	animation: flowingLights 4s linear infinite;
-	--first-image: url("../../../../ui/assets/character/online/sp1.png");
-	--second-image: url("../../../../ui/assets/character/online/sp2.png");
+	--first-image: url("../ui/assets/character/online/sp1.png");
+	--second-image: url("../ui/assets/character/online/sp2.png");
 }
 
 .online-detail-popup .jdwenwudonghua {
@@ -736,8 +736,8 @@
 	height: 100%;
 	background-size: 100% 100%;
 	animation: flowingLights 4s linear infinite;
-	--first-image: url("../../../../ui/assets/character/online/wenwu1.png");
-	--second-image: url("../../../../ui/assets/character/online/wenwu2.png");
+	--first-image: url("../ui/assets/character/online/wenwu1.png");
+	--second-image: url("../ui/assets/character/online/wenwu2.png");
 }
 
 .online-detail-popup .jdxiandonghua {
@@ -745,8 +745,8 @@
 	height: 100%;
 	background-size: 100% 100%;
 	animation: flowingLights 4s linear infinite;
-	--first-image: url("../../../../ui/assets/character/online/xian1.png");
-	--second-image: url("../../../../ui/assets/character/online/xian2.png");
+	--first-image: url("../ui/assets/character/online/xian1.png");
+	--second-image: url("../ui/assets/character/online/xian2.png");
 }
 
 .online-detail-popup .jdzudonghua {
@@ -754,13 +754,13 @@
 	height: 100%;
 	background-size: 100% 100%;
 	animation: flowingLights 4s linear infinite;
-	--first-image: url("../../../../ui/assets/character/online/zu1.png");
-	--second-image: url("../../../../ui/assets/character/online/zu2.png");
+	--first-image: url("../ui/assets/character/online/zu1.png");
+	--second-image: url("../ui/assets/character/online/zu2.png");
 }
 
 /* 排位底图 */
 .online-detail-popup .paiweiditu {
-	background: url("../../../../ui/assets/character/online/paiweiditu.png");
+	background: url("../ui/assets/character/online/paiweiditu.png");
 	background-size: 100% 100%;
 	right: 3%;
 	z-index: 78;
@@ -810,7 +810,7 @@
 
 .online-detail-popup .typeleft {
 	left: 10%;
-	background: url("../../../../ui/assets/character/online/left.png");
+	background: url("../ui/assets/character/online/left.png");
 	background-size: 100% 100%;
 	height: 25px;
 	width: 25px;
@@ -819,7 +819,7 @@
 
 .online-detail-popup .typeright {
 	right: 10%;
-	background: url("../../../../ui/assets/character/online/right.png");
+	background: url("../ui/assets/character/online/right.png");
 	background-size: 100% 100%;
 	height: 25px;
 	width: 25px;
@@ -840,7 +840,7 @@
 
 /* 擅长武将 */
 .online-detail-popup .shanchangdialog {
-	background: url("../../../../ui/assets/character/online/shanchangbigdialog.png");
+	background: url("../ui/assets/character/online/shanchangbigdialog.png");
 	background-size: 100% 100%;
 	z-index: 77;
 	width: 100%;
@@ -873,7 +873,7 @@
 .online-detail-popup .huanfu {
 	width: 45px;
 	height: 45px;
-	background-image: url("../../../../ui/assets/character/online/huanfu.png");
+	background-image: url("../ui/assets/character/online/huanfu.png");
 	background-size: 100% 100%;
 	z-index: 99;
 	right: -10px;
@@ -910,7 +910,7 @@
 	left: 0;
 	width: 100%;
 	height: 100%;
-	background-image: url("../../../../ui/assets/character/online/border_diwen.png");
+	background-image: url("../ui/assets/character/online/border_diwen.png");
 	background-size: 100% 100%;
 	border-radius: 4px 0 0 4px;
 	opacity: 0.18;
@@ -922,7 +922,7 @@
 	width: 90%;
 	height: 40%;
 	bottom: 0%;
-	background-image: url("../../../../ui/assets/character/online/xing.png");
+	background-image: url("../ui/assets/character/online/xing.png");
 	background-size: 100% 100%;
 }
 

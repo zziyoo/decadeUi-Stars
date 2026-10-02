@@ -95,7 +95,7 @@
 	color: #f7f5e7;
 	font-family: "yuanli";
 	font-weight: 500;
-	background-image: url("../../../../ui/assets/skill/baby/btnnhs1.png");
+	background-image: url("../ui/assets/skill/baby/btnnhs1.png");
 	background-size: 100% 100%;
 	text-shadow:
 		0.3px 0px 1.8px #332c18,
@@ -151,7 +151,7 @@
 }
 
 .skill-control > .combined > .skillitem.enable-skill.select {
-	background-image: url("../../../../ui/assets/skill/baby/btnnhs2.png");
+	background-image: url("../ui/assets/skill/baby/btnnhs2.png");
 	filter: brightness(1.2);
 }
 
@@ -171,7 +171,7 @@
 	font-family: "yuanli";
 	font-weight: 500;
 	font-size: 20px;
-	background-image: url("../../../../ui/assets/skill/baby/btnnhs1.png");
+	background-image: url("../ui/assets/skill/baby/btnnhs1.png");
 	background-size: 100% 100%;
 	text-shadow:
 		0.3px 0px 1.8px #332c18,
@@ -230,7 +230,7 @@
 }
 
 .skill-control > .combined > .xiandingji.enable-skill.select {
-	background-image: url("../../../../ui/assets/skill/baby/btnnhs2.png");
+	background-image: url("../ui/assets/skill/baby/btnnhs2.png");
 }
 
 .skill-control > .combined > .xiandingji.enable-skill:not(.usable):not(.select) {
@@ -249,7 +249,7 @@
 	color: #f7f5e7;
 	font-family: "yuanli";
 	font-weight: 500;
-	background-image: url("../../../../ui/assets/skill/baby/btnnhs3.png");
+	background-image: url("../ui/assets/skill/baby/btnnhs3.png");
 	background-size: 100% 100%;
 	text-shadow:
 		0.3px 0px 1.8px #332c18,
@@ -334,7 +334,7 @@
 
 /* 限定技标记 */
 .skillMarkItem.xiandingji {
-	background-image: url("../../../../ui/assets/skill/baby/xiandingjihs.png");
+	background-image: url("../ui/assets/skill/baby/xiandingjihs.png");
 	background-size: 100% 100%;
 	text-shadow: none;
 	--w: 30px;
@@ -354,7 +354,7 @@
 
 /* 觉醒技标记 */
 .skillMarkItem.juexingji {
-	background-image: url("../../../../ui/assets/skill/baby/juexingjihs.png");
+	background-image: url("../ui/assets/skill/baby/juexingjihs.png");
 	background-size: 100% 100%;
 	text-shadow: none;
 	--w: 30px;
@@ -378,16 +378,16 @@
 	background-repeat: no-repeat;
 	transform-style: preserve-3d;
 	transform: rotateY(360deg);
-	background-image: url("../../../../ui/assets/skill/baby/mark_yanghs.png");
+	background-image: url("../ui/assets/skill/baby/mark_yanghs.png");
 }
 
 .skillMarkItem.zhuanhuanji.yang {
-	background-image: url("../../../../ui/assets/skill/baby/mark_yanghs.png");
+	background-image: url("../ui/assets/skill/baby/mark_yanghs.png");
 	animation: fanzhuan 1.5s;
 }
 
 .skillMarkItem.zhuanhuanji.yin {
-	background-image: url("../../../../ui/assets/skill/baby/mark_yinghs.png");
+	background-image: url("../ui/assets/skill/baby/mark_yinghs.png");
 	animation: fanzhuan 1.5s;
 }
 
@@ -407,7 +407,7 @@
 
 /* 使命技标记 */
 .skillMarkItem.duty {
-	background-image: url("../../../../ui/assets/skill/baby/mark_dutyOL.png");
+	background-image: url("../ui/assets/skill/baby/mark_dutyOL.png");
 	background-size: contain;
 	background-repeat: no-repeat;
 }

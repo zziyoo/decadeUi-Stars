@@ -8,6 +8,10 @@ import { createBaseCharacterPlugin } from "../../../../../../ui/character/skins/
 import { applyOutcropAvatar } from "../../../../../../src/ui/outcropAvatar.js";
 import { skillButtonTooltip } from "../../../../../../src/ui/skillButtonTooltip.js";
 import { SHOUSHA_CONSTANTS, SHOUSHA_LAYOUT } from "../../../../../../ui/constants.js";
+// character/shousha 已迁入 mobile 包：形象/段位等包内资源经 resourceLoader 按安装状态寻址；
+// AUDIO_PATH（lbtn/shousha 的 mp3）是跨皮肤共享，留在扩展根。
+const IMAGE_PATH = window.decadeUI.resource.getAsset("mobile", "ui/assets/character/shousha/");
+const IMAGE_PATH_PREFIX = window.decadeUI.resource.getAsset("mobile", "ui/assets/character/shousha/dengjie/");
 
 /**
  * 创建手杀风格角色插件
@@ -34,10 +38,10 @@ export function createShoushaCharacterPlugin(lib, game, ui, get, ai, _status, ap
 		 */
 		getGroupBackgroundImage(group) {
 			if (!group || group === "unknown") {
-				return `${SHOUSHA_CONSTANTS.IMAGE_PATH}character/name2_unknown.png`;
+				return `${IMAGE_PATH}character/name2_unknown.png`;
 			}
 			if (!this.validGroups.includes(group)) group = "default";
-			return `${SHOUSHA_CONSTANTS.IMAGE_PATH}character/name2_${group}.png`;
+			return `${IMAGE_PATH}character/name2_${group}.png`;
 		},
 
 		/**
@@ -178,7 +182,7 @@ export function createShoushaCharacterPlugin(lib, game, ui, get, ai, _status, ap
 			const level = isMe ? 11 : randomData.guanjieLevel;
 			const text = isMe ? "大元帅" : this.guanjieTranslation[level][0];
 
-			officalIcon.setBackgroundImage(`${SHOUSHA_CONSTANTS.IMAGE_PATH_PREFIX}offical_icon_${level}.png`);
+			officalIcon.setBackgroundImage(`${IMAGE_PATH_PREFIX}offical_icon_${level}.png`);
 			ui.create.div(".offical-text", `<center>${text}`, officalbg);
 		},
 
@@ -192,7 +196,7 @@ export function createShoushaCharacterPlugin(lib, game, ui, get, ai, _status, ap
 			const isMe = player === game.me;
 			const winRate = isMe ? this.utils.calculateWinRate().toFixed(2) : this.utils.getRandomPercentage();
 			const runRate = isMe ? "0.00" : this.utils.getRandomPercentage();
-			const imgPath = `${SHOUSHA_CONSTANTS.IMAGE_PATH}num/`;
+			const imgPath = `${IMAGE_PATH}num/`;
 
 			const shenglv = ui.create.div(".shenglv", parent);
 			const taolv = ui.create.div(".shenglv", parent);
@@ -321,7 +325,7 @@ export function createShoushaCharacterPlugin(lib, game, ui, get, ai, _status, ap
 
 			if (isUnseen) {
 				biankuang.setBackgroundImage(this.getGroupBackgroundImage("unknown"));
-				leftPane.setBackgroundImage(`${SHOUSHA_CONSTANTS.IMAGE_PATH}hidden_image.jpg`);
+				leftPane.setBackgroundImage(`${IMAGE_PATH}hidden_image.jpg`);
 			} else {
 				biankuang.setBackgroundImage(this.getGroupBackgroundImage(group));
 			}
@@ -373,7 +377,7 @@ export function createShoushaCharacterPlugin(lib, game, ui, get, ai, _status, ap
 			const minixingxiangdi = ui.create.div(".minixingxiangdi", parent);
 			const xingbie = ui.create.div(".xingbie", minixingxiangdi);
 			const xingbietu = ["pubui_icon_male", "pubui_icon_female"];
-			xingbie.setBackgroundImage(`${SHOUSHA_CONSTANTS.IMAGE_PATH}${xingbietu.randomGet()}.png`);
+			xingbie.setBackgroundImage(`${IMAGE_PATH}${xingbietu.randomGet()}.png`);
 
 			const nickname = player === game.me ? lib.config.connect_nickname : get.translation(SHOUSHA_CONSTANTS.NICKNAMES.randomGet(1));
 			const title = get.translation(SHOUSHA_CONSTANTS.TITLES.randomGet(1));
@@ -381,7 +385,7 @@ export function createShoushaCharacterPlugin(lib, game, ui, get, ai, _status, ap
 			ui.create.div(".nameX", minixingxiang).textContent = nickname;
 			ui.create.div(".wanjiachenghao", parent).textContent = title;
 
-			minixingxiang.setBackgroundImage(`${SHOUSHA_CONSTANTS.IMAGE_PATH}xingxiang${Math.floor(Math.random() * 6)}.png`);
+			minixingxiang.setBackgroundImage(`${IMAGE_PATH}xingxiang${Math.floor(Math.random() * 6)}.png`);
 		},
 
 		/**
@@ -394,8 +398,8 @@ export function createShoushaCharacterPlugin(lib, game, ui, get, ai, _status, ap
 			const guanjie = ui.create.div(".guanjie", parent);
 			const guanjieInfo = ui.create.div(".guanjieInfo", parent);
 			const level = player === game.me ? 11 : randomData.guanjieLevel;
-			guanjie.setBackgroundImage(`${SHOUSHA_CONSTANTS.IMAGE_PATH_PREFIX}offical_icon_${level}.png`);
-			guanjieInfo.setBackgroundImage(`${SHOUSHA_CONSTANTS.IMAGE_PATH_PREFIX}offical_label_${level}.png`);
+			guanjie.setBackgroundImage(`${IMAGE_PATH_PREFIX}offical_icon_${level}.png`);
+			guanjieInfo.setBackgroundImage(`${IMAGE_PATH_PREFIX}offical_label_${level}.png`);
 		},
 
 		/**
@@ -411,11 +415,11 @@ export function createShoushaCharacterPlugin(lib, game, ui, get, ai, _status, ap
 
 			if (isMe) {
 				ui.create.div(".duanweishuzi", "<center>绝世传说", paiwei);
-				duanwei.setBackgroundImage(`${SHOUSHA_CONSTANTS.IMAGE_PATH_PREFIX}pwtx_6.png`);
+				duanwei.setBackgroundImage(`${IMAGE_PATH_PREFIX}pwtx_6.png`);
 			} else {
 				const duanweiInfo = this.duanweiTranslation[randomData.rankLevel];
 				ui.create.div(".duanweishuzi", `<center>${duanweiInfo.randomGet()}`, paiwei);
-				duanwei.setBackgroundImage(`${SHOUSHA_CONSTANTS.IMAGE_PATH_PREFIX}pwtx_${randomData.rankLevel}.png`);
+				duanwei.setBackgroundImage(`${IMAGE_PATH_PREFIX}pwtx_${randomData.rankLevel}.png`);
 			}
 
 			ui.create.div(".xinyufen", `鲜花<br>${randomData.lucky}`, paiwei);
@@ -556,8 +560,8 @@ export function createShoushaCharacterPlugin(lib, game, ui, get, ai, _status, ap
 		_createSkillItem(container, name, player, dialogContainer) {
 			const skillEnabled = get.info(name)?.enable;
 			const skillIcon = skillEnabled ? "sp_zhu" : "sp_bei";
-			const baseIcon = `<img src="${SHOUSHA_CONSTANTS.IMAGE_PATH}${skillIcon}.png" style="width:25px;height:25px;margin-bottom:-7px;">`;
-			const transparentIcon = `<img src="${SHOUSHA_CONSTANTS.IMAGE_PATH}${skillIcon}.png" style="width:25px;height:25px;margin-bottom:-7px;opacity:0.5;">`;
+			const baseIcon = `<img src="${IMAGE_PATH}${skillIcon}.png" style="width:25px;height:25px;margin-bottom:-7px;">`;
+			const transparentIcon = `<img src="${IMAGE_PATH}${skillIcon}.png" style="width:25px;height:25px;margin-bottom:-7px;opacity:0.5;">`;
 			const skillName = `【${lib.translate[name]}】`;
 
 			const rawSkillInfo = skillButtonTooltip.getSkillDescription(name, player);
@@ -788,7 +792,7 @@ export function createShoushaCharacterPlugin(lib, game, ui, get, ai, _status, ap
 		_createActionButtons(parent, buttons) {
 			buttons.forEach(btn => {
 				const button = ui.create.div(`.${btn.class}`, parent, get.translation(btn.text));
-				button.setBackgroundImage(`${SHOUSHA_CONSTANTS.IMAGE_PATH}useless1.png`);
+				button.setBackgroundImage(`${IMAGE_PATH}useless1.png`);
 				button.onclick = function () {
 					this.style.transform = "scale(0.9)";
 					setTimeout(() => (this.style.transform = "scale(1)"), 100);

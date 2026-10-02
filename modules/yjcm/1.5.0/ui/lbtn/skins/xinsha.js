@@ -8,6 +8,9 @@ import { createBaseLbtnPlugin } from "../../../../../../ui/lbtn/skins/base.js";
 export function createXinshaLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 	const base = createBaseLbtnPlugin(lib, game, ui, get, ai, _status, app);
 	const assetPath = `${decadeUIPath}ui/assets/lbtn/`;
+	// 本样式包内资源（资源热插拔迁移后）；共享资源仍走 assetPath（扩展根）
+	const packAsset = rel => window.decadeUI.resource.getAsset("yjcm", `ui/assets/lbtn/${rel}`);
+	const packAudio = rel => `../extension/${decadeUIName}/${window.decadeUI.resource.getModuleRel("yjcm")}ui/assets/lbtn/${rel}`;
 
 	return {
 		...base,
@@ -99,7 +102,7 @@ export function createXinshaLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 			const bottomOffset = isTouch ? "calc(100% - 55px)" : "calc(100% - 105px)";
 
 			const btn = ui.create.node("img");
-			btn.src = `${lib.assetURL}${assetPath}CD/new_wenhao.png`;
+			btn.src = packAsset(`CD/new_wenhao.png`);
 			btn.style.cssText = `display:block;width:40px;height:29px;position:absolute;bottom:${bottomOffset};left:calc(100% - 160px);background-color:transparent;z-index:3;`;
 
 			if (["identity", "doudizhu", "versus", "guozhan"].includes(lib.config.mode)) {
@@ -179,7 +182,7 @@ export function createXinshaLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 
 			// 按钮背景
 			const btnBg = ui.create.node("img");
-			btnBg.src = `${lib.assetURL}${assetPath}CD/new_button3.png`;
+			btnBg.src = packAsset(`CD/new_button3.png`);
 			btnBg.style.cssText = `display:block;--w:56px;--h:calc(var(--w)*74/71);width:var(--w);height:var(--h);position:absolute;bottom:${bottomOffset};left:calc(100% - 110px);background-color:transparent;z-index:1;`;
 			document.body.appendChild(btnBg);
 
@@ -208,7 +211,7 @@ export function createXinshaLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 
 			// 设置按钮
 			const szBtn = ui.create.div(".controls", home);
-			szBtn.setBackgroundImage(`${assetPath}uibutton/button_sz.png`);
+			szBtn.setBackgroundImage(packAsset(`uibutton/button_sz.png`));
 			szBtn.addEventListener("click", () => {
 				game.playAudio(`../${assetPath}CD/button.mp3`);
 				ui.click.configMenu?.();
@@ -218,7 +221,7 @@ export function createXinshaLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 
 			// 背景按钮
 			const bjBtn = ui.create.div(".controls", home);
-			bjBtn.setBackgroundImage(`${assetPath}uibutton/button_bj.png`);
+			bjBtn.setBackgroundImage(packAsset(`uibutton/button_bj.png`));
 			bjBtn.addEventListener("click", () => {
 				game.playAudio(`../${assetPath}CD/button.mp3`);
 				self.openBackgroundSelector(`../${assetPath}shousha/caidan.mp3`);
@@ -226,7 +229,7 @@ export function createXinshaLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 
 			// 托管按钮
 			const tgBtn = ui.create.div(".controls", home);
-			tgBtn.setBackgroundImage(`${assetPath}uibutton/button_tg.png`);
+			tgBtn.setBackgroundImage(packAsset(`uibutton/button_tg.png`));
 			tgBtn.addEventListener("click", () => {
 				game.playAudio(`../${assetPath}CD/button.mp3`);
 				ui.click.auto();
@@ -234,7 +237,7 @@ export function createXinshaLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 
 			// 退出按钮
 			const tcBtn = ui.create.div(".controls", home);
-			tcBtn.setBackgroundImage(`${assetPath}uibutton/button_tc.png`);
+			tcBtn.setBackgroundImage(packAsset(`uibutton/button_tc.png`));
 			tcBtn.addEventListener("click", () => {
 				game.playAudio(`../${assetPath}CD/button.mp3`);
 				window.location.reload();
@@ -247,7 +250,7 @@ export function createXinshaLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 			const isRight = lib.config["extension_十周年UI-Stars_rightLayout"] === "on";
 
 			const btn = ui.create.node("img");
-			btn.src = `${lib.assetURL}${assetPath}uibutton/new_zhengli.png`;
+			btn.src = packAsset(`uibutton/new_zhengli.png`);
 
 			const style = isRight
 				? "display:block;--w:88px;--h:calc(var(--w)*81/247);width:var(--w);height:var(--h);position:absolute;top:calc(100% - 46px);left:calc(100% - 335px);background-color:transparent;z-index:3;"
@@ -277,8 +280,8 @@ export function createXinshaLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 			const updateImage = () => {
 				btn.src =
 					ui.selected.cards.length > 0
-						? `${lib.assetURL}${assetPath}uibutton/fanxuan.png`
-						: `${lib.assetURL}${assetPath}uibutton/quanxuan.png`;
+						? packAsset(`uibutton/fanxuan.png`)
+						: packAsset(`uibutton/quanxuan.png`);
 			};
 			updateImage();
 

@@ -8,7 +8,7 @@ import { createBaseSkillPlugin } from "../../../../../../ui/skill/skins/base.js"
 import { getAvailableSkills, isGSkillCacheSame, shouldSkipEquipSkill } from "../../../../../../ui/skill/skins/gskillMixin.js";
 import { skillButtonTooltip } from "../../../../../../src/ui/skillButtonTooltip.js";
 
-const ASSETS_PATH = `${decadeUIPath}ui/assets/skill/shousha`;
+const ASSETS_PATH = window.decadeUI.resource.getAsset("mobile", "ui/assets/skill/shousha");
 
 /**
  * 创建手杀风格技能插件

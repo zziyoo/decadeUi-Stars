@@ -20,7 +20,7 @@ import { skillButtonTooltip } from "../../../../../../src/ui/skillButtonTooltip.
 export function createOnlineCharacterPlugin(lib, game, ui, get, ai, _status, app) {
 	const base = createBaseCharacterPlugin(lib, game, ui, get, ai, _status, app);
 
-	const IMAGE_PATH = `${decadeUIPath}ui/assets/character/online/`;
+	const IMAGE_PATH = window.decadeUI.resource.getAsset("online", "ui/assets/character/online/");
 	const AUDIO_PATH = `../extension/${decadeUIName}/ui/assets/lbtn/shousha/caidan.mp3`;
 
 	/**

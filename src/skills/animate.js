@@ -5,6 +5,7 @@
  */
 
 import { readRawStyleValue } from "./../core/styleRuntime.js";
+import { getModuleSystem } from "./../core/moduleSystem.js";
 import { lib, game, ui } from "noname";
 
 /**
@@ -27,10 +28,17 @@ export const animateSkill = {
 			const style = readRawStyleValue();
 			const isShousha = style === "off";
 			const effectName = isShousha ? "effect_youxikaishi_shousha" : "effect_youxikaishi";
-			const audio = isShousha ? "audio/game_start_shousha.mp3" : "audio/game_start.mp3";
 			const scaleFactor = isShousha ? 1.5 : 0.76;
 
-			game.playAudio("../extension", decadeUI.extensionName, audio);
+			// 开场音频资源边界：game_start.mp3 是五套共用的共享音频（留扩展根）；
+			// game_start_shousha.mp3 是 mobile 专属，已迁入 mobile 包——经 getModuleRel 拼本体
+			// playAudio 的相对路径（未安装时回落扩展根，404 由 playAudio 静默吞掉）。
+			if (isShousha) {
+				const moduleRel = getModuleSystem().resourceLoader.getModuleRel("mobile");
+				game.playAudio(`../extension/${decadeUIName}/${moduleRel}audio/game_start_shousha.mp3`);
+			} else {
+				game.playAudio("../extension", decadeUI.extensionName, "audio/game_start.mp3");
+			}
 
 			const animation = decadeUI.animation;
 			const bounds = animation.getSpineBounds(effectName);

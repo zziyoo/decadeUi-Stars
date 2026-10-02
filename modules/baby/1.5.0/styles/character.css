@@ -61,7 +61,7 @@
 	width: var(--w);
 	height: var(--h);
 	position: absolute;
-	background-image: url("../../../../ui/assets/character/baby/wujianjiemian.png");
+	background-image: url("../ui/assets/character/baby/wujianjiemian.png");
 	background-size: 100% 100%;
 }
 
@@ -395,7 +395,7 @@
 
 /* 技能标题 */
 .baby-character-dialog div.right .xcaption {
-	background-image: url("../../../../ui/assets/character/baby/jinengkuangs.png");
+	background-image: url("../ui/assets/character/baby/jinengkuangs.png");
 	background-size: contain;
 	background-position: center;
 	background-repeat: no-repeat;
@@ -427,7 +427,7 @@
 
 .baby-character-dialog div.right .xskill > div[data-color]::before {
 	content: "";
-	background-image: url("../../../../ui/assets/character/baby/kuang.png");
+	background-image: url("../ui/assets/character/baby/kuang.png");
 	background-size: contain;
 	display: inline-block;
 	width: 12px;

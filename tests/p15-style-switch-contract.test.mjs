@@ -167,16 +167,17 @@ function packManifest(id, version) {
 			seen.set(hex, id);
 		}
 	}
-	// image 目录：mobile 是纯 CSS 变体（0 张图），其余五套的目录指纹必须互不相同
+	// image 目录：六套都必须有自有图片（资源热插拔后 mobile 也持有 shousha 系专属图，
+	// 旧判据"mobile 是纯 CSS 变体、image 应为空"已随资源迁移作废），且目录指纹互不相同
 	const fingerprints = SIX.map(id => {
 		const dir = path.join("modules", id, CORE_VERSION, "image");
 		const files = fs.existsSync(dir) ? [...fs.readdirSync(dir, { recursive: true })].map(String).filter(rel => fs.statSync(path.join(dir, rel)).isFile()) : [];
 		return [id, files.length, crypto.createHash("sha256").update(files.map(rel => rel + digest(path.join(dir, rel))).sort().join("|")).digest("hex")];
 	});
-	assert.equal(fingerprints.find(([id]) => id === "mobile")[1], 0, "mobile 是纯 CSS 变体，image 应为空（这条若变红说明布局改了判据）");
-	const nonEmpty = fingerprints.filter(([, count]) => count > 0);
-	assert.equal(nonEmpty.length, 5, "应有五套带图片");
-	assert.equal(new Set(nonEmpty.map(([, , hex]) => hex)).size, nonEmpty.length, "五套的 image 目录指纹必须互不相同");
+	for (const [id, count] of fingerprints) {
+		assert.ok(count > 0, `${id} 的包内 image 目录不应为空：每套样式都拥有自己的专属图片`);
+	}
+	assert.equal(new Set(fingerprints.map(([, , hex]) => hex)).size, fingerprints.length, "六套的 image 目录指纹必须互不相同");
 }
 
 console.log("p15-style-switch-contract: OK（六套切换契约 + 资源根 + CSS/图片指纹）");

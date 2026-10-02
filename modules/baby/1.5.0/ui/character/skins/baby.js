@@ -5,7 +5,7 @@
 import { _status } from "noname";
 import { createBaseCharacterPlugin } from "../../../../../../ui/character/skins/base.js";
 
-const IMAGE_PATH = `${decadeUIPath}ui/assets/character/baby/`;
+const IMAGE_PATH = window.decadeUI.resource.getAsset("baby", "ui/assets/character/baby/");
 const AUDIO_PATH = `../extension/${decadeUIName}/ui/assets/lbtn/shousha/caidan.mp3`;
 
 const GUANJIE_TRANSLATION = {

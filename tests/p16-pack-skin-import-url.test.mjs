@@ -69,6 +69,10 @@ const absLoader = createResourceLoader({ getBasePath: () => ABS_BASE, moduleMana
 	// 皮肤模块求值期会引用本体注入的全局（浏览器里由 extension.js 挂上）
 	globalThis.decadeUIPath = REL_BASE;
 	globalThis.decadeUIName = "十周年UI-Stars";
+	// 资源热插拔迁移后，包内皮肤顶层常量经 window.decadeUI.resource.getAsset 求值
+	// （真机由 src/content 在皮肤求值前挂载）；Node 里补同形状的桩，别为迁就测试把皮肤改回硬拼路径。
+	globalThis.window = globalThis;
+	globalThis.window.decadeUI = { resource: relLoader };
 
 	const url = relLoader.getModuleUrl("yjcm", "ui/skill/skins/xinsha.js");
 	assert.ok(/^(file|https?):/.test(url), `getModuleUrl 必须给带协议的绝对 URL，实际 ${url}`);

@@ -193,7 +193,7 @@
 /* 阵营背景 - 通用 */
 .player > .camp-wrap > .camp-back,
 .player.unseen > .camp-wrap > .camp-back {
-	background-image: url("../../../image/styles/codename/fx_ui_fusu03.png");
+	background-image: url("image/styles/codename/fx_ui_fusu03.png");
 	width: 100%;
 	height: 90%;
 	top: 0px;
@@ -204,31 +204,31 @@
 
 /* 阵营背景 - 各势力 */
 .player > .camp-wrap[data-camp="wei"] > .camp-back {
-	background-image: url("../../../image/styles/codename/ui_s1_fight_guojia_caowei.png");
+	background-image: url("image/styles/codename/ui_s1_fight_guojia_caowei.png");
 }
 
 .player > .camp-wrap[data-camp="shu"] > .camp-back {
-	background-image: url("../../../image/styles/codename/ui_s1_fight_guojia_shuhan.png");
+	background-image: url("image/styles/codename/ui_s1_fight_guojia_shuhan.png");
 }
 
 .player > .camp-wrap[data-camp="wu"] > .camp-back {
-	background-image: url("../../../image/styles/codename/ui_s1_fight_guojia_sunwu.png");
+	background-image: url("image/styles/codename/ui_s1_fight_guojia_sunwu.png");
 }
 
 .player > .camp-wrap[data-camp="qun"] > .camp-back {
-	background-image: url("../../../image/styles/codename/ui_s1_fight_guojia_donghan.png");
+	background-image: url("image/styles/codename/ui_s1_fight_guojia_donghan.png");
 }
 
 .player > .camp-wrap[data-camp="shen"] > .camp-back {
-	background-image: url("../../../image/styles/codename/ui_s1_fight_guojia_shen.png");
+	background-image: url("image/styles/codename/ui_s1_fight_guojia_shen.png");
 }
 
 .player > .camp-wrap[data-camp="jin"] > .camp-back {
-	background-image: url("../../../image/styles/codename/ui_s1_fight_guojia_jin.png");
+	background-image: url("image/styles/codename/ui_s1_fight_guojia_jin.png");
 }
 
 .player > .camp-wrap[data-camp="daqin"] > .camp-back {
-	background-image: url("../../../image/styles/codename/ui_s1_fight_guojia_qin.png");
+	background-image: url("image/styles/codename/ui_s1_fight_guojia_qin.png");
 }
 
 /* 阵营背景 - 渐变色 */
@@ -271,7 +271,7 @@
 	width: 445%;
 	height: 175%;
 	position: absolute;
-	background: url("../../../image/styles/codename/border_camp3.png") no-repeat;
+	background: url("image/styles/codename/border_camp3.png") no-repeat;
 	background-size: 100% 100%;
 	pointer-events: none;
 }
@@ -283,15 +283,15 @@
 }
 
 #arena.decadeUI[data-border-level="three"] .player > .camp-wrap > .camp-border {
-	background-image: url("../../../image/styles/codename/border_camp1.png");
+	background-image: url("image/styles/codename/border_camp1.png");
 }
 
 #arena.decadeUI[data-border-level="four"] .player > .camp-wrap > .camp-border {
-	background-image: url("../../../image/styles/codename/border_camp2.png");
+	background-image: url("image/styles/codename/border_camp2.png");
 }
 
 #arena.decadeUI[data-border-level="five"] .player > .camp-wrap > .camp-border {
-	background-image: url("../../../image/styles/codename/border_camp3.png");
+	background-image: url("image/styles/codename/border_camp3.png");
 }
 
 /* 单独玩家等阶设置 */
@@ -301,15 +301,15 @@
 }
 
 .player[data-border-level="three"] > .camp-wrap > .camp-border {
-	background-image: url("../../../image/styles/codename/border_camp1.png");
+	background-image: url("image/styles/codename/border_camp1.png");
 }
 
 .player[data-border-level="four"] > .camp-wrap > .camp-border {
-	background-image: url("../../../image/styles/codename/border_camp2.png");
+	background-image: url("image/styles/codename/border_camp2.png");
 }
 
 .player[data-border-level="five"] > .camp-wrap > .camp-border {
-	background-image: url("../../../image/styles/codename/border_camp3.png");
+	background-image: url("image/styles/codename/border_camp3.png");
 }
 
 /** 武将名称 */
@@ -494,7 +494,7 @@
 	border-width: 12px 8px 21px 82px;
 	border-style: solid;
 	border-color: transparent;
-	border-image-source: url("../../../image/styles/codename/new_border_hp.png");
+	border-image-source: url("image/styles/codename/new_border_hp.png");
 	border-image-slice: 32 6 25 113 fill;
 	pointer-events: none;
 	transition:
@@ -609,7 +609,7 @@
 
 /* 血量状态图标 */
 .hp:not(.text):not(.actcount):not(.treasure)[data-condition="high"] > div:not(.lost):not(.shield) {
-	background: url("../../../image/styles/codename/glass1.png") no-repeat;
+	background: url("image/styles/codename/glass1.png") no-repeat;
 	background-size: 100% 100%;
 	transform: scale(1.4);
 	box-shadow: none;
@@ -619,7 +619,7 @@
 }
 
 .hp:not(.text):not(.actcount):not(.treasure)[data-condition="mid"] > div:not(.lost):not(.shield) {
-	background: url("../../../image/styles/codename/glass2.png") no-repeat;
+	background: url("image/styles/codename/glass2.png") no-repeat;
 	background-size: 100% 100%;
 	transform: scale(1.4);
 	box-shadow: none;
@@ -629,7 +629,7 @@
 }
 
 .hp:not(.text):not(.actcount):not(.treasure)[data-condition="low"] > div:not(.lost):not(.shield) {
-	background: url("../../../image/styles/codename/glass3.png") no-repeat;
+	background: url("image/styles/codename/glass3.png") no-repeat;
 	background-size: 100% 100%;
 	transform: scale(1.4);
 	box-shadow: none;
@@ -639,7 +639,7 @@
 }
 
 .hp:not(.text):not(.actcount):not(.treasure) > .lost {
-	background: url("../../../image/styles/codename/glass4.png") no-repeat;
+	background: url("image/styles/codename/glass4.png") no-repeat;
 	background-size: 100% 100%;
 	transform: scale(1.4);
 	box-shadow: none;
@@ -1214,7 +1214,7 @@
 	width: 28px;
 	height: 28px;
 	line-height: 28px;
-	background: url("../../../image/styles/codename/card_count5.png") no-repeat;
+	background: url("image/styles/codename/card_count5.png") no-repeat;
 	background-size: 100% 100%;
 	background-position: 0 -1px;
 	border: none;

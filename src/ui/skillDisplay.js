@@ -4,6 +4,7 @@
  */
 
 import { readRawStyleValue } from "./../core/styleRuntime.js";
+import { getModuleSystem } from "./../core/moduleSystem.js";
 import { lib, game, ui, get, ai, _status } from "noname";
 import { isDoubleCharacterMode } from "./characterBackground.js";
 
@@ -161,7 +162,8 @@ export function initSkillDisplay() {
 			const icon = getSkillIcon(skill, player);
 			if (icon) {
 				const iconImg = document.createElement("img");
-				iconImg.src = `${decadeUIPath}ui/assets/skill/baby/${icon}`;
+				// baby 专属技能外显图标已迁入 baby 包（本模块仅在 babysha 样式下启用），按安装状态寻址
+				iconImg.src = getModuleSystem().resourceLoader.getAsset("baby", `ui/assets/skill/baby/${icon}`);
 				Object.assign(iconImg.style, { position: "absolute", top: "3px", right: "-15px", width: "16px", height: "16px", zIndex: "103" });
 				skillEl.appendChild(iconImg);
 			}

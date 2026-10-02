@@ -38,5 +38,24 @@
 		"desktop",
 		"mobile"
 	],
-	"author": "子右"
+	"author": "子右",
+	"resources": [
+		"image/styles/xinsha/",
+		"ui/assets/character/xinsha/",
+		"ui/assets/lbtn/CD/new_button3.png",
+		"ui/assets/lbtn/CD/new_wenhao.png",
+		"ui/assets/lbtn/SFTS/",
+		"ui/assets/lbtn/uibutton/button_bj.png",
+		"ui/assets/lbtn/uibutton/button_sz.png",
+		"ui/assets/lbtn/uibutton/button_tc.png",
+		"ui/assets/lbtn/uibutton/button_tg.png",
+		"ui/assets/lbtn/uibutton/fanxuan.png",
+		"ui/assets/lbtn/uibutton/new_btnn.png",
+		"ui/assets/lbtn/uibutton/new_cardback3.png",
+		"ui/assets/lbtn/uibutton/new_count5.png",
+		"ui/assets/lbtn/uibutton/new_huanfu_new.png",
+		"ui/assets/lbtn/uibutton/new_jilu_new.png",
+		"ui/assets/lbtn/uibutton/new_zhengli.png",
+		"ui/assets/lbtn/uibutton/quanxuan.png"
+	]
 }

@@ -153,14 +153,29 @@ assert.notEqual(
 	assert.equal(goneRow.actions[0].kind, "install");
 }
 
-// ── 6. 卸载不许伤到留在扩展根的那份资源：死亡特效图走的是根，不是包 ─────────
+// ── 6. 死亡特效图的资源边界（P19 口径）：样式专属随包走，共享 decade 族留根 ──
+// 旧断言（"死亡图必须走扩展根"）是迁移前的假设，已作废：样式专属死亡图现在归各自样式包，
+// 卸载后经 resourceLoader 拿不到（404 → 既有 onerror 回退），不再从根偷读。
 {
 	const src = fs.readFileSync(new URL("../src/overrides/player/animations.js", import.meta.url), "utf8");
-	assert.match(src, /const basePath = window\.decadeUIPath \+ "image\/styles\/";/, "死亡特效图必须走扩展根（卸载样式包不该影响它）");
-	assert.ok(!/getModuleBase|getAsset\(/.test(src.slice(src.indexOf("function getDeathImageUrl"), src.indexOf("function getDeathImageUrl") + 900)), "死亡特效不许改成按模块根寻址（那样卸包就 404）");
-	for (const file of ["image/styles/online/dead4_dizhu.png", "image/styles/baby/dead3_dizhu.png", "image/styles/decade/dead_bZhu.png"]) {
-		assert.ok(fs.existsSync(file), `${file} 必须仍在扩展根里（样式包被卸后唯一还能取到的那份）`);
+	const fn = src.slice(src.indexOf("function getDeathImageUrl"), src.indexOf("function getDeathImageUrl") + 900);
+
+	// 样式专属死亡图必须经 resourceLoader 按模块寻址（online/baby/codename 三族）
+	assert.match(fn, /resourceLoader\.getAsset\(styleMap\[style\]\[0\]/, "样式专属死亡图必须经 resourceLoader 路由到样式包");
+	assert.match(fn, /resourceLoader\.getAsset\("mobile"/, "shousha 族死亡图（off 样式）必须路由到 mobile");
+	// 共享 decade dead_ 族（on/othersOff 跨样式共用）继续走扩展根
+	assert.match(fn, /decadeUIPath \+ `image\/styles\/decade\/dead_\$\{identity\}\.png`/, "共享 decade dead_ 族必须继续走扩展根");
+
+	// 盘面：样式专属死亡图已迁入包（根目录不再提供），共享 decade 族仍在根
+	const PACK_VERSION = JSON.parse(fs.readFileSync("info.json", "utf8")).version;
+	for (const [id, moved] of [
+		["online", "image/styles/online/dead4_dizhu.png"],
+		["baby", "image/styles/baby/dead3_dizhu.png"],
+	]) {
+		assert.ok(!fs.existsSync(moved), `${moved} 已迁入样式包，不得再从扩展根提供（否则卸包后仍能偷读）`);
+		assert.ok(fs.existsSync(`modules/${id}/${PACK_VERSION}/${moved}`), `${moved} 必须随样式包可达（镜像路径）`);
 	}
+	assert.ok(fs.existsSync("image/styles/decade/dead_bZhu.png"), "共享 decade dead_ 族必须留根（卸载任何样式都不得牵连）");
 }
 
-console.log("p15-online-uninstall-observability: OK（online 卸载链 + capability 脱钩 + 置灰理由 + 根资源不受影响）");
+console.log("p15-online-uninstall-observability: OK（online 卸载链 + capability 脱钩 + 置灰理由 + 死亡图边界随包）");

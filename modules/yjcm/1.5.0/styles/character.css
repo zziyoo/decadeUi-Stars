@@ -176,7 +176,7 @@
 }
 
 .xinsha-character-dialog.dialog2::before {
-	background-image: url("../../../../ui/assets/character/xinsha/dialog3.png");
+	background-image: url("../ui/assets/character/xinsha/dialog3.png");
 }
 
 .xinsha-character-dialog > div {
@@ -264,7 +264,7 @@
 	top: 15%;
 	height: 25%;
 	width: 5%;
-	background-image: url("../../../../ui/assets/character/xinsha/skilloff.png");
+	background-image: url("../ui/assets/character/xinsha/skilloff.png");
 	background-size: 100% 100%;
 	right: 2.8% !important;
 	position: absolute;
@@ -272,14 +272,14 @@
 }
 
 .xinsha-character-dialog > div.skillx.active {
-	background-image: url("../../../../ui/assets/character/xinsha/skillon.png");
+	background-image: url("../ui/assets/character/xinsha/skillon.png");
 }
 
 .xinsha-character-dialog > div.equip {
 	top: 40.5%;
 	height: 25%;
 	width: 5%;
-	background-image: url("../../../../ui/assets/character/xinsha/equipoff.png");
+	background-image: url("../ui/assets/character/xinsha/equipoff.png");
 	background-size: 100% 100%;
 	right: 2.8% !important;
 	position: absolute;
@@ -287,7 +287,7 @@
 }
 
 .xinsha-character-dialog > div.equip.active {
-	background-image: url("../../../../ui/assets/character/xinsha/equipon.png");
+	background-image: url("../ui/assets/character/xinsha/equipon.png");
 }
 
 /* 技能窗口 */
@@ -324,7 +324,7 @@
 
 .xinsha-character-dialog > div.right .noxcaption {
 	width: 50%;
-	background-image: url("../../../../ui/assets/character/xinsha/unequip.png");
+	background-image: url("../ui/assets/character/xinsha/unequip.png");
 	background-size: 100% 100%;
 	position: absolute;
 	z-index: 100;
@@ -360,7 +360,7 @@
 	overflow: hidden;
 	text-overflow: ellipsis;
 	box-sizing: border-box;
-	border-image: url("../../../../ui/assets/character/xinsha/btn3.png") 0 25 fill / 0 15px stretch;
+	border-image: url("../ui/assets/character/xinsha/btn3.png") 0 25 fill / 0 15px stretch;
 	border-width: 0 2px;
 	border-style: solid;
 	margin-left: 0px !important;
@@ -391,7 +391,7 @@
 .guanbi {
 	position: absolute;
 	font-size: 4px;
-	background: url("../../../../ui/assets/character/xinsha/guanbi.png");
+	background: url("../ui/assets/character/xinsha/guanbi.png");
 	opacity: 1;
 	background-size: 100% 100%;
 	width: 6%;
@@ -406,7 +406,7 @@
 /* 资料页 */
 .bigdialog {
 	position: relative;
-	background: url("../../../../ui/assets/character/xinsha/dialog3.png");
+	background: url("../ui/assets/character/xinsha/dialog3.png");
 	background-size: 100% 100%;
 	width: 85%;
 	height: 95%;
@@ -453,7 +453,7 @@
 	align-items: center;
 	padding: 30px 10px;
 	box-sizing: border-box;
-	background: url("../../../../ui/assets/character/xinsha/shutiao.png") center/contain no-repeat;
+	background: url("../ui/assets/character/xinsha/shutiao.png") center/contain no-repeat;
 	background-size: auto 100%;
 	width: auto;
 	min-height: 100px;
@@ -588,7 +588,7 @@
 	background-size: 0;
 	background-position: left;
 	background-repeat: no-repeat;
-	background-image: url("../../../../ui/assets/character/xinsha/caizhu.png");
+	background-image: url("../ui/assets/character/xinsha/caizhu.png");
 }
 
 /* 装备对话框 */
@@ -928,7 +928,7 @@
 .haoyou3 {
 	position: absolute;
 	font-size: 4px;
-	background: url("../../../../ui/assets/character/xinsha/close.png");
+	background: url("../ui/assets/character/xinsha/close.png");
 	opacity: 0;
 	background-size: 100% 100%;
 	width: 2%;

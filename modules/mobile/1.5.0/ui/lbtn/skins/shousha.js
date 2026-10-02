@@ -22,6 +22,9 @@ import { initChatSystem } from "../../../../../../ui/lbtn/chatSystem.js";
 export function createShoushaLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 	const base = createBaseLbtnPlugin(lib, game, ui, get, ai, _status, app);
 	const assetPath = `${decadeUIPath}ui/assets/lbtn/`;
+	// 本样式包内资源（资源热插拔迁移后）；共享资源仍走 assetPath（扩展根）
+	const packAsset = rel => window.decadeUI.resource.getAsset("mobile", `ui/assets/lbtn/${rel}`);
+	const packAudio = rel => `../extension/${decadeUIName}/${window.decadeUI.resource.getModuleRel("mobile")}ui/assets/lbtn/${rel}`;
 
 	/**
 	 * 手牌排序
@@ -484,7 +487,7 @@ export function createShoushaLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 		 */
 		createChatButton() {
 			const btn = ui.create.node("img");
-			btn.src = `${lib.assetURL}${assetPath}uibutton/liaotian.png`;
+			btn.src = packAsset(`uibutton/liaotian.png`);
 			const isRight = lib.config["extension_十周年UI-Stars_rightLayout"] === "on";
 			btn.style.cssText = `display:block;--w:135px;--h:calc(var(--w)*1019/1400);width:var(--w);height:var(--h);position:absolute;top:calc(100% - 97px);${isRight ? "right" : "left"}:calc(100% - 129px);background-color:transparent;z-index:3;${isRight ? "" : "transform:scaleX(-1);"}`;
 
@@ -616,7 +619,7 @@ export function createShoushaLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 		createMenuButton() {
 			const self = this;
 			const headImg = ui.create.node("img");
-			headImg.src = `${lib.assetURL}${assetPath}shousha/button.png`;
+			headImg.src = packAsset(`shousha/button.png`);
 			headImg.style.cssText = "display:block;--w:130px;--h:calc(var(--w)*1080/1434);width:var(--w);height:var(--h);position:absolute;bottom:calc(100% - 98px);left:calc(100% - 126.2px);background-color:transparent;z-index:1;";
 			document.body.appendChild(headImg);
 
@@ -661,7 +664,7 @@ export function createShoushaLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 			buttons.forEach(({ cls, action }) => {
 				const btn = ui.create.div(cls, container);
 				btn.addEventListener("click", () => {
-					game.playAudio(`../${assetPath}shousha/xuanzhe.mp3`);
+					game.playAudio(packAudio(`shousha/xuanzhe.mp3`));
 					action();
 				});
 			});
@@ -674,7 +677,7 @@ export function createShoushaLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 		createIdentityTip() {
 			const self = this;
 			const tip = ui.create.node("img");
-			tip.src = `${lib.assetURL}${assetPath}uibutton/shenfen.png`;
+			tip.src = packAsset(`uibutton/shenfen.png`);
 			tip.style.cssText = "display:block;--w:400px;--h:calc(var(--w)*279/2139);width:var(--w);height:var(--h);position:absolute;top:-1px;left:-45px;background-color:transparent;z-index:1;";
 
 			tip.onclick = () => {
@@ -728,7 +731,7 @@ export function createShoushaLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 				confirm.node.ok.link = "ok";
 				confirm.node.ok.classList.add("primary");
 				confirm.node.cancel.classList.add("primary2");
-				confirm.node.cancel.innerHTML = `<img draggable='false' src='${decadeUIPath}ui/assets/lbtn/uibutton/QX.png'>`;
+				confirm.node.cancel.innerHTML = `<img draggable='false' src='${window.decadeUI.resource.getAsset('mobile', 'ui/assets/lbtn/uibutton/QX.png')}'>`;
 				confirm.custom = (link, target) => {
 					if (link === "ok") ui.click.ok(target);
 					else if (link === "cancel") ui.click.cancel(target);
@@ -767,8 +770,8 @@ export function createShoushaLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 							const item = document.createElement("div");
 							item.link = skill;
 							item.classList.add("recasting-btn");
-							item.innerHTML = `<img draggable='false' src='${decadeUIPath}ui/assets/lbtn/uibutton/CZ.png'>`;
-							item.style.backgroundImage = `url('${decadeUIPath}ui/assets/lbtn/uibutton/game_btn_bg2.png')`;
+							item.innerHTML = `<img draggable='false' src='${window.decadeUI.resource.getAsset('mobile', 'ui/assets/lbtn/uibutton/CZ.png')}'>`;
+							item.style.backgroundImage = `url('${window.decadeUI.resource.getAsset('mobile', 'ui/assets/lbtn/uibutton/game_btn_bg2.png')}')`;
 							item.style.transform = "scale(0.75)";
 							item.style.setProperty("padding", "25px 10px", "important");
 							item.style.setProperty("margin", "0 -12px", "important");
@@ -893,11 +896,11 @@ export function createShoushaLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 				paixuauto.onclick = () => {
 					if (window.paixuxx === undefined || window.paixuxx === false) {
 						startAutoPaixu();
-						paixuauto.setBackgroundImage(`${assetPath}shousha/zidongpaixu.png`);
+						paixuauto.setBackgroundImage(packAsset(`shousha/zidongpaixu.png`));
 						window.paixuxx = true;
 					} else {
 						stopAutoPaixu();
-						paixuauto.setBackgroundImage(`${assetPath}shousha/btn-paixu.png`);
+						paixuauto.setBackgroundImage(packAsset(`shousha/btn-paixu.png`));
 						window.paixuxx = false;
 					}
 				};

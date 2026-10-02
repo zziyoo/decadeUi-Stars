@@ -20,7 +20,7 @@
 	top: 0%;
 	left: calc(100% - 562px);
 	background-size: 100% 100%;
-	background-image: url("../../../../ui/assets/lbtn/shousha/yemian.png");
+	background-image: url("../ui/assets/lbtn/shousha/yemian.png");
 	z-index: 68;
 	position: relative;
 	transition: opacity 1s ease-in-out;
@@ -44,31 +44,31 @@
 .shezhi {
 	bottom: calc(100% - 69px);
 	left: calc(100% - 498px);
-	background-image: url("../../../../ui/assets/lbtn/shousha/shezhi.png");
+	background-image: url("../ui/assets/lbtn/shousha/shezhi.png");
 }
 
 .tuichu {
 	bottom: calc(100% - 69px);
 	left: calc(100% - 418px);
-	background-image: url("../../../../ui/assets/lbtn/shousha/tuichu.png");
+	background-image: url("../ui/assets/lbtn/shousha/tuichu.png");
 }
 
 .taopao {
 	bottom: calc(100% - 69px);
 	left: calc(100% - 338px);
-	background-image: url("../../../../ui/assets/lbtn/shousha/taopao.png");
+	background-image: url("../ui/assets/lbtn/shousha/taopao.png");
 }
 
 .touxiang {
 	bottom: calc(100% - 69px);
 	left: calc(100% - 260px);
-	background-image: url("../../../../ui/assets/lbtn/shousha/touxiang.png");
+	background-image: url("../ui/assets/lbtn/shousha/touxiang.png");
 }
 
 .tuoguan {
 	bottom: calc(100% - 69px);
 	left: calc(100% - 184px);
-	background-image: url("../../../../ui/assets/lbtn/shousha/tuoguan.png");
+	background-image: url("../ui/assets/lbtn/shousha/tuoguan.png");
 }
 
 #arena:not(.single-handcard):not(.chess).cxy-new-ui > .lbtn-controls ~ #mebg,
@@ -89,7 +89,7 @@
 .lbtn-paixu {
 	width: 68px;
 	height: 55px;
-	background-image: url("../../../../ui/assets/lbtn/uibutton/btn-paixu.png");
+	background-image: url("../ui/assets/lbtn/uibutton/btn-paixu.png");
 	left: 1.6%;
 	bottom: 26%;
 	z-index: 5;
@@ -116,7 +116,7 @@
 	border-radius: 1px;
 	width: 68px;
 	height: 55px;
-	background-image: url("../../../../ui/assets/lbtn/uibutton/btn-jilu.png");
+	background-image: url("../ui/assets/lbtn/uibutton/btn-jilu.png");
 	bottom: 15%;
 	z-index: 5;
 }
@@ -161,7 +161,7 @@
 }
 
 .control > div {
-	background-image: url("../../../../ui/assets/lbtn/uibutton/cbtn.png");
+	background-image: url("../ui/assets/lbtn/uibutton/cbtn.png");
 	background-size: 100% 100%;
 	line-height: 30px;
 	text-align: center;
@@ -197,7 +197,7 @@
 	font-size: 40px;
 	line-height: var(--sh);
 	margin: 0px 10px !important;
-	background-image: url("../../../../ui/assets/lbtn/uibutton/btn.png");
+	background-image: url("../ui/assets/lbtn/uibutton/btn.png");
 	padding: 18px 50px !important;
 	min-height: 18px;
 	min-width: 50px;
@@ -209,7 +209,7 @@
 /* 取消按钮 */
 .control > div.primary2 {
 	font-size: 35px !important;
-	background-image: url("../../../../ui/assets/lbtn/uibutton/game_btn_bg2.png");
+	background-image: url("../ui/assets/lbtn/uibutton/game_btn_bg2.png");
 	transform: scale(0.75);
 	padding: 20px 0px !important;
 }
@@ -227,12 +227,12 @@
 
 /* 限定技专属按钮 */
 .control > div.primary.xiandingji > span {
-	background-image: url("../../../../ui/assets/lbtn/uibutton/btn2.png");
+	background-image: url("../ui/assets/lbtn/uibutton/btn2.png");
 }
 
 /* lbtn-confirm 中的 gskills 按钮样式（排除重铸按钮） */
 .lbtn-confirm > [data-type="skill2"]:not(.recasting-btn) {
-	background-image: url("../../../../ui/assets/lbtn/uibutton/cbtn.png") !important;
+	background-image: url("../ui/assets/lbtn/uibutton/cbtn.png") !important;
 	background-size: 100% 100% !important;
 	padding: 10px 15px !important;
 	margin: 0 2px !important;
@@ -258,7 +258,7 @@
 /* gskills 按钮样式 */
 .control > [data-type="skill2"] {
 	font-size: 35px !important;
-	background-image: url("../../../../ui/assets/lbtn/uibutton/game_btn_bg2.png");
+	background-image: url("../ui/assets/lbtn/uibutton/game_btn_bg2.png");
 	background-size: 100% 100%;
 	transform: scale(0.75);
 	padding: 25px 10px !important;
@@ -285,7 +285,7 @@
 	font-size: 40px;
 	line-height: var(--sh);
 	margin: 0px 30px !important;
-	background-image: url("../../../../ui/assets/lbtn/uibutton/huanpai2.png");
+	background-image: url("../ui/assets/lbtn/uibutton/huanpai2.png");
 	transform: scale(1.15);
 	background-size: 100% 100%;
 	background-repeat: no-repeat;
@@ -301,7 +301,7 @@
 	font-size: 40px;
 	line-height: var(--sh);
 	margin: 0px 10px !important;
-	background-image: url("../../../../ui/assets/lbtn/uibutton/qipai.png");
+	background-image: url("../ui/assets/lbtn/uibutton/qipai.png");
 	transform: scale(1.15);
 	background-size: 100% 100%;
 	background-repeat: no-repeat;
@@ -340,7 +340,7 @@
 	--h: calc(var(--w) * 300 / 720);
 	width: var(--w);
 	height: var(--h);
-	background-image: url("../../../../ui/assets/lbtn/uibutton/shoupai1.png");
+	background-image: url("../ui/assets/lbtn/uibutton/shoupai1.png");
 	background-size: 100% 100%;
 	position: relative;
 	z-index: -10;
@@ -402,7 +402,7 @@
 	bottom: 20px;
 	width: 44px;
 	height: 57px;
-	background-image: url("../../../../ui/assets/lbtn/uibutton/cardback.png");
+	background-image: url("../ui/assets/lbtn/uibutton/cardback.png");
 	background-size: 100% 100%;
 	left: 25px;
 	position: relative;
@@ -488,7 +488,7 @@
 	align-items: center;
 	justify-items: center;
 	background-size: 100% 100%;
-	background-image: url("../../../../ui/assets/lbtn/uibutton/paiduiming.png");
+	background-image: url("../ui/assets/lbtn/uibutton/paiduiming.png");
 }
 
 .card-statistics-title > div {
@@ -517,7 +517,7 @@
 	position: relative;
 	border-right: 3px solid;
 	border-image-slice: 0 100% 0 0;
-	border-image-source: url("../../../../ui/assets/lbtn/uibutton/paiduixian.png");
+	border-image-source: url("../ui/assets/lbtn/uibutton/paiduixian.png");
 	height: 96%;
 }
 
@@ -538,7 +538,7 @@
 	background-size: 90% 100%;
 	background-repeat: no-repeat;
 	background-position: center;
-	background-image: url("../../../../ui/assets/lbtn/uibutton/shousha.png");
+	background-image: url("../ui/assets/lbtn/uibutton/shousha.png");
 	line-height: 2;
 	border-radius: 6px;
 }
@@ -575,7 +575,7 @@
 	--h: calc(var(--w) * 169 / 365);
 	width: var(--w);
 	height: var(--h);
-	background-image: url("../../../../ui/assets/lbtn/shousha/tuoguan2.png");
+	background-image: url("../ui/assets/lbtn/shousha/tuoguan2.png");
 	background-size: 100% 100%;
 	-webkit-text-fill-color: transparent;
 	text-shadow: none !important;
@@ -585,7 +585,7 @@
 .sfrwzhugong {
 	position: fixed;
 	background-repeat: no-repeat;
-	background-image: url("../../../../ui/assets/lbtn/JSJM/zhugong.png") !important;
+	background-image: url("../ui/assets/lbtn/JSJM/zhugong.png") !important;
 	background-size: 100% 100%;
 	width: 1000px;
 	height: 435px;
@@ -596,7 +596,7 @@
 .sfrwchongchen {
 	position: fixed;
 	background-repeat: no-repeat;
-	background-image: url("../../../../ui/assets/lbtn/JSJM/zhongchen.png") !important;
+	background-image: url("../ui/assets/lbtn/JSJM/zhongchen.png") !important;
 	background-size: 100% 100%;
 	width: 1000px;
 	height: 435px;
@@ -607,7 +607,7 @@
 .sfrwfanzei {
 	position: fixed;
 	background-repeat: no-repeat;
-	background-image: url("../../../../ui/assets/lbtn/JSJM/fanzei.png") !important;
+	background-image: url("../ui/assets/lbtn/JSJM/fanzei.png") !important;
 	background-size: 100% 100%;
 	width: 1000px;
 	height: 435px;
@@ -618,7 +618,7 @@
 .sfrwneijian {
 	position: fixed;
 	background-repeat: no-repeat;
-	background-image: url("../../../../ui/assets/lbtn/JSJM/neijian.png") !important;
+	background-image: url("../ui/assets/lbtn/JSJM/neijian.png") !important;
 	background-size: 100% 100%;
 	width: 1000px;
 	height: 435px;
@@ -629,7 +629,7 @@
 .sfrwdizhu {
 	position: fixed;
 	background-repeat: no-repeat;
-	background-image: url("../../../../ui/assets/lbtn/JSJM/dizhu.png") !important;
+	background-image: url("../ui/assets/lbtn/JSJM/dizhu.png") !important;
 	background-size: 100% 100%;
 	width: 1000px;
 	height: 435px;
@@ -640,7 +640,7 @@
 .sfrwnongmin {
 	position: fixed;
 	background-repeat: no-repeat;
-	background-image: url("../../../../ui/assets/lbtn/JSJM/nongmin.png") !important;
+	background-image: url("../ui/assets/lbtn/JSJM/nongmin.png") !important;
 	background-size: 100% 100%;
 	width: 1000px;
 	height: 435px;
@@ -651,7 +651,7 @@
 .sfrwhu {
 	position: fixed;
 	background-repeat: no-repeat;
-	background-image: url("../../../../ui/assets/lbtn/JSJM/hu.png") !important;
+	background-image: url("../ui/assets/lbtn/JSJM/hu.png") !important;
 	background-size: 100% 100%;
 	width: 1000px;
 	height: 435px;
@@ -662,7 +662,7 @@
 .sfrwweiguo {
 	position: fixed;
 	background-repeat: no-repeat;
-	background-image: url("../../../../ui/assets/lbtn/JSJM/weiguo.png") !important;
+	background-image: url("../ui/assets/lbtn/JSJM/weiguo.png") !important;
 	background-size: 100% 100%;
 	width: 1000px;
 	height: 435px;
@@ -673,7 +673,7 @@
 .sfrwshuguo {
 	position: fixed;
 	background-repeat: no-repeat;
-	background-image: url("../../../../ui/assets/lbtn/JSJM/shuguo.png") !important;
+	background-image: url("../ui/assets/lbtn/JSJM/shuguo.png") !important;
 	background-size: 100% 100%;
 	width: 1000px;
 	height: 435px;
@@ -684,7 +684,7 @@
 .sfrwwuguo {
 	position: fixed;
 	background-repeat: no-repeat;
-	background-image: url("../../../../ui/assets/lbtn/JSJM/wuguo.png") !important;
+	background-image: url("../ui/assets/lbtn/JSJM/wuguo.png") !important;
 	background-size: 100% 100%;
 	width: 1000px;
 	height: 435px;
@@ -695,7 +695,7 @@
 .sfrwjinguo {
 	position: fixed;
 	background-repeat: no-repeat;
-	background-image: url("../../../../ui/assets/lbtn/JSJM/jinguo.png") !important;
+	background-image: url("../ui/assets/lbtn/JSJM/jinguo.png") !important;
 	background-size: 100% 100%;
 	width: 1000px;
 	height: 435px;
@@ -706,7 +706,7 @@
 .sfrwyexinjia {
 	position: fixed;
 	background-repeat: no-repeat;
-	background-image: url("../../../../ui/assets/lbtn/JSJM/yexinjia.png") !important;
+	background-image: url("../ui/assets/lbtn/JSJM/yexinjia.png") !important;
 	background-size: 100% 100%;
 	width: 1000px;
 	height: 435px;
@@ -717,7 +717,7 @@
 .sfrwqunxiong {
 	position: fixed;
 	background-repeat: no-repeat;
-	background-image: url("../../../../ui/assets/lbtn/JSJM/qunxiong.png") !important;
+	background-image: url("../ui/assets/lbtn/JSJM/qunxiong.png") !important;
 	background-size: 100% 100%;
 	width: 1000px;
 	height: 435px;
@@ -728,7 +728,7 @@
 .sfrwundefined {
 	position: fixed;
 	background-repeat: no-repeat;
-	background-image: url("../../../../ui/assets/lbtn/JSJM/undefined.png") !important;
+	background-image: url("../ui/assets/lbtn/JSJM/undefined.png") !important;
 	background-size: 100% 100%;
 	width: 1000px;
 	height: 435px;
@@ -739,7 +739,7 @@
 .sfrwxianshou {
 	position: fixed;
 	background-repeat: no-repeat;
-	background-image: url("../../../../ui/assets/lbtn/JSJM/xianshou.png") !important;
+	background-image: url("../ui/assets/lbtn/JSJM/xianshou.png") !important;
 	background-size: 100% 100%;
 	width: 1000px;
 	height: 435px;
@@ -750,7 +750,7 @@
 .sfrwhoushou {
 	position: fixed;
 	background-repeat: no-repeat;
-	background-image: url("../../../../ui/assets/lbtn/JSJM/houshou.png") !important;
+	background-image: url("../ui/assets/lbtn/JSJM/houshou.png") !important;
 	background-size: 100% 100%;
 	width: 1000px;
 	height: 435px;
@@ -762,7 +762,7 @@
 .lbtn-paixu1 {
 	width: 68px;
 	height: 55px;
-	background-image: url("../../../../ui/assets/lbtn/uibutton/btn-paixu.png");
+	background-image: url("../ui/assets/lbtn/uibutton/btn-paixu.png");
 	right: 1.2%;
 	bottom: 25%;
 	z-index: 5;
@@ -788,7 +788,7 @@
 	border-radius: 1px;
 	width: 68px;
 	height: 55px;
-	background-image: url("../../../../ui/assets/lbtn/uibutton/btn-jilu.png");
+	background-image: url("../ui/assets/lbtn/uibutton/btn-jilu.png");
 	bottom: 15%;
 	z-index: 5;
 }
@@ -809,7 +809,7 @@
 	--h: calc(var(--w) * 235 / 500);
 	width: var(--w);
 	height: var(--h);
-	background-image: url("../../../../ui/assets/lbtn/uibutton/shoupai1.png");
+	background-image: url("../ui/assets/lbtn/uibutton/shoupai1.png");
 	background-size: 100% 100%;
 	position: relative;
 	z-index: -1;

@@ -7,7 +7,7 @@ import { createBaseSkillPlugin } from "../../../../../../ui/skill/skins/base.js"
 import { getAvailableSkills, updateSkillUsability, isGSkillCacheSame, shouldSkipEquipSkill } from "../../../../../../ui/skill/skins/gskillMixin.js";
 import { skillButtonTooltip } from "../../../../../../src/ui/skillButtonTooltip.js";
 
-const ASSETS_PATH = `${decadeUIPath}ui/assets/skill/baby`;
+const ASSETS_PATH = window.decadeUI.resource.getAsset("baby", "ui/assets/skill/baby");
 
 export function createBabySkillPlugin(lib, game, ui, get, ai, _status, app) {
 	const base = createBaseSkillPlugin(lib, game, ui, get, ai, _status, app);

@@ -8,6 +8,17 @@ import { AnimationPlayer } from "./AnimationPlayer.js";
 import { AnimationPlayerPool } from "./AnimationPlayerPool.js";
 import { assetList } from "./configs/assetList.js";
 import { initSkillAnimations } from "./initAnimations.js";
+import { getModuleSystem } from "../core/moduleSystem.js";
+
+/**
+ * 样式专属动画的归属表（资源热插拔审计 2026-10-02）：
+ * 这些动画只在该样式的生产代码里被播放，资源已迁入对应样式包；
+ * 其余 assets/animation 下的动画是多套样式/Feature 共用的共享资源（留扩展根）。
+ * @type {Record<string, string>}
+ */
+const STYLE_OWNED_ANIMATIONS = {
+	effect_youxikaishi_shousha: "mobile",
+};
 
 /**
  * 资源加载优先级枚举
@@ -50,9 +61,22 @@ const loadingState = new Map();
  */
 export function setupGameAnimation(lib, game, ui, get, ai, _status) {
 	decadeUI.animation = (() => {
-		const animation = new AnimationPlayer(decadeUIPath + "assets/animation/", document.body, "decadeUI-canvas");
+		// 动画资源基址 = 扩展根，具体路径由 assetResolver 按"资源归属"解析：
+		// 共享动画 → assets/animation/<name>（与旧版 decadeUIPath + "assets/animation/" 拼接等价）；
+		// 样式专属动画（STYLE_OWNED_ANIMATIONS）→ 样式包内 modules/<id>/<version>/assets/animation/<name>，
+		// 未安装时回落扩展根（404 → 该动画不播放，走"包不在样式不可用而 Core 正常"的既有回退语义）。
+		const { resourceLoader } = getModuleSystem();
+		const resolveAnimationPath = name => {
+			const owner = STYLE_OWNED_ANIMATIONS[name];
+			const moduleRel = owner ? resourceLoader.getModuleRel(owner) : "";
+			return `${moduleRel}assets/animation/${name}`;
+		};
+
+		const animation = new AnimationPlayer(decadeUIPath, document.body, "decadeUI-canvas");
+		animation.assetResolver = resolveAnimationPath;
 		decadeUI.bodySensor.addListener(() => (animation.resized = false), true);
-		animation.cap = new AnimationPlayerPool(4, decadeUIPath + "assets/animation/", "decadeUI.animation");
+		animation.cap = new AnimationPlayerPool(4, decadeUIPath, "decadeUI.animation");
+		for (const player of animation.cap.animations) player.assetResolver = resolveAnimationPath;
 
 		// WebGL不可用时跳过懒加载包装
 		if (!animation.gl) {
@@ -129,9 +153,14 @@ export function setupGameAnimation(lib, game, ui, get, ai, _status) {
 			ensureLoaded(name, null, true, () => originalCapPlaySpineTo.call(this, element, anim, position));
 		};
 
-		// 按优先级分组预加载
+		// 按优先级分组预加载；样式专属动画只在其样式包已安装时预加载
+		//（未安装时的加载必然 404，与其制造启动期错误噪音，不如直接跳过——真要播时 ensureLoaded 会兜底）
+		const preloadable = assetList.filter(f => {
+			const owner = STYLE_OWNED_ANIMATIONS[f.name];
+			return !owner || resourceLoader.getModuleRel(owner) !== "";
+		});
 		const groups = [[], [], [], []];
-		assetList.forEach(f => groups[priorityMap[f.name] ?? Priority.NORMAL].push(f));
+		preloadable.forEach(f => groups[priorityMap[f.name] ?? Priority.NORMAL].push(f));
 
 		const preload = (files, concurrency, onDone) => {
 			if (!files.length) return onDone?.();

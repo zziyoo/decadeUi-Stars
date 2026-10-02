@@ -8,6 +8,9 @@ import { createBaseLbtnPlugin } from "../../../../../../ui/lbtn/skins/base.js";
 export function createOnlineLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 	const base = createBaseLbtnPlugin(lib, game, ui, get, ai, _status, app);
 	const assetPath = `${decadeUIPath}ui/assets/lbtn/`;
+	// 本样式包内资源（资源热插拔迁移后）；共享资源仍走 assetPath（扩展根）
+	const packAsset = rel => window.decadeUI.resource.getAsset("online", `ui/assets/lbtn/${rel}`);
+	const packAudio = rel => `../extension/${decadeUIName}/${window.decadeUI.resource.getModuleRel("online")}ui/assets/lbtn/${rel}`;
 
 	// 礼物配置
 	const GIFT_CONFIG = {
@@ -405,7 +408,7 @@ export function createOnlineLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 				});
 				// 设置
 				const szBtn = ui.create.div(".controls", home);
-				szBtn.setBackgroundImage(`${assetPath}OL_line/uibutton/shezhi.png`);
+				szBtn.setBackgroundImage(packAsset(`OL_line/uibutton/shezhi.png`));
 				szBtn.style.width = "90px";
 				szBtn.style.height = "30.75px";
 				szBtn.style.backgroundRepeat = "no-repeat";
@@ -423,7 +426,7 @@ export function createOnlineLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 
 				// 背景
 				const bjBtn = ui.create.div(".controls", home);
-				bjBtn.setBackgroundImage(`${assetPath}OL_line/uibutton/beijing.png`);
+				bjBtn.setBackgroundImage(packAsset(`OL_line/uibutton/beijing.png`));
 				bjBtn.style.width = "90px";
 				bjBtn.style.height = "30.75px";
 				bjBtn.style.backgroundRepeat = "no-repeat";
@@ -437,7 +440,7 @@ export function createOnlineLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 
 				// 托管
 				const tgBtn = ui.create.div(".controls", home);
-				tgBtn.setBackgroundImage(`${assetPath}OL_line/uibutton/tuoguan_on.png`);
+				tgBtn.setBackgroundImage(packAsset(`OL_line/uibutton/tuoguan_on.png`));
 				tgBtn.style.width = "90px";
 				tgBtn.style.height = "30.75px";
 				tgBtn.style.backgroundRepeat = "no-repeat";
@@ -448,7 +451,7 @@ export function createOnlineLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 
 				// 离开
 				const tcBtn = ui.create.div(".controls", home);
-				tcBtn.setBackgroundImage(`${assetPath}OL_line/uibutton/likai.png`);
+				tcBtn.setBackgroundImage(packAsset(`OL_line/uibutton/likai.png`));
 				tcBtn.style.width = "90px";
 				tcBtn.style.height = "30.75px";
 				tcBtn.style.backgroundRepeat = "no-repeat";
@@ -482,17 +485,17 @@ export function createOnlineLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 
 			// 礼物按钮
 			const giftBtn = ui.create.div(".anniubutton", ui.anniubuttons);
-			giftBtn.setBackgroundImage(`${assetPath}OL_line/uibutton/gameview_tool_btn_prop.png`);
+			giftBtn.setBackgroundImage(packAsset(`OL_line/uibutton/gameview_tool_btn_prop.png`));
 			giftBtn.onclick = () => self.showGiftPanel();
 
 			// 聊天按钮
 			const talkBtn = ui.create.div(".anniubutton", ui.anniubuttons);
-			talkBtn.setBackgroundImage(`${assetPath}OL_line/uibutton/gameview_tool_btn_chat.png`);
+			talkBtn.setBackgroundImage(packAsset(`OL_line/uibutton/gameview_tool_btn_chat.png`));
 			talkBtn.onclick = () => self.showTalkPanel();
 
 			// 排序按钮
 			const sortBtn = ui.create.div(".anniubutton", ui.anniubuttons);
-			sortBtn.setBackgroundImage(`${assetPath}OL_line/uibutton/gameview_tool_btn_sort.png`);
+			sortBtn.setBackgroundImage(packAsset(`OL_line/uibutton/gameview_tool_btn_sort.png`));
 			sortBtn.onclick = () => self.sortHandCards();
 			ui.anniubuttons.style.display = "flex";
 			ui.anniubuttons.style.flexDirection = "column";
@@ -580,7 +583,7 @@ export function createOnlineLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 					giftbg.hide();
 					self.showGiftSelection(container, config, giftbg);
 				});
-				gift.setBackgroundImage(`${assetPath}OL_line/gift/${config.image}`);
+				gift.setBackgroundImage(packAsset(`OL_line/gift/${config.image}`));
 				ui.create.div(".giftname", config.name, gift);
 				ui.create.div(".giftcost", config.cost, gift);
 			});
@@ -598,7 +601,7 @@ export function createOnlineLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 			const giftbg2 = ui.create.div(".giftbg2", container);
 			ui.create.div(".giftbgtext", "点击框外区域可退出", giftbg2);
 			const gift2 = ui.create.div(".gift2", giftbg2);
-			gift2.setBackgroundImage(`${assetPath}OL_line/gift/${giftType.image}`);
+			gift2.setBackgroundImage(packAsset(`OL_line/gift/${giftType.image}`));
 
 			game.countPlayer(player => {
 				if (player === game.me) return;

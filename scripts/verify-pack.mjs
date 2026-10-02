@@ -3,17 +3,33 @@
  * 校验所有已安装样式包的 CSS url() 引用与皮肤 JS 相对导入真实可达。
  * 数据源：modules/installed.json + 各包 manifest.json（含 deadRefs 死引用登记）。
  */
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, resolve, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { findMissingResources } from "../src/core/manifest.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const installed = JSON.parse(readFileSync(join(ROOT, "modules", "installed.json"), "utf8"));
+
+/** 递归列出包内文件（包根相对 POSIX 路径）——resources 目录声明按它对账 */
+function listPackFiles(packRoot) {
+	const out = [];
+	const walk = dir => {
+		for (const name of readdirSync(dir)) {
+			const p = join(dir, name);
+			if (statSync(p).isDirectory()) walk(p);
+			else out.push(relative(packRoot, p).split("\\").join("/"));
+		}
+	};
+	walk(packRoot);
+	return out.sort();
+}
 
 let ok = 0;
 let hostRef = 0;
 let knownDead = 0;
 let bad = 0;
+let resourceBad = 0;
 
 function checkRef(cssRel, ref, deadRefs) {
 	if (ref.startsWith("#") || ref.startsWith("data:")) return;
@@ -45,6 +61,18 @@ function checkRef(cssRel, ref, deadRefs) {
 for (const [id, info] of Object.entries(installed.modules || {})) {
 	const packRoot = join(ROOT, "modules", id, info.version);
 	const manifest = JSON.parse(readFileSync(join(packRoot, "manifest.json"), "utf8"));
+
+	// 资源边界声明必须可达（资源热插拔）：manifest.resources 声明的目录/文件缺一个都算失败
+	if (Array.isArray(manifest.resources)) {
+		const missing = findMissingResources(manifest.resources, listPackFiles(packRoot));
+		if (missing.length) {
+			resourceBad += missing.length;
+			console.error(`资源边界缺失: ${id} -> ${missing.join("、")}`);
+		} else {
+			console.log(`modules/${id}/${info.version}: resources 声明 ${manifest.resources.length} 项全部可达`);
+		}
+	}
+
 	for (const cssRel of manifest.entry?.css || []) {
 		const cssPath = join(packRoot, cssRel);
 		const css = readFileSync(cssPath, "utf8");
@@ -56,5 +84,5 @@ for (const [id, info] of Object.entries(installed.modules || {})) {
 		console.log(`modules/${id}/${info.version}/${cssRel}: 引用计毕`);
 	}
 }
-console.log(`\n可达 ${ok}，指向本体(越界) ${hostRef}，已知上游死引用 ${knownDead}，未知缺失 ${bad}`);
-process.exit(bad ? 1 : 0);
+console.log(`\n可达 ${ok}，指向本体(越界) ${hostRef}，已知上游死引用 ${knownDead}，未知缺失 ${bad}，资源边界缺失 ${resourceBad}`);
+process.exit(bad || resourceBad ? 1 : 0);

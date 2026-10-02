@@ -8,6 +8,9 @@ import { createBaseLbtnPlugin } from "../../../../../../ui/lbtn/skins/base.js";
 export function createBabyLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 	const base = createBaseLbtnPlugin(lib, game, ui, get, ai, _status, app);
 	const assetPath = `${decadeUIPath}ui/assets/lbtn/`;
+	// 本样式包内资源（资源热插拔迁移后）；共享资源仍走 assetPath（扩展根）
+	const packAsset = rel => window.decadeUI.resource.getAsset("baby", `ui/assets/lbtn/${rel}`);
+	const packAudio = rel => `../extension/${decadeUIName}/${window.decadeUI.resource.getModuleRel("baby")}ui/assets/lbtn/${rel}`;
 
 	return {
 		...base,
@@ -133,7 +136,7 @@ export function createBabyLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 			const isRight = lib.config["extension_十周年UI-Stars_rightLayout"] === "on";
 
 			const btn = ui.create.node("img");
-			btn.src = `${lib.assetURL}${assetPath}uibutton/hs_zhengli.png`;
+			btn.src = packAsset(`uibutton/hs_zhengli.png`);
 			btn.style.cssText = `display:block;position:absolute;background-color:transparent;width:85px;height:50px;bottom:18%;left:22px;z-index:4;right:auto;${isRight ? "right:calc(100% - 380px);z-index:3;" : "right:calc(100% - 1260px);z-index:3;"}`;
 
 			btn.onclick = () => self.sortHandCards();
@@ -151,8 +154,8 @@ export function createBabyLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 			const updateImage = () => {
 				btn.src =
 					ui.selected.cards.length > 0
-						? `${lib.assetURL}${assetPath}uibutton/fanxuanhs.png`
-						: `${lib.assetURL}${assetPath}uibutton/quanxuanhs.png`;
+						? packAsset(`uibutton/fanxuanhs.png`)
+						: packAsset(`uibutton/quanxuanhs.png`);
 			};
 			updateImage();
 
@@ -188,7 +191,7 @@ export function createBabyLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 			const self = this;
 
 			const menuBtn = ui.create.node("img");
-			menuBtn.src = `${lib.assetURL}${assetPath}CD/hs_caidan.png`;
+			menuBtn.src = packAsset(`CD/hs_caidan.png`);
 			menuBtn.style.cssText =
 				"display:block;--w:56px;--h:calc(var(--w)*74/71);width:var(--w);height:var(--h);position:absolute;top:10px;left:40px;background-color:transparent;z-index:3;";
 			document.body.appendChild(menuBtn);
