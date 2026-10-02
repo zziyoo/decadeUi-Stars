@@ -76,6 +76,7 @@
 | 2026-10-02 | **decade 资源边界补漏**：`manifest.resources` 补 `ui/assets/skill/shizhounian/`（27 个已迁文件漏声明，资源边界未覆盖）；p19 §B 新增**反向完整性检查**（包内实际资源除 manifest.json 与 entry JS/CSS 外必须全部被 resources 覆盖——先 RED 点名 27 项、补声明后 GREEN；六套现均零未声明） | `f18e760` |
 | 2026-10-02 | **module-index 两处小修**：①`loadBuiltInIndex` 结构校验加固（schema===1 / modules 拒数组 / core.version / 带尾斜杠 https 的 releaseBase，缺一项即 STRUCTURE_INVALID；旧行为"缺 releaseBase 也算读成功"已作废）；②`verifyAll` 补第三份——三份 module-index（release / dist/modules / modules）逐字节一致（新导出 `verifyIndexCopies`；篡改反验：改开发态索引→`--verify` exit 1 点名→还原 exit 0） | `d98e204` |
 | 2026-10-03 | **真机反馈三连收尾**（详见§五 8）：①online 转技/限定技图标 404 修复（`7532ea5`，包路由基址引用的文件未入包；p19 §C-4 扫描）；②手杀"取消按钮"破图修复（`ab89d92`，共享文件 QX.png 被改走包路由；p19 §C-5 扫描）；③**开发态内置索引基址分叉为本机发布源**（`f3288b6`：模块源地址留空即可全本地装卸、脱离 GitHub 旧资产；回环 http 校验豁免；verifyAll 双检） | `ab89d92` + `f3288b6` |
+| 2026-10-03 | **移除设置页「模块源地址」入口**（`f7b141f`，用户点名）：本地索引免配置后，本体扩展设置页与自绘配置窗口的该行一并删除（`definitions/misc.js` 定义与注册 + `handlers/module-handlers.js` 整文件 + `config-window.js` 同一行）；运行时保留键与"空值＝内置源"语义，模块管理窗口内仍可改/恢复默认 | `f7b141f` |
 
 ## 四、进行中（当前任务指针）
 
