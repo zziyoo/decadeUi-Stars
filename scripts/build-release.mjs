@@ -16,7 +16,7 @@
  *
  * P19 追加：同一份索引对象输出三处——`dist/release/`（Release 资产）、
  *   `dist/modules/`（整包内的运行时默认索引）、仓库根 `modules/`（开发态直接加载源码时的
- *   运行时默认索引，已 gitignore）。三处来自同一字符串，逐字节一致。
+ *   运行时默认索引，已 gitignore）。三处来自同一字符串，verifyAll 对三份逐字节校验（verifyIndexCopies）。
  *
  * 用法：
  *   node scripts/build-release.mjs            # 生成全部产物并完整校验
@@ -417,6 +417,27 @@ export async function verifyArtifacts({ packs, index, coreVersion, outDir = OUT_
 	return notes;
 }
 
+/**
+ * 三份 module-index 必须逐字节一致（P19 三处输出：Release 资产 / 整包内运行时索引 / 开发态内置默认源）：
+ * 同一构建里只许有一份生成逻辑，pretty-print/换行/BOM 的任何差异都算不一致（Buffer.equals 语义）。
+ * 导出供单测；构建与 --verify 共用同一条判据。
+ * @param {string} indexPath - 基准：dist/release/module-index.json
+ * @param {string[]} copyPaths - 其余副本的绝对路径（dist/modules/… 与 modules/…）
+ * @returns {string} 通过时的说明行
+ */
+export function verifyIndexCopies(indexPath, copyPaths) {
+	if (!fs.existsSync(indexPath)) die(`需要产物存在：${posix(path.relative(ROOT, indexPath))}（重新跑一次构建）`);
+	const reference = fs.readFileSync(indexPath);
+	for (const copyPath of copyPaths) {
+		const rel = posix(path.relative(ROOT, copyPath));
+		if (!fs.existsSync(copyPath)) die(`需要产物存在：${rel}（重新跑一次构建）`);
+		if (!fs.readFileSync(copyPath).equals(reference)) {
+			die(`${rel} 与 dist/release/${INDEX_FILE} 不一致（三份必须来自同一次 buildIndex 的同一字符串）`);
+		}
+	}
+	return `${INDEX_FILE} 三份逐字节一致（dist/release、dist/modules、modules）`;
+}
+
 // ------------------------------------------------------------------ 命令行入口
 
 /** 给包补上"已落盘 zip"的实际字节数与摘要（--verify 时由盘上重算，不信任索引里的自述） */
@@ -439,12 +460,9 @@ async function verifyAll({ info, packs }) {
 	const rebuilt = buildIndex({ packs: zipped, coreVersion: info.version, releaseBase: releaseBaseFor(info.version) });
 	if (indexText(rebuilt) !== fs.readFileSync(indexPath, "utf8")) die(`${INDEX_FILE} 与盘上产物重算结果不一致（重新跑一次构建）`);
 
-	// P19：运行时内置默认索引与 Release 索引必须逐字节一致（同一构建里只许有一份生成逻辑）。
-	// Buffer.equals：pretty-print/换行/BOM 的任何差异都算不一致。
-	if (!fs.existsSync(RUNTIME_INDEX_PATH)) die(`需要产物存在：${posix(path.relative(ROOT, RUNTIME_INDEX_PATH))}（重新跑一次构建）`);
-	if (!fs.readFileSync(RUNTIME_INDEX_PATH).equals(fs.readFileSync(indexPath))) {
-		die(`dist/modules/${INDEX_FILE} 与 dist/release/${INDEX_FILE} 不一致（两份必须来自同一次 buildIndex 的同一字符串）`);
-	}
+	// P19：三份 module-index 必须逐字节一致（同一构建里只许有一份生成逻辑）：
+	// Release 资产 / 整包内的运行时索引 / 开发态内置默认源（仓库根 modules/）。
+	const indexNote = verifyIndexCopies(indexPath, [RUNTIME_INDEX_PATH, DEV_INDEX_PATH]);
 
 	const fullPath = path.join(OUT_DIR, `${info.name}-${info.version}-full.zip`);
 	const fullNote = await verifyFullPackage({ zipPath: fullPath, rootName: info.name, packs: zipped });
@@ -465,7 +483,7 @@ async function verifyAll({ info, packs }) {
 	if (!fs.existsSync(notesPath) || fs.readFileSync(notesPath, "utf8") !== expectNotes) {
 		die(`${NOTES_FILE} 与盘上产物重算结果不一致（重新跑一次构建，别手改它）`);
 	}
-	return [...notes, fullNote, `${NOTES_FILE} 与产物一致（含 ${zipped.length + 2} 项资产的字节数与 sha256）`];
+	return [...notes, indexNote, fullNote, `${NOTES_FILE} 与产物一致（含 ${zipped.length + 2} 项资产的字节数与 sha256）`];
 }
 
 async function main() {

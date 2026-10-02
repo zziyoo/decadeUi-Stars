@@ -53,10 +53,26 @@ const fetchStub = (table, { capture = [] } = {}) => async url => {
 	assert.equal(capture.length, 1);
 	assert.ok(capture[0].endsWith("modules/module-index.json"), `只许读固定路径，实际请求 ${capture[0]}`);
 
-	// 没有 releaseBase 的内置索引（手工形态）：读得到，但 indexUrl 为空——安装会在"无解析基准"处被拒
-	const bare = await loadBuiltInIndex({ fetchImpl: fetchStub({ "*": JSON.stringify({ schema: 1, modules: {} }) }) });
-	assert.equal(bare.ok, true);
-	assert.equal(bare.indexUrl, "", "缺 releaseBase 时 indexUrl 为空串，不许凭空拼地址");
+	// 结构校验（P19 加固）：构建期必然写入 schema/core.version/releaseBase，任何一项缺失或坏形
+	// 都说明这份内置索引已损坏——明确报 STRUCTURE_INVALID，不静默接受（旧行为"缺 releaseBase 也算读成功"已作废）。
+	const badIndexes = [
+		[{ schema: 1, core: { version: "1.5.0" }, modules: {} }, /releaseBase/, "缺 releaseBase"],
+		[{ core: { version: "1.5.0" }, releaseBase: "https://github.com/x/y/", modules: {} }, /schema/, "缺 schema"],
+		[{ schema: 2, core: { version: "1.5.0" }, releaseBase: "https://github.com/x/y/", modules: {} }, /schema/, "schema 不是 1"],
+		[{ schema: 1, releaseBase: "https://github.com/x/y/", modules: {} }, /core/, "缺 core 段"],
+		[{ schema: 1, core: {}, releaseBase: "https://github.com/x/y/", modules: {} }, /core\.version/, "core 缺 version"],
+		[{ schema: 1, core: { version: "1.5.0" }, releaseBase: "http://github.com/x/y/", modules: {} }, /releaseBase/, "releaseBase 不是 https"],
+		[{ schema: 1, core: { version: "1.5.0" }, releaseBase: "https://github.com/x/y", modules: {} }, /releaseBase/, "releaseBase 没有尾斜杠（基址会丢最后一段）"],
+		[{ schema: 1, core: { version: "1.5.0" }, releaseBase: "", modules: {} }, /releaseBase/, "releaseBase 为空串"],
+		[{ schema: 1, core: { version: "1.5.0" }, releaseBase: 42, modules: {} }, /releaseBase/, "releaseBase 不是字符串"],
+		[{ schema: 1, core: { version: "1.5.0" }, releaseBase: "https://github.com/x/y/", modules: [] }, /modules/, "modules 是数组不是对象"],
+	];
+	for (const [bad, pattern, why] of badIndexes) {
+		const res = await loadBuiltInIndex({ fetchImpl: fetchStub({ "*": JSON.stringify(bad) }) });
+		assert.equal(res.ok, false, `${why}：必须拒绝`);
+		assert.equal(res.code, "STRUCTURE_INVALID", `${why}：错误码必须是 STRUCTURE_INVALID`);
+		assert.match(res.message, pattern, `${why}：错误信息要点名问题字段，实际 ${res.message}`);
+	}
 
 	// HTTP 失败 / 坏 JSON / 结构不对：全部结构化失败，绝不抛出
 	const notFound = await loadBuiltInIndex({ fetchImpl: fetchStub({}) });
@@ -99,7 +115,12 @@ const installerStub = ({ index = { schema: 1, modules: {} }, fail = false } = {}
 {
 	// 空配置 ⇒ 走内置：安装器根本不该被碰（空配置不是"完全不可安装"）
 	const installer = installerStub();
-	const builtinIndex = { schema: 1, modules: {} };
+	const builtinIndex = {
+		schema: 1,
+		core: { version: "1.5.0", latest: "1.5.0" },
+		releaseBase: "https://github.com/zziyoo/decadeUi-Stars/releases/download/v1.5.0/",
+		modules: {},
+	};
 	const loaded = await loadModuleIndex({ rawUrl: "", installer, fetchImpl: fetchStub({ "*": JSON.stringify(builtinIndex) }) });
 	assert.equal(loaded.ok, true);
 	assert.equal(loaded.kind, "builtin", "空 moduleIndexUrl ⇒ sourceKind === builtin");

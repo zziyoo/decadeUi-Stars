@@ -7,7 +7,8 @@
  *
  * 内置索引的读取边界（不因它是"本体文件"而放宽任何检查）：
  *   - 只读固定路径 `modules/module-index.json`，不接受任何用户传入的路径，不存在 `../`；
- *   - JSON parse 后必须是有 `modules` 对象的结构，否则按 STRUCTURE_INVALID 拒绝；
+ *   - JSON parse 后必须过结构校验：schema===1、modules 对象、core.version、带尾斜杠的 https
+ *     releaseBase（构建期必然写入，缺一项即索引已损坏），否则按 STRUCTURE_INVALID 拒绝；
  *   - 返回的 indexUrl 取索引自带的 `releaseBase`（构建期写入的 Release 资产目录），
  *     裸文件名仍由安装器唯一的 `resolveModuleUrl` 解析、仍过 http(s) 校验——
  *     本模块不碰下载，不碰文件系统，不引入第二套 URL 配置。
@@ -35,7 +36,7 @@ export function resolveIndexSource(raw) {
  * 按当前页面基址解析成可读地址（decadeUIPath 可能是相对形态，不能交给对说明符严格的 API）。
  * @param {{basePath?: string, fetchImpl?: Function}} [deps] - 测试注入用
  * @returns {Promise<{ok: boolean, code?: string, message?: string, index?: Object, indexUrl?: string}>}
- *   ok 时 indexUrl = 索引内的 releaseBase（可为空串：调用方据此把安装拒绝在"无解析基准"上）
+ *   ok 时 indexUrl = 索引内的 releaseBase（结构校验已保证它是带尾斜杠的 https 地址，可直接作下载基址）
  */
 export async function loadBuiltInIndex({ basePath = (typeof window !== "undefined" && window.decadeUIPath) || "", fetchImpl = globalThis.fetch } = {}) {
 	if (typeof fetchImpl !== "function") {
@@ -64,10 +65,16 @@ export async function loadBuiltInIndex({ basePath = (typeof window !== "undefine
 	} catch (error) {
 		return { ok: false, code: INSTALL_CODES.STRUCTURE_INVALID, message: `内置索引 JSON 解析失败: ${error.message}` };
 	}
-	if (!index || typeof index !== "object" || !index.modules || typeof index.modules !== "object") {
-		return { ok: false, code: INSTALL_CODES.STRUCTURE_INVALID, message: "内置索引不是合法的模块索引（缺少 modules 对象）" };
+	const invalid = message => ({ ok: false, code: INSTALL_CODES.STRUCTURE_INVALID, message: `内置索引结构不合法：${message}` });
+	if (!index || typeof index !== "object" || Array.isArray(index)) return invalid("根必须是对象");
+	if (index.schema !== 1) return invalid(`schema 必须为 1（实际 ${JSON.stringify(index.schema ?? null)}）`);
+	if (!index.modules || typeof index.modules !== "object" || Array.isArray(index.modules)) return invalid("缺少 modules 对象");
+	// 构建期必然写入 core.version 与 releaseBase（build-release 有同名硬校验），缺失即索引已损坏
+	if (!index.core || typeof index.core !== "object" || Array.isArray(index.core) || !index.core.version) return invalid("缺少 core.version");
+	if (typeof index.releaseBase !== "string" || !/^https:\/\/.+\/$/.test(index.releaseBase)) {
+		return invalid(`releaseBase 必须是以 / 结尾的 https 绝对地址（实际 ${JSON.stringify(index.releaseBase ?? null)}）`);
 	}
-	return { ok: true, index, indexUrl: typeof index.releaseBase === "string" ? index.releaseBase : "" };
+	return { ok: true, index, indexUrl: index.releaseBase };
 }
 
 /**

@@ -232,5 +232,65 @@ const packs = [
 	fs.rmSync(path.join(distDir, "tests"), { recursive: true, force: true });
 }
 
+// ---------------------------------------------------------------- 三份 module-index 一致性（P19 三处输出）
+
+{
+	const idxDir = fs.mkdtempSync(path.join(os.tmpdir(), "p10-index-"));
+	const ref = path.join(idxDir, "release-module-index.json");
+	const runtime = path.join(idxDir, "runtime-module-index.json");
+	const dev = path.join(idxDir, "dev-module-index.json");
+
+	// 正例：三份逐字节一致（同一构建里只许有一份生成逻辑）
+	for (const file of [ref, runtime, dev]) fs.writeFileSync(file, '{"schema":1}\n');
+	assert.match(mod.verifyIndexCopies(ref, [runtime, dev]), /逐字节一致/, "三份一致时应回报说明行");
+
+	// 负例 1：副本只多一个换行也算不一致（Buffer.equals 语义：pretty-print/BOM 差异一样抓）
+	let error = null;
+	fs.writeFileSync(dev, '{"schema":1}\n\n');
+	try {
+		mod.verifyIndexCopies(ref, [runtime, dev]);
+	} catch (caught) {
+		error = caught;
+	}
+	assert.ok(error, "副本不一致必须失败（换行差异也算）");
+	assert.match(String(error.message), /不一致/, `失败原因要点名不一致，实际 ${error?.message}`);
+	process.exitCode = 0; // die() 会置 1，负例后复位
+	fs.writeFileSync(dev, '{"schema":1}\n');
+
+	// 负例 2：副本缺失 → 点名"需要产物存在"
+	fs.rmSync(runtime);
+	error = null;
+	try {
+		mod.verifyIndexCopies(ref, [runtime, dev]);
+	} catch (caught) {
+		error = caught;
+	}
+	assert.ok(error, "副本缺失必须失败");
+	assert.match(String(error.message), /需要产物存在/, `缺失必须点名文件，实际 ${error?.message}`);
+	process.exitCode = 0;
+	fs.writeFileSync(runtime, '{"schema":1}\n');
+
+	// 负例 3：基准缺失 → 同样拒绝
+	fs.rmSync(ref);
+	error = null;
+	try {
+		mod.verifyIndexCopies(ref, [runtime, dev]);
+	} catch (caught) {
+		error = caught;
+	}
+	assert.ok(error, "基准缺失必须失败");
+	assert.match(String(error.message), /需要产物存在/);
+	process.exitCode = 0;
+
+	fs.rmSync(idxDir, { recursive: true, force: true });
+}
+
+{
+	// 接线不变量：verifyAll 必须真的把 dist/modules 与 modules 两份送进这条判据
+	// （抽出来不接上等于白写）；静态扫描源码，与"distFiles 必须用上 isPackagedFile"同法。
+	const scriptSrc = fs.readFileSync(new URL("../scripts/build-release.mjs", import.meta.url), "utf8");
+	assert.match(scriptSrc, /verifyIndexCopies\(indexPath,\s*\[RUNTIME_INDEX_PATH,\s*DEV_INDEX_PATH\]/, "verifyAll 必须把三份 module-index 全部送进一致性检查");
+}
+
 fs.rmSync(sandbox, { recursive: true, force: true });
 console.log("P10 release tests: all passed ✓");
