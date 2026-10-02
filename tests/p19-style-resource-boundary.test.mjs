@@ -86,7 +86,18 @@ function listPackFiles(id) {
 			assert.ok(exists(path.join(packDir, path.basename(base) + ext)), `${base}${ext} 与其三件套不同根（Spine 三件套必须整体迁移）`);
 		}
 	}
-	console.log("B ok：六套资源声明逐文件可达 + 归属锚点齐全 + Spine 三件套整体归属");
+	// B-2：反向完整性——包内实际资源必须全部被 resources 覆盖（防"文件已迁入、忘写声明"；
+	// decade 的 ui/assets/skill/shizhounian/ 27 个文件曾漏声明，正是本检查要钉死的缺口）。
+	// 豁免：manifest.json 自身与 entry 声明的 JS/CSS（结构性文件，不算资源）。
+	for (const id of SIX) {
+		const manifest = readPackManifest(id);
+		const files = listPackFiles(id);
+		const exempt = new Set(["manifest.json", ...(manifest.entry?.js ?? []), ...(manifest.entry?.css ?? [])]);
+		const coveredBy = rel => manifest.resources.some(entry => (entry.endsWith("/") ? rel.startsWith(entry) : rel === entry));
+		const undeclared = files.filter(f => !exempt.has(f) && !coveredBy(f));
+		assert.deepEqual(undeclared, [], `${id} 包内有实际资源未被 manifest.resources 覆盖（迁入后忘写声明）：${undeclared.join("、")}`);
+	}
+	console.log("B ok：六套资源声明逐文件可达 + 归属锚点齐全 + Spine 三件套整体归属 + 反向零未声明");
 }
 
 // ── C. 不偷偷读根：生产代码不得硬拼指向已迁走资源的扩展根路径 ──
