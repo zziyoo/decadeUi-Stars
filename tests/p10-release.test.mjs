@@ -29,6 +29,8 @@ fs.writeFileSync(path.join(distDir, "src", "main.js"), "export const a = 1;\n");
 fs.writeFileSync(path.join(distDir, "ui", "styles", "base.css"), "body{}\n");
 fs.mkdirSync(path.join(distDir, "modules", "baby", "1.4.2"), { recursive: true });
 fs.writeFileSync(path.join(distDir, "modules", "baby", "1.4.2", "manifest.json"), JSON.stringify({ id: "baby", version: "1.4.2" }));
+// P19：运行时内置默认索引是 dist 的正式成员（verifyFullPackage 会对整包硬校验它）
+fs.writeFileSync(path.join(distDir, "modules", "module-index.json"), "{}\n");
 // 内部件（整包必须排除）与对外文档（整包必须保留）各来一份
 fs.writeFileSync(path.join(distDir, "README.md"), "# 总任务书\n");
 fs.mkdirSync(path.join(distDir, "docs"), { recursive: true });
@@ -58,6 +60,7 @@ const packs = [
 			"十周年UI-Stars/extension.js",
 			"十周年UI-Stars/info.json",
 			"十周年UI-Stars/modules/baby/1.4.2/manifest.json",
+			"十周年UI-Stars/modules/module-index.json",
 			"十周年UI-Stars/src/main.js",
 			"十周年UI-Stars/ui/styles/base.css",
 		],
@@ -65,11 +68,12 @@ const packs = [
 	);
 	assert.equal(names.some(name => name.includes("/release/")), false, "release/ 是分包产物，不进整包");
 	assert.equal(names.includes("十周年UI-Stars/README.md"), false, "总任务书是内部件，不进整包");
-	assert.equal(names.includes("十周年UI-Stars/docs/PROGRESS.md"), false, "交接台账是内部件，不进整包（否则改台账就变摘要）");
+	assert.equal(names.includes("十周年UI-Stars/docs/PROGRESS.md"), false, "交接台账不进整包（否则改台账就变摘要）");
 	assert.equal(names.includes("十周年UI-Stars/docs/modularization-audit.md"), false, "P0 审计报告是内部件，不进整包");
 	assert.equal(names.includes("十周年UI-Stars/docs/extension-readme.md"), true, "原版对外文档要保留");
+	assert.equal(names.includes("十周年UI-Stars/modules/module-index.json"), true, "内置默认模块索引必须随整包发布（P19）");
 	assert.equal(names.some(name => name.endsWith("/")), false, "不写目录条目（否则摘要会随构建时间变）");
-	assert.equal(info.files, 6);
+	assert.equal(info.files, 7);
 	assert.equal(info.bytes, fs.readFileSync(outZip).length);
 	assert.equal(info.sha256, sha(fs.readFileSync(outZip)));
 
@@ -96,7 +100,7 @@ const packs = [
 {
 	const fullPath = path.join(outDir, "十周年UI-Stars-1.4.2-full.zip");
 	const note = await mod.verifyFullPackage({ zipPath: fullPath, rootName: "十周年UI-Stars", packs, distDir });
-	assert.match(note, /6 文件/);
+	assert.match(note, /7 文件/);
 
 	const expectDie = async (label, mutate, pattern) => {
 		const target = path.join(sandbox, `${label}.zip`);
@@ -127,6 +131,13 @@ const packs = [
 		delete zip.files["十周年UI-Stars/modules/baby/1.4.2/manifest.json"];
 		fs.writeFileSync(target, await zip.generateAsync({ type: "nodebuffer" }));
 	}, /缺少分包清单/);
+
+	// ②b 少了内置默认模块索引（P19 硬校验：整包必须能开箱即用默认模块源）
+	await expectDie("缺少内置索引", async target => {
+		const zip = await JSZip.loadAsync(fs.readFileSync(target));
+		delete zip.files["十周年UI-Stars/modules/module-index.json"];
+		fs.writeFileSync(target, await zip.generateAsync({ type: "nodebuffer" }));
+	}, /缺少根位文件 十周年UI-Stars\/modules\/module-index\.json/);
 
 	// ③ 把 release/ 打进去
 	await expectDie("混入 release", async target => {

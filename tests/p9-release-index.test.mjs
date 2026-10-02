@@ -188,6 +188,17 @@ function harness(extra = {}) {
 
 	// 索引条目交给安装器后必须能解析成绝对地址（与 §47 发布地址无关的闭环）
 	assert.equal(resolveModuleUrl(decade.url, IDX), "https://host/releases/v1/decade-1.4.2.zip");
+
+	// P19：releaseBase 是内置默认源解析裸文件名的基址。缺省为空串（纯索引形态不变），传入则原样保留。
+	assert.equal(index.releaseBase, "", "未传 releaseBase 时为空串，索引 schema 不变");
+	const BASE = "https://github.com/zziyoo/decadeUi-Stars/releases/download/v1.4.2/";
+	const withBase = script.buildIndex({ packs, coreVersion: "1.4.2", releaseBase: BASE });
+	assert.equal(withBase.releaseBase, BASE, "releaseBase 原样写入索引");
+	assert.equal(
+		resolveModuleUrl(withBase.modules.decade.url, withBase.releaseBase),
+		`${BASE}decade-1.4.2.zip`,
+		"内置索引按 releaseBase 把裸文件名解析成 Release 资产地址（基址带尾斜杠，最后一段不会丢）"
+	);
 }
 
 // ------------------------------------------------------------------ 构建脚本：zip 结构（manifest 必须在根）

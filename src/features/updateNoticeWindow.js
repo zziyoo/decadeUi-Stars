@@ -11,6 +11,7 @@
  */
 import { lib, game } from "noname";
 import { checkUpdates, ignoreAll } from "../core/updateChecker.js";
+import { loadModuleIndex } from "../core/moduleIndexSource.js";
 import { getModuleSystem } from "../core/moduleSystem.js";
 import { showModuleManager } from "./moduleManagerWindow.js";
 
@@ -40,26 +41,30 @@ function collectInstalled(api) {
 }
 
 /**
- * 查一次更新。任何失败都返回 null（启动期第一要务是别把游戏弄卡）：未配置模块源、离线、
- * 索引坏掉、超时——一律安静收场，绝不抛错、绝不写状态。
- * @param {{api?: Object, config?: Object, timeoutMs?: number}} [deps] - 测试注入用
+ * 查一次更新。任何失败都返回 null（启动期第一要务是别把游戏弄卡）：离线、索引坏掉、
+ * 内置索引读不到、超时——一律安静收场，绝不抛错、绝不写状态。
+ * 模块源判定与模块管理窗口共用同一条规则（moduleIndexSource）：moduleIndexUrl 为空
+ * 不再表示"不检查"，而是读本体内置 modules/module-index.json——否则会出现
+ * "模块管理里能看到更新、自动检查却看不到"的两套规则（P19 起必须统一）。
+ * @param {{api?: Object, config?: Object, timeoutMs?: number, loadIndex?: Function}} [deps] - 测试注入用
  * @returns {Promise<null|{updates: Array, ignoredUpdates: Array, core: Object, indexUrl: string}>}
  */
-export async function checkForUpdates({ api = getModuleSystem(), config = lib.config, timeoutMs = CHECK_TIMEOUT_MS } = {}) {
-	const url = String(config?.[indexKey()] || "").trim();
-	if (!url || typeof api?.packageInstaller?.fetchIndex !== "function") return null;
-
-	const fetched = await api.packageInstaller.fetchIndex(url, { timeoutMs, retries: 1 }).catch(() => null);
-	if (!fetched?.ok) return null;
+export async function checkForUpdates({ api = getModuleSystem(), config = lib.config, timeoutMs = CHECK_TIMEOUT_MS, loadIndex = loadModuleIndex } = {}) {
+	const loaded = await loadIndex({
+		rawUrl: config?.[indexKey()],
+		installer: api?.packageInstaller,
+		fetchOpts: { timeoutMs, retries: 1 },
+	}).catch(() => null);
+	if (!loaded?.ok) return null;
 
 	const result = checkUpdates({
 		installed: collectInstalled(api),
-		index: fetched.index,
+		index: loaded.index,
 		coreVersion: lib.extensionPack?.[decadeUIName]?.version || null,
 		ignored: config?.[ignoredKey()],
 	});
 	if (!result.updates.length && !result.core.behind) return null;
-	return { ...result, indexUrl: fetched.indexUrl || url };
+	return { ...result, indexUrl: loaded.indexUrl || "" };
 }
 
 /** 载入提示窗样式（只挂一次，与 welcomeDialog 同一手法） */

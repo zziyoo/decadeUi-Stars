@@ -29,5 +29,7 @@ build.bat
 tmp/
 modules/*/*.replacing-*/
 modules/*/*.removing-*/
+# 开发态内置模块索引（P19）：构建脚本生成，游戏直接加载仓库根源码时当默认模块源用
+modules/module-index.json
 Thumbs.db
 .DS_Store

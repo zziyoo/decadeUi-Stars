@@ -13,11 +13,14 @@
  *   - 卸载需要二次确认（按钮变"确认卸载"，4 秒后自动复原），不使用原生 confirm。
  *   - 动作进行中禁止并发（busy 门闩）；下载可取消（AbortController，安装器支持 CANCELLED）。
  *   - 反馈文案按 INSTALL_CODES 出（moduleAdmin.resultText），安装/卸载成功后提示需重载。
+ *   - 模块源只有一种判定（moduleIndexUrl 是否为空，P19）：空＝本体内置 modules/module-index.json
+ *     （随扩展更新），非空＝自定义远程索引；「恢复默认模块源」只是清空该键，不写回固定地址。
  *   - Feature 的启用/禁用只写它声明的 switchKey 配置键（与外观页同一个开关，不另立状态源）；
  *     装载发生在 content 初始化，所以改完必须重载才生效（任务书§16）。
  */
 import { lib, game } from "noname";
 import { buildRows, resultText } from "../core/moduleAdmin.js";
+import { loadModuleIndex } from "../core/moduleIndexSource.js";
 
 const STYLE_ID = "decade-module-manager-styles";
 const UNINSTALL_ARM_MS = 4000;
@@ -28,7 +31,8 @@ let controller = null;
 let notice = null;
 /**
  * 最近一次成功读取的模块源地址与索引内容。
- * indexUrl 是索引内相对 url 的解析基准（安装器只解析一次且对绝对地址幂等）；
+ * indexUrl 是索引内相对 url 的解析基准（安装器只解析一次且对绝对地址幂等）：
+ * 自定义远程源时是索引自身地址，内置源时是索引自带的 releaseBase（Release 资产目录）。
  * index 让安装器§11 的"缺依赖先按索引装依赖"在界面上真正可用——此前窗口从未把索引交给安装器，
  * 该分支只有 Node 测试跑得通。
  */
@@ -176,18 +180,19 @@ async function refresh() {
 	let index = null;
 	indexBaseUrl = null;
 	indexSnapshot = null;
-	if (sourceUrl) {
-		const fetchResult = await installer.fetchIndex(sourceUrl, { timeoutMs: 10000 });
-		if (fetchResult.ok) {
-			index = fetchResult.index;
-			indexSnapshot = index;
-			indexBaseUrl = fetchResult.indexUrl || sourceUrl;
-			notes.push(`模块源已连接（索引 schema ${index?.schema ?? "?"}）`);
-		} else {
-			notes.push(`模块源不可用：${resultText(fetchResult)}`);
-		}
+	const loaded = await loadModuleIndex({ rawUrl: sourceUrl, installer, fetchOpts: { timeoutMs: 10000 } });
+	if (loaded.ok) {
+		index = loaded.index;
+		indexSnapshot = index;
+		indexBaseUrl = loaded.indexUrl || "";
+		// 状态只有两种（判定只看 moduleIndexUrl 是否为空，没有第三套状态源）：
+		notes.push(
+			loaded.kind === "builtin"
+				? `正在使用扩展内置模块源（随扩展更新，索引 schema ${index?.schema ?? "?"}）`
+				: `自定义远程模块源已连接（索引 schema ${index?.schema ?? "?"}）`
+		);
 	} else {
-		notes.push("未配置模块源：可安装/可更新不可用（P10 产出索引后填写地址）");
+		notes.push(loaded.kind === "builtin" ? `内置模块源不可用：${resultText(loaded)}` : `自定义模块源不可用：${resultText(loaded)}`);
 	}
 	noteBox.textContent = notes.join("；");
 
@@ -375,13 +380,25 @@ function createWindow() {
 	const toolbar = el("decade-module-toolbar", dialog);
 	const sourceInput = el("decade-module-source", toolbar, "input");
 	sourceInput.type = "text";
-	sourceInput.placeholder = "模块源地址（module-index.json 的 https URL）";
+	// 空输入框不再表示"没配置"：placeholder 直接写明默认语义（§20）
+	sourceInput.placeholder = "自定义模块源地址（留空＝使用扩展内置模块源）";
 	sourceInput.value = String(lib.config[indexKey()] || "");
 	const saveBtn = el("decade-module-btn", toolbar, "button");
 	saveBtn.textContent = "保存并刷新";
 	saveBtn.onclick = () => {
 		game.saveConfig(indexKey(), sourceInput.value.trim());
 		notice = { tone: "ok", text: "模块源已保存" };
+		refresh();
+	};
+	const restoreBtn = el("decade-module-btn", toolbar, "button");
+	restoreBtn.textContent = "恢复默认模块源";
+	// 恢复默认＝清空自定义地址回到内置索引，**不**写回某个带版本号的固定地址——
+	// 否则升级扩展后这串 URL 就过期了，又得手工再改一遍（P19 要治的正是这个）。
+	restoreBtn.title = "清除自定义模块源地址，改用扩展内置的 modules/module-index.json（随扩展更新）";
+	restoreBtn.onclick = () => {
+		game.saveConfig(indexKey(), "");
+		sourceInput.value = "";
+		notice = { tone: "ok", text: "已恢复默认模块源：使用扩展内置 modules/module-index.json" };
 		refresh();
 	};
 	const refreshBtn = el("decade-module-btn", toolbar, "button");

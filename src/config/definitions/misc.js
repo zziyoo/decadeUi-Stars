@@ -122,13 +122,14 @@ export const rightLayout = {
 };
 
 /**
- * 模块源地址（P6 模块管理界面用）
- * 留空＝不使用在线模块源：模块管理界面只做本地已安装模块的查看/卸载。
+ * 模块源地址（P6 模块管理界面用；P19 起空值有默认语义）
+ * 留空＝使用扩展本体内置的 modules/module-index.json（随扩展更新，升级后自动生效，不用改这里）；
+ * 填写远程地址＝使用自定义模块源。在模块管理窗口里点「恢复默认模块源」即清空回内置。
  * @type {Object}
  */
 export const moduleIndexUrl = {
 	name: "模块源地址",
-	intro: "模块管理界面的索引地址（module-index.json 的 https 地址）。留空表示不使用在线模块源；可安装/可更新需要它。",
+	intro: "模块管理界面的模块索引来源。留空＝使用扩展内置模块源（modules/module-index.json，随扩展更新）；填写 https 地址＝使用自定义远程索引（module-index.json）。",
 	init: "",
 	input: true,
 	onblur: onModuleIndexUrlBlur,

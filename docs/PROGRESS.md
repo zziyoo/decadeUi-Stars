@@ -949,3 +949,35 @@ F. **手机上装的 Core 是哪一笔**（恢复动作是 QQ 的解压做的，
 1. 配置导入是**一次性**的：`legacyMigratedFrom` 写下后不再给「导入」条目（旧版被重新启用时仍会自动禁用）。想重看效果就手工删掉 `extension_十周年UI-Stars_legacyMigratedFrom` 再重载。
 2. 卡面复制**每次启动都会比对**，但靠"同名不覆盖"自然幂等：玩家若在 Stars 侧删掉某个复制过来的文件夹，下次启动会再复制回来（要永久去掉就从旧版目录里删）。Android/SAF 拿不到 Node fs 时整段静默跳过，不提示也不报错。
 3. 只关开关，不删旧扩展的目录（`game.removeExtension` 没接，它连玩家配置/localStorage/导入图一起删，属卸载不是禁用）：旧版 113MB 文件由玩家自己决定去留；旧键也**不清理**——留着是回退依据，Stars 不读它们。
+
+---
+
+## P19 内置默认模块源 + 手动打包独立 Artifact（2026-10-02）
+
+> ⚠️ **并行会话警示**：本节撰写期间有另一个会话在同一工作树上做"样式资产去重迁移"，其未提交改动（image/styles、assets/animation 等资产增删、modules/*/1.5.0 的 CSS/manifest 变更）**不属于 P19**；P19 的提交只含本节列出的文件，两摊工作以提交清单为界。
+
+### 交付内容
+
+1. **手动打包**（`.github/workflows/manual-package.yml`）：改用 `actions/upload-artifact@v7` 的 `archive: false`（2026-02 起 GitHub 官方支持非 ZIP Artifact）——dist/release/ 的 10 项发布资产（整包 + 七个分包 + module-index.json + RELEASE-NOTES.md）**每项一个独立 Artifact**：单文件上传时 artifact 名即文件名，下载直接得到原始文件，不再有"总 Artifact 再套一层 ZIP"的二次包装。仍只构建一次（checkout→install→gates→build→verify:release→10 个上传步骤）；Summary 改为 10 项逐条清单（字节 + sha256 + 可点击下载链接），并明确"每个 ZIP Artifact 都是 build-release.mjs 生成的最终发布 ZIP"。
+2. **内置默认模块索引**（`scripts/build-release.mjs`）：同一份 index 对象/同一字符串输出三处——`dist/release/module-index.json`（Release 资产）、`dist/modules/module-index.json`（整包内运行时索引，verify:release 校验两者逐字节一致）、仓库根 `modules/module-index.json`（开发态默认源，已 gitignore）。索引新增 `releaseBase` 字段＝构建期写入的本版 Release 资产目录（`https://github.com/zziyoo/decadeUi-Stars/releases/download/v<版本>/`，**带尾斜杠**），内置索引里的裸文件名按它解析成真正的下载地址；远程索引仍按索引自身地址解析——`resolveModuleUrl` 唯一解析点未动，PackageInstaller 未引入第二份来源状态。
+3. **模块源语义**（新建 `src/core/moduleIndexSource.js`）：`moduleIndexUrl` 为空 ⇒ 使用本体内置 `modules/module-index.json`（随扩展更新，升级自动生效）；非空 ⇒ 用户自定义远程索引。模块管理窗口与启动更新检查共用 `loadModuleIndex()` 一条路（updateNoticeWindow 不再有"没填地址就不检查"）；来源判定不落盘、无 defaultModuleIndexUrl 之类的第二配置键。
+4. **模块管理窗口**：工具栏新增「恢复默认模块源」按钮（保存并刷新与刷新之间），语义＝`game.saveConfig(indexKey(), "")`——只清空、绝不写回带版本号的固定地址；输入框 placeholder 改为"自定义模块源地址（留空＝使用扩展内置模块源）"，提示行区分"正在使用扩展内置模块源 / 自定义远程模块源"；删除"未配置模块源：可安装/可更新不可用"旧文案。
+5. `misc.js` 的 moduleIndexUrl 配置文案同步改写（留空＝内置模块源）。
+
+### 测试
+
+- 新增 `tests/p19-module-source.test.mjs`：来源判定纯逻辑（空/空白/非空）、内置索引只读固定路径 + JSON 结构校验（HTTP 404/坏 JSON/缺 modules 全部结构化失败）、loadModuleIndex 路由（内置不碰 installer、远程透传 fetchOpts、自定义源不被内置顶掉）、**默认源随版本更新**（1.5.0→1.6.0 空配置自动读到新索引）、checkForUpdates 内置路径（空配置也能查更新）、**恢复默认按钮源码级约束**（saveConfig(indexKey,…) 只许输入框现值或 `""`）。
+- p9 扩展 releaseBase 断言（缺省空串 / 按 releaseBase 解析闭环）；p10 增补"整包必须含 modules/module-index.json"（正例 7 文件 + 负例"缺少内置索引"）。
+- **隔离验证**（本地 clone 固定在基准提交 c355394 + 本节改动，等价 CI）：check:syntax 238/238、pnpm test **29/29**、verify:pack 875 可达/0 缺失、verify:skins 37 可达/0 缺失、pnpm build、verify:release 全过；`dist/modules/module-index.json` 与 `dist/release/module-index.json` cmp 逐字节一致；整包（3598 条目）含 `十周年UI-Stars/modules/module-index.json`；索引 `modules` 七包齐、core 不在其中、releaseBase 正确。
+
+### 关键决定
+
+- 默认源**不落盘**：唯一持久化状态就是 `moduleIndexUrl` 是否为空；`releaseBase` 是构建产物数据而非配置，随版本自动再生。
+- 内置索引**不放宽**任何安全边界：只读固定路径（p19 有"不得变成任意路径读取器"的负例）、JSON 结构校验、下载仍经 PackageInstaller 现有 http(s) 校验与外部 sha256。
+- Android 文件事务（moduleIo / packageInstaller 事务 / ZIP 解压）零改动 → 按任务边界无需重做真机安装测试；模块管理/更新检查的真机验证步骤：重启 → 开模块管理（应显示"正在使用扩展内置模块源"且七包可装）→ 填自定义地址保存并刷新 → 点「恢复默认模块源」回内置。
+
+### 环境事故记录（重要）
+
+- 会话中途一个**并行会话**把本任务未提交的 4 个文件改动 `git stash`（message："P19内置索引WIP(上一会话遗留,资源迁移任务期间暂存)"），已发现并 `stash pop` 恢复。
+- 该 stash→pop 往返在 `core.autocrlf=true` 下把这 4 个文件在工作树写成 CRLF，令 p18 的源码扫描正则（按 LF 编写）失败——已 sed 规范化回 LF（仓库 blob 本就是 LF，提交内容不受影响）。**教训：本仓库并行会话共用一棵工作树时，任何 git stash/checkout 往返都会 CRLF 化文件，测试前应抽查行尾。**
+- 该并行会话还在仓库根留下一个路径为字面量 `$WT` 的 worktree 注册（`十周年UI-Stars/$WT/`），本会话未处理，提请下一个会话注意。

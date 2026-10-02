@@ -5,12 +5,18 @@
  * 认包的（§24），套一层 `<version>/` 目录会直接被 STRUCTURE_INVALID 拒绝。
  * 为什么索引里 url 写裸文件名：同一份 module-index.json 既能指本地 http 服务、也能指
  * GitHub Release 资产，发布地址变了不必重新生成索引——相对解析交给安装器唯一的
- * `resolveModuleUrl(url, indexUrl)`（见 src/core/packageInstaller.js）。
+ * `resolveModuleUrl(url, indexUrl)`（见 src/core/packageInstaller.js）。远程索引按索引
+ * 自身地址解析；内置索引（P19）按索引自带的 `releaseBase` 解析——那是构建期写进索引的
+ * 本版 Release 资产目录（带尾斜杠，才能当 URL 基址用），随索引一起发布、随本体一起升级。
  *
  * P10 追加：
  *   - Full Package（`<扩展名>-<版本>-full.zip`）：整份部署形态（Core + 全部包）打一个 zip，
  *     包内根目录是 `<扩展名>/`，玩家解压到 `resources/app/extension/` 即用；
  *   - `RELEASE-NOTES.md`：Release 说明草稿 + 上传清单（每个资产的字节数与 sha256）。
+ *
+ * P19 追加：同一份索引对象输出三处——`dist/release/`（Release 资产）、
+ *   `dist/modules/`（整包内的运行时默认索引）、仓库根 `modules/`（开发态直接加载源码时的
+ *   运行时默认索引，已 gitignore）。三处来自同一字符串，逐字节一致。
  *
  * 用法：
  *   node scripts/build-release.mjs            # 生成全部产物并完整校验
@@ -30,6 +36,10 @@ const MODULES_DIR = path.join(ROOT, "modules");
 const DIST_DIR = path.join(ROOT, "dist");
 const OUT_DIR = path.join(ROOT, "dist", "release");
 const INDEX_FILE = "module-index.json";
+/** 运行时内置默认索引（整包内的位置）；与 OUT_DIR 那份同源同字节（P19） */
+const RUNTIME_INDEX_PATH = path.join(DIST_DIR, "modules", INDEX_FILE);
+/** 开发态运行时内置索引：游戏直接加载仓库根源码，扩展根就是仓库根（P19，已 gitignore） */
+const DEV_INDEX_PATH = path.join(MODULES_DIR, INDEX_FILE);
 const NOTES_FILE = "RELEASE-NOTES.md";
 const CORE_ID = "core";
 const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/;
@@ -193,7 +203,7 @@ export function distFiles(distDir = DIST_DIR, excludeAbs = null) {
 export function buildReleaseNotes({ tag, name, version, coreVersion, index, packs, full, indexAsset }) {
 	const rows = [
 		`| \`${full.file}\` | ${full.bytes} | \`${full.sha256}\` | 整份扩展（Core + 全部包），解压到 \`resources/app/extension/\` 即用 |`,
-		`| \`${indexAsset.file}\` | ${indexAsset.bytes} | \`${indexAsset.sha256}\` | 模块索引，**必须**上传，客户端按它解析下载地址 |`,
+		`| \`${indexAsset.file}\` | ${indexAsset.bytes} | \`${indexAsset.sha256}\` | 模块索引（Release 远程索引）。整包内已内置同一份作默认模块源；这份供自定义模块源与外部客户端使用，**必须**上传 |`,
 		...packs.map(pack => `| \`${pack.zip.file}\` | ${pack.zip.bytes} | \`${pack.zip.sha256}\` | ${pack.id}@${pack.version} 分包（${pack.manifest.type}） |`),
 	];
 	return [
@@ -215,16 +225,21 @@ export function buildReleaseNotes({ tag, name, version, coreVersion, index, pack
 		"",
 		"整包不含仓库内部文档（总任务书、交接台账、P0 审计报告），原版的对外文档（extension-readme、各类 API 说明）照旧随包发布。",
 		"",
-		"## 模块源地址",
+		"## 模块源",
 		"",
-		"在「模块管理」窗口的模块源地址里填：",
+		"扩展本体自带 `modules/module-index.json`（与本 Release 的索引资产同一份内容），模块管理默认直接使用它：",
+		"新装整包后**不填任何地址**即可安装/更新模块；升级扩展后内置索引随本体自动更新，无需改配置。",
+		"",
+		"若要自定义模块源，在「模块管理」窗口的模块源地址里填远程索引地址（例如本 Release 的）：",
 		"",
 		"```",
 		`https://github.com/${REPO_SLUG}/releases/download/${tag}/${INDEX_FILE}`,
 		"```",
 		"",
-		`索引里的 url 是裸文件名（如 \`${packs[0]?.zip.file ?? "baby-1.5.0.zip"}\`），客户端会用索引地址解析成同目录的绝对地址——`,
-		"所以索引与全部 zip **必须挂在同一个 Release 下**（同一 tag），不要手动编辑索引。",
+		"点「恢复默认模块源」清除自定义地址，即回到本体内置索引。",
+		"",
+		`索引里的 url 是裸文件名（如 \`${packs[0]?.zip.file ?? "baby-1.5.0.zip"}\`）：内置索引按索引自带的 \`releaseBase\` 解析，`,
+		"远程索引按索引自身地址解析成同目录的绝对地址——所以索引与全部 zip **必须挂在同一个 Release 下**（同一 tag），不要手动编辑索引。",
 		"",
 		"## 校验",
 		"",
@@ -248,7 +263,7 @@ export async function verifyFullPackage({ zipPath, rootName, packs, distDir = DI
 	const zip = await JSZip.loadAsync(bytes);
 	const names = Object.keys(zip.files).filter(name => !zip.files[name].dir);
 
-	for (const rel of ["info.json", "extension.js"]) {
+	for (const rel of ["info.json", "extension.js", `modules/${INDEX_FILE}`]) {
 		if (!names.includes(`${rootName}/${rel}`)) die(`整包缺少根位文件 ${rootName}/${rel}`);
 	}
 	for (const pack of packs) {
@@ -266,10 +281,12 @@ export async function verifyFullPackage({ zipPath, rootName, packs, distDir = DI
 /**
  * 由"包 + 已落盘 zip 的信息"生成 module-index.json 的内容（纯函数，可单测）
  * 字段名沿用 §10 与安装器/界面已经在读的名字：latest / url / sha256 / size / dependencies / core。
- * @param {{packs: Array<{id: string, version: string, manifest: Object, zip: {file: string, bytes: number, sha256: string}}>, coreVersion: string}} input
+ * `releaseBase`（P19）是内置索引把裸文件名解析成 Release 资产地址的基址，构建期随版本写入；
+ * 远程索引不含它时照旧按索引自身地址解析，互不影响。
+ * @param {{packs: Array<{id: string, version: string, manifest: Object, zip: {file: string, bytes: number, sha256: string}}>, coreVersion: string, releaseBase?: string}} input
  * @returns {Object} 索引对象
  */
-export function buildIndex({ packs, coreVersion }) {
+export function buildIndex({ packs, coreVersion, releaseBase = "" }) {
 	const modules = {};
 	for (const pack of packs) {
 		// Core 本轮无包形态：混进可安装列表会让界面出现一个装不上的 Core
@@ -286,13 +303,20 @@ export function buildIndex({ packs, coreVersion }) {
 			capabilities: Array.isArray(pack.manifest.capabilities) ? pack.manifest.capabilities : [],
 		};
 	}
-	return { schema: 1, core: { version: coreVersion, latest: coreVersion }, modules };
+	return { schema: 1, core: { version: coreVersion, latest: coreVersion }, releaseBase, modules };
 }
 
 const sha256hex = buffer => crypto.createHash("sha256").update(buffer).digest("hex");
 
 /** Release tag：与上游同号（两个发行物靠扩展身份区分，玩家看版本号即可对上） */
 export const releaseTag = version => `v${version}`;
+
+/**
+ * 内置索引（P19）的下载基址：本版 Release 的资产目录。**必须带尾斜杠**——
+ * `new URL("decade-1.5.0.zip", base)` 只有在 base 以 `/` 结尾时才把最后一段当目录。
+ * 随索引生成、随本体升级，不设任何持久化配置（没有第二套 URL 配置）。
+ */
+export const releaseBaseFor = version => `https://github.com/${REPO_SLUG}/releases/download/${releaseTag(version)}/`;
 
 /** 扩展名与版本只认 info.json（不设第二版本源） */
 const readExtInfo = () => {
@@ -316,6 +340,10 @@ export async function verifyArtifacts({ packs, index, coreVersion, outDir = OUT_
 	if (index.schema !== 1) fail(`索引 schema 必须为 1，实际 ${index.schema}`);
 	if (!index.modules || !Object.keys(index.modules).length) fail("索引里没有任何可安装模块");
 	if (index.modules[CORE_ID]) fail("索引不得把 core 列为可安装模块");
+	// P19：内置默认模块源把裸文件名解析成 Release 资产地址，靠的就是这个构建期写入的基址
+	if (typeof index.releaseBase !== "string" || !/^https:\/\/.+\/$/.test(index.releaseBase)) {
+		fail(`索引缺少合法的 releaseBase（内置索引按它解析下载地址，必须是以 / 结尾的 https 绝对地址），实际 ${JSON.stringify(index.releaseBase ?? null)}`);
+	}
 
 	for (const pack of packs) {
 		const entry = index.modules[pack.id];
@@ -326,6 +354,11 @@ export async function verifyArtifacts({ packs, index, coreVersion, outDir = OUT_
 		const resolved = resolveModuleUrl(entry.url, SAMPLE_INDEX_URL);
 		if (!/^https?:\/\//.test(resolved) || !resolved.endsWith(`/${entry.url}`)) {
 			fail(`${pack.id}：相对 url 解析不出可下载地址（${entry.url} → ${resolved}）`);
+		}
+		// 内置索引路径（P19）也要走一遍解析：releaseBase 必须真能把裸文件名变成资产地址
+		const builtinResolved = resolveModuleUrl(entry.url, index.releaseBase);
+		if (!/^https?:\/\//.test(builtinResolved) || !builtinResolved.endsWith(`/${entry.url}`)) {
+			fail(`${pack.id}：按 releaseBase 解析不出可下载地址（${entry.url} → ${builtinResolved}）`);
 		}
 		const compat = checkCoreRequirement(entry.core, coreVersion);
 		if (!compat.ok) fail(`${pack.id}：与当前 Core ${coreVersion} 不兼容（${compat.message}）`);
@@ -395,8 +428,15 @@ async function verifyAll({ info, packs }) {
 	const zipped = withZipInfo(packs);
 
 	const notes = await verifyArtifacts({ packs: zipped, index, coreVersion: info.version });
-	const rebuilt = buildIndex({ packs: zipped, coreVersion: info.version });
+	const rebuilt = buildIndex({ packs: zipped, coreVersion: info.version, releaseBase: releaseBaseFor(info.version) });
 	if (indexText(rebuilt) !== fs.readFileSync(indexPath, "utf8")) die(`${INDEX_FILE} 与盘上产物重算结果不一致（重新跑一次构建）`);
+
+	// P19：运行时内置默认索引与 Release 索引必须逐字节一致（同一构建里只许有一份生成逻辑）。
+	// Buffer.equals：pretty-print/换行/BOM 的任何差异都算不一致。
+	if (!fs.existsSync(RUNTIME_INDEX_PATH)) die(`需要产物存在：${posix(path.relative(ROOT, RUNTIME_INDEX_PATH))}（重新跑一次构建）`);
+	if (!fs.readFileSync(RUNTIME_INDEX_PATH).equals(fs.readFileSync(indexPath))) {
+		die(`dist/modules/${INDEX_FILE} 与 dist/release/${INDEX_FILE} 不一致（两份必须来自同一次 buildIndex 的同一字符串）`);
+	}
 
 	const fullPath = path.join(OUT_DIR, `${info.name}-${info.version}-full.zip`);
 	const fullNote = await verifyFullPackage({ zipPath: fullPath, rootName: info.name, packs: zipped });
@@ -446,9 +486,16 @@ async function main() {
 		zipped.push({ ...pack, zip: zipInfo });
 		console.log(`  ${pack.id}@${pack.version} → ${zipInfo.file}（${zipInfo.files} 文件 / ${zipInfo.bytes} 字节）`);
 	}
-	const index = buildIndex({ packs: zipped, coreVersion });
-	fs.writeFileSync(path.join(OUT_DIR, INDEX_FILE), indexText(index));
-	console.log(`  ${INDEX_FILE}：${Object.keys(index.modules).length} 个可安装模块（core 除外）`);
+	const index = buildIndex({ packs: zipped, coreVersion, releaseBase: releaseBaseFor(info.version) });
+	// 三处输出出自同一个索引对象的同一份字符串（P19：单一生成源）：Release 资产、
+	// 整包内运行时默认索引、开发态运行时默认索引。整包此刻还没打，dist/modules/ 这份会被自然打进去。
+	const text = indexText(index);
+	fs.writeFileSync(path.join(OUT_DIR, INDEX_FILE), text);
+	for (const target of [RUNTIME_INDEX_PATH, DEV_INDEX_PATH]) {
+		fs.mkdirSync(path.dirname(target), { recursive: true });
+		fs.writeFileSync(target, text);
+	}
+	console.log(`  ${INDEX_FILE}：${Object.keys(index.modules).length} 个可安装模块（core 除外）；已同步到 dist/modules/ 与 modules/（内置默认源）`);
 
 	// 整包与说明：整包只吃 dist/（除 release/），说明紧随其后写（它也落在 release/ 里，不进整包）
 	const full = await zipFullPackage({ outZip: path.join(OUT_DIR, `${info.name}-${info.version}-full.zip`), rootName: info.name });
