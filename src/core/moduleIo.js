@@ -47,6 +47,16 @@ const TRANSIENT_RENAME_CODES = new Set(["EPERM", "EACCES", "EBUSY", "ENOTEMPTY"]
 /** 退避节奏（毫秒）：首次失败后最多再试 4 次，累计等待约 1.2 秒，仍然失败就如实报错 */
 const RENAME_BACKOFF_MS = [80, 160, 320, 640];
 
+/**
+ * 写-验重试节奏。真机取证（2026-10-01 Android，§四 D7）：`期望 10493 字节，实得 10493 字节，
+ * 首个不同 @0(137→0)`、同型第二次 `@0(47→0)`，且是在同一批已成功复制 504 / 25 个文件之后
+ * —— 长度不变、首字节变 0、偶发。四条手写探针（含完整复刻 copyTree 四步）都复现不出来，
+ * 所以按"设备/桥的间歇性缺陷"处理：校验强度一点不减（仍是逐字节），只把"偶发坏一次"用
+ * 重写救回来；**三次都验不过才如实失败**（消息里带重试次数与差异摘要）。
+ */
+const WRITE_VERIFY_ATTEMPTS = 3;
+const WRITE_VERIFY_BACKOFF_MS = [80, 200];
+
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const toPosix = path => String(path).split("\\").join("/");
 const safeRel = rel => {
@@ -369,6 +379,31 @@ export function createNonameIo(options = {}) {
 				);
 
 	/**
+	 * 写一个文件、读回逐字节校验，**不符就重写重试**（有界，见 WRITE_VERIFY_ATTEMPTS 的注释）。
+	 * 重试只发生在"写成功、但读回来的内容与源不一致"这一种情形；写本身报错、源读不到都不重试。
+	 * @param {string} rel - 目标（相对路径）
+	 * @param {ArrayBuffer} buffer - 源内容（同时是校验基准）
+	 * @param {string} label - 失败消息开头（各调用点自己的语义，如"copy 落盘校验失败"）
+	 * @param {string} [tail] - 附加到消息末尾的上下文
+	 * @returns {Promise<ArrayBuffer>} 校验通过的落盘内容
+	 */
+	async function writeAndVerify(rel, buffer, label, tail = "") {
+		let landed = null;
+		for (let attempt = 1; attempt <= WRITE_VERIFY_ATTEMPTS; attempt++) {
+			await writeBinary(rel, buffer);
+			landed = await readBinary(rel);
+			if (sameBytes(landed, buffer)) {
+				if (attempt > 1) {
+					console.warn(`[ModuleIo] ${label}：${rel} 第 ${attempt} 次写入才与源一致（前 ${attempt - 1} 次内容不符，已重写）`);
+				}
+				return landed;
+			}
+			if (attempt < WRITE_VERIFY_ATTEMPTS) await sleep(WRITE_VERIFY_BACKOFF_MS[attempt - 1]);
+		}
+		throw new IoError("IO_FAILED", `${label}: ${rel} 连试 ${WRITE_VERIFY_ATTEMPTS} 次仍不一致 ${diffNote(buffer, landed)}${tail}`);
+	}
+
+	/**
 	 * 目录复制：逐文件**读 → 写 → 读回逐字节比对**，任何一处不符立刻抛错。
 	 *
 	 * 曾经这里是 `if (buffer !== null) await writeBinary(...)`——列得出来却读不到的条目被静默跳过，
@@ -388,11 +423,7 @@ export function createNonameIo(options = {}) {
 			const to = `${destRel}/${file}`;
 			const buffer = await readBinary(from);
 			if (buffer === null) throw new IoError("IO_FAILED", `[ModuleIo] copy 源文件不可读: ${from}`);
-			await writeBinary(to, buffer);
-			const landed = await readBinary(to);
-			if (!sameBytes(landed, buffer)) {
-				throw new IoError("IO_FAILED", `[ModuleIo] copy 落盘校验失败: ${from} → ${to} ${diffNote(buffer, landed)}，本次已复制 ${state.files} 个文件`);
-			}
+			await writeAndVerify(to, buffer, "[ModuleIo] copy 落盘校验失败", `，源 ${from}，本次已复制 ${state.files} 个文件`);
 			state.files++;
 		}
 	}
@@ -460,9 +491,7 @@ export function createNonameIo(options = {}) {
 					if (sameBytes(await readBinary(destRel), previous)) return null;
 				} catch {}
 				try {
-					await writeBinary(destRel, previous);
-					const restored = await readBinary(destRel);
-					if (!sameBytes(restored, previous)) problems.push(`${destRel} 写回后内容仍不一致`);
+					await writeAndVerify(destRel, previous, "[ModuleIo] 旧目标写回校验失败", `（${destRel}）`);
 				} catch (error) {
 					problems.push(`写回 ${destRel} 失败: ${error?.message ?? error}`);
 				}
@@ -479,18 +508,11 @@ export function createNonameIo(options = {}) {
 
 		// 阶段一：暂存与备份（正式目标尚未被触碰）
 		try {
-			await writeBinary(tempDest, source);
-			const staged = await readBinary(tempDest);
-			if (!sameBytes(staged, source)) {
-				throw new IoError("IO_FAILED", `[ModuleIo] move 临时目标校验失败（源与目标均未动）: ${srcRel} → ${tempDest} ${diffNote(source, staged)}`);
-			}
+			await writeAndVerify(tempDest, source, "[ModuleIo] move 临时目标校验失败（源与目标均未动）", `（${srcRel} → ${tempDest}）`);
 			if (backupDest) {
 				previous = await readBinary(destRel);
 				if (previous === null) throw new IoError("IO_FAILED", `[ModuleIo] 旧目标不可读，无法保证可恢复: ${destRel}`);
-				await writeBinary(backupDest, previous);
-				if (!sameBytes(await readBinary(backupDest), previous)) {
-					throw new IoError("IO_FAILED", `[ModuleIo] 旧目标备份校验失败（源与目标均未动）: ${destRel}`);
-				}
+				await writeAndVerify(backupDest, previous, "[ModuleIo] 旧目标备份校验失败（源与目标均未动）", `（${destRel}）`);
 			}
 		} catch (error) {
 			await cleanup();
@@ -499,11 +521,7 @@ export function createNonameIo(options = {}) {
 
 		// 阶段二：提交（唯一可能损坏正式目标的一步）
 		try {
-			await writeBinary(destRel, source);
-			const landed = await readBinary(destRel);
-			if (!sameBytes(landed, source)) {
-				throw new IoError("IO_FAILED", `[ModuleIo] move 正式目标校验失败（源已保留）: ${srcRel} → ${destRel} ${diffNote(source, landed)}`);
-			}
+			await writeAndVerify(destRel, source, "[ModuleIo] move 正式目标校验失败（源已保留）", `（${srcRel} → ${destRel}）`);
 		} catch (error) {
 			const problem = await restoreDest();
 			if (problem) {

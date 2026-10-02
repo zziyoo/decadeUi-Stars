@@ -33,6 +33,8 @@ function createFakeIo(options = {}) {
 		failOnce: new Set(),
 		/** 一次性"半截落盘"：命中则把目标写成被截断的内容并当作成功（模拟 copy 中断） */
 		corruptOnce: new Set(),
+		/** 每次都"半截落盘"：给"三次重写仍不一致才报错"那条路用（一次性损坏现在会被重写救回来） */
+		corruptAlways: new Set(),
 		kind: rel => {
 			const key = norm(rel);
 			if (files.has(key)) return "file";
@@ -99,6 +101,13 @@ function createFakeIo(options = {}) {
 			const from = norm(src);
 			const to = norm(dest);
 			io.guard(`movePath:${from}`);
+			if (io.corruptAlways.has(`movePath:${from}`)) {
+				const value = files.get(from);
+				if (value === undefined) throw new Error(`move 源不存在: ${from}`);
+				files.delete(from);
+				files.set(to, typeof value === "string" ? value.slice(0, Math.max(1, value.length >> 1)) : value.slice(0, Math.max(1, value.byteLength >> 1)));
+				return;
+			}
 			if (io.corruptOnce.has(`movePath:${from}`)) {
 				io.corruptOnce.delete(`movePath:${from}`);
 				const value = files.get(from);
@@ -174,6 +183,10 @@ function createLegacyGame(initial = {}) {
 		key: strip,
 		failOnce: new Set(),
 		corruptOnce: new Set(),
+		/** 每次都半截落盘（不消费）：给"三次重写仍不一致才报错"那条路用 */
+		corruptAlways: new Set(),
+		/** 连续 N 次半截落盘（计数消费）：用来"把写-验重试打光、但不影响之后的回写" */
+		corruptTimes: new Map(),
 		/** 按模式注入（用于名字里含随机事务号的临时件）：[{op, contains, times?}] */
 		failMatch: [],
 		has: rel => store.has(strip(rel)),
@@ -196,6 +209,16 @@ function createLegacyGame(initial = {}) {
 			const key = strip(`${dir}/${name}`);
 			if (hit(game.failOnce, `writeFile:${key}`) || hitPattern("writeFile", key)) return callback(new Error(`注入故障: writeFile ${key}`));
 			const bytes = bytesOf(data);
+			const corruptLeft = game.corruptTimes.get(`writeFile:${key}`) || 0;
+			if (corruptLeft > 0) {
+				game.corruptTimes.set(`writeFile:${key}`, corruptLeft - 1);
+				store.set(key, bytes.slice(0, Math.max(1, Math.floor(bytes.byteLength / 2))));
+				return callback(null);
+			}
+			if (game.corruptAlways.has(`writeFile:${key}`)) {
+				store.set(key, bytes.slice(0, Math.max(1, Math.floor(bytes.byteLength / 2))));
+				return callback(null);
+			}
 			if (hit(game.corruptOnce, `writeFile:${key}`)) {
 				store.set(key, bytes.slice(0, Math.max(1, Math.floor(bytes.byteLength / 2))));
 				return callback(null);
@@ -1198,7 +1221,7 @@ assert.equal(checkCoreRequirement("~1.5.0", "1.9.0").ok, false, "不认识的写
 	const { io, installer } = makeEnv({ packages: { "https://test/a.zip": pkg }, manifest: pkg, atomicRename: false, random: () => "t4" });
 	await io.writeText("modules/installed.json", JSON.stringify({ schema: 1, modules: { decade: { version: "1.4.2" } } }));
 	const before = io.files.get("modules/installed.json");
-	io.corruptOnce.add("movePath:modules/installed.json.t4.tmp");
+	io.corruptAlways.add("movePath:modules/installed.json.t4.tmp");
 	const result = await installer.install({ id: "testmod", version: "1.0.0", url: "https://test/a.zip" });
 	assert.equal(result.ok, false);
 	assert.equal(result.code, INSTALL_CODES.STATE_FAILED, `旧台账已还原时该报 STATE_FAILED，实际 ${result.code}: ${result.message}`);
@@ -1241,7 +1264,7 @@ assert.equal(checkCoreRequirement("~1.5.0", "1.9.0").ok, false, "不认识的写
 	const { io, installer } = makeEnv({ packages: { "https://test/a.zip": pkg }, manifest: pkg, atomicRename: false, random: () => "t6" });
 	await io.writeText("modules/installed.json", JSON.stringify({ schema: 1, modules: { decade: { version: "1.4.2" } } }));
 	const before = io.files.get("modules/installed.json");
-	io.corruptOnce.add("movePath:modules/installed.json.t6.tmp"); // 提交写坏
+	io.corruptAlways.add("movePath:modules/installed.json.t6.tmp"); // 提交写坏
 	io.failOnce.add("movePath:modules/installed.json.backup-t6"); // 还原也失败
 	const result = await installer.install({ id: "testmod", version: "1.0.0", url: "https://test/a.zip" });
 	assert.equal(result.ok, false);
@@ -1257,7 +1280,7 @@ assert.equal(checkCoreRequirement("~1.5.0", "1.9.0").ok, false, "不认识的写
 	// 原本没有台账：提交写坏后应清掉半成品，而不是留下一份坏台账
 	const pkg = makePackage(styleManifest("testmod", "1.0.0"), styleFiles("testmod"));
 	const { io, installer } = makeEnv({ packages: { "https://test/a.zip": pkg }, manifest: pkg, atomicRename: false, random: () => "t8" });
-	io.corruptOnce.add("movePath:modules/installed.json.t8.tmp");
+	io.corruptAlways.add("movePath:modules/installed.json.t8.tmp");
 	const result = await installer.install({ id: "testmod", version: "1.0.0", url: "https://test/a.zip" });
 	assert.equal(result.ok, false);
 	assert.equal(result.code, INSTALL_CODES.STATE_FAILED, `实际 ${result.code}: ${result.message}`);
@@ -1271,7 +1294,7 @@ assert.equal(checkCoreRequirement("~1.5.0", "1.9.0").ok, false, "不认识的写
 	const { io, installer } = makeEnv({ packages: { "https://test/a.zip": pkg }, manifest: pkg, atomicRename: false, random: () => "t9" });
 	assert.equal((await installer.install({ id: "testmod", version: "1.0.0", url: "https://test/a.zip" })).ok, true);
 	const before = io.files.get("modules/installed.json");
-	io.corruptOnce.add("movePath:modules/installed.json.t9.tmp");
+	io.corruptAlways.add("movePath:modules/installed.json.t9.tmp");
 	const result = await installer.uninstall("testmod");
 	assert.equal(result.ok, false);
 	assert.equal(result.code, INSTALL_CODES.STATE_FAILED, `卸载失败应报 STATE_FAILED，实际 ${result.code}: ${result.message}`);
@@ -1412,7 +1435,7 @@ assert.equal(checkCoreRequirement("~1.5.0", "1.9.0").ok, false, "不认识的写
 {
 	// 2b) 目标"写回调成功但内容半截"（Cordova 的 FileWriter 不 truncate）→ 判失败并保住源
 	const game = createLegacyGame({ "modules/installed.json": "OLD", "modules/installed.json.tmp": "NEW-LEDGER" });
-	game.corruptOnce.add("writeFile:modules/installed.json");
+	game.corruptAlways.add("writeFile:modules/installed.json");
 	const io = createNonameIo({ game, fs: null, stallMs: 800 });
 	await assert.rejects(
 		() => io.movePath("modules/installed.json.tmp", "modules/installed.json"),
@@ -1543,8 +1566,10 @@ assert.equal(checkCoreRequirement("~1.5.0", "1.9.0").ok, false, "不认识的写
 
 {
 	// C) 已有目标，提交写成半截 → 回读校验失败 → 旧目标必须回滚成原内容（旧实现会留下 NEW_HALF）
+	// 注意这里是**连续三次**半截（把写-验重试打光）：偶发一次现在会被重写救回来（见 p18 case 5），
+	// 只有打光重试才谈得上"提交失败 → 回滚"；而回写旧目标的那一次（第 4 次）是干净的。
 	const game = createLegacyGame({ "modules/a.json.tmp": "NEW-LEDGER", "modules/a.json": "OLD-LEDGER" });
-	game.corruptOnce.add("writeFile:modules/a.json");
+	game.corruptTimes.set("writeFile:modules/a.json", 3);
 	const io = createNonameIo({ game, fs: null, stallMs: 800 });
 	await assert.rejects(
 		() => io.movePath("modules/a.json.tmp", "modules/a.json"),
@@ -1588,7 +1613,7 @@ assert.equal(checkCoreRequirement("~1.5.0", "1.9.0").ok, false, "不认识的写
 {
 	// F) 提交写坏 + 旧目标恢复也失败 → 明确 IO_ROLLBACK_FAILED + residual，绝不静默成功
 	const game = createLegacyGame({ "modules/a.json.tmp": "NEW", "modules/a.json": "OLD" });
-	game.corruptOnce.add("writeFile:modules/a.json"); // 提交写坏
+	game.corruptAlways.add("writeFile:modules/a.json"); // 提交写坏
 	const originalWrite = game.writeFile;
 	let destWrites = 0;
 	game.writeFile = (data, dir, name, callback) => {

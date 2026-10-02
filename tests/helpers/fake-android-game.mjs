@@ -35,12 +35,27 @@ const halve = value =>
  * @param {Set<string>} [options.hidden] - 这些路径 `checkFile` 报"不存在"、`readFile` 报错，但 `getFileList` 仍能列出
  * @param {Set<string>} [options.truncateOnWrite] - 这些路径写入时只落前半截字节
  * @param {Set<string>} [options.failOnWrite] - 这些路径写入时回调 Error（真·写失败）
+ * @param {Set<string>} [options.zeroFirstByteOnce] - 这些路径**第一次**写入时首字节变 0（之后正常）—— 真机观测到的间歇性缺陷
+ * @param {Set<string>} [options.alwaysZeroFirstByte] - 这些路径**每次**写入首字节都变 0（用来验"三次都不过就报错"）
  */
-export function makeFakeGame({ hidden = new Set(), truncateOnWrite = new Set(), failOnWrite = new Set() } = {}) {
+export function makeFakeGame({
+	hidden = new Set(),
+	truncateOnWrite = new Set(),
+	failOnWrite = new Set(),
+	zeroFirstByteOnce = new Set(),
+	alwaysZeroFirstByte = new Set(),
+} = {}) {
 	const files = new Map();
 	const dirs = new Set(["", "extension"]);
 	const later = (fn, ...args) => setTimeout(() => fn?.(...args), 0);
 	const isUnder = dir => [...dirs].some(d => d === dir || d.startsWith(`${dir}/`));
+	/** 真机上抓到的那一型损坏：长度不变、第一个字节变 0 */
+	const zeroHead = value => {
+		if (typeof value === "string") return value.length ? `\0${value.slice(1)}` : value;
+		const copy = value.slice();
+		if (copy.length) copy[0] = 0;
+		return copy;
+	};
 
 	return {
 		files,
@@ -64,8 +79,14 @@ export function makeFakeGame({ hidden = new Set(), truncateOnWrite = new Set(), 
 			dirs.add(path);
 			const key = `${path}/${name}`;
 			if (failOnWrite.has(key)) return later(callback, new Error(`注入故障: writeFile ${key}`));
-			const stored = bridgeSerialize(data);
-			files.set(key, truncateOnWrite.has(key) ? halve(stored) : stored);
+			let stored = bridgeSerialize(data);
+			if (truncateOnWrite.has(key)) stored = halve(stored);
+			if (alwaysZeroFirstByte.has(key)) stored = zeroHead(stored);
+			else if (zeroFirstByteOnce.has(key)) {
+				zeroFirstByteOnce.delete(key);
+				stored = zeroHead(stored);
+			}
+			files.set(key, stored);
 			return later(callback, null);
 		},
 		readFile(path, ok, err) {
