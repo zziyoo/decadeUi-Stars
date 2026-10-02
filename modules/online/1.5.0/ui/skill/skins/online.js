@@ -8,6 +8,8 @@ import { getAvailableSkills, updateSkillUsability, isGSkillCacheSame, shouldSkip
 import { skillButtonTooltip } from "../../../../../../src/ui/skillButtonTooltip.js";
 
 const ASSETS_PATH = window.decadeUI.resource.getAsset("online", "ui/assets/skill/online");
+// 跨样式共享：skillitem_xianding_active.png 被 yjcm 的 styles/skill.css 同时引用 ⇒ 按"共享留根"边界从扩展根取（见 docs/PROGRESS.md §四迁移记录）
+const SHARED_ASSETS_PATH = `${decadeUIPath}ui/assets/skill/online`;
 
 export function createOnlineSkillPlugin(lib, game, ui, get, ai, _status, app) {
 	const base = createBaseSkillPlugin(lib, game, ui, get, ai, _status, app);
@@ -257,7 +259,7 @@ export function createOnlineSkillPlugin(lib, game, ui, get, ai, _status, app) {
 					if (info.limited) {
 						const passImg = document.createElement("img");
 						passImg.className = "skill-xianding-pass";
-						passImg.src = `${ASSETS_PATH}/skillitem_xianding_active.png`;
+						passImg.src = `${SHARED_ASSETS_PATH}/skillitem_xianding_active.png`;
 						node.style.position = "relative";
 						node.appendChild(passImg);
 					}
@@ -357,7 +359,7 @@ export function createOnlineSkillPlugin(lib, game, ui, get, ai, _status, app) {
 						if (lib.skill[item.id].limited) {
 							const passImg = document.createElement("img");
 							passImg.className = "skill-xianding-pass";
-							passImg.src = `${ASSETS_PATH}/skillitem_xianding_active.png`;
+							passImg.src = `${SHARED_ASSETS_PATH}/skillitem_xianding_active.png`;
 							node.style.position = "relative";
 							node.appendChild(passImg);
 						}
@@ -397,7 +399,7 @@ export function createOnlineSkillPlugin(lib, game, ui, get, ai, _status, app) {
 					if (lib.skill[item.id].limited) {
 						const passImg = document.createElement("img");
 						passImg.className = "skill-xianding-pass";
-						passImg.src = `${ASSETS_PATH}/skillitem_xianding_active.png`;
+						passImg.src = `${SHARED_ASSETS_PATH}/skillitem_xianding_active.png`;
 						node.style.position = "relative";
 						node.appendChild(passImg);
 					}

@@ -101,8 +101,9 @@ function listPackFiles(id) {
 }
 
 // ── C. 不偷偷读根：生产代码不得硬拼指向已迁走资源的扩展根路径 ──
-// 三段：①同行直拼扫描（白名单=共享 decade 家族）；②样式专属 image/styles 字面量必须与模块 ID 配对；
-// ③直拼扩展根的字面量必须命中留在根的真实资源（扫描面含包内 UI JS——补两处实际漏网盲点后加）。
+// 四段：①同行直拼扫描（白名单=共享 decade 家族）；②样式专属 image/styles 字面量必须与模块 ID 配对；
+// ③直拼扩展根的字面量必须命中留在根的真实资源（扫描面含包内 UI JS——补两处实际漏网盲点后加）；
+// ④包内 UI JS 经"包路由基址"拼的资源必须在包内可达（online 的 skillitem_yinyang_1/2 曾 404 后加）。
 {
 	// 共享 decade 家族：on/othersOff(+codename) 经 Core JS 交叉消费，允许留根直拼
 	const SHARED_DECADE_PREFIXES = ["image/styles/decade/identity_", "image/styles/decade/name_", "image/styles/decade/dead_"];
@@ -196,13 +197,46 @@ function listPackFiles(id) {
 		});
 	}
 
+	// C-4：包内 UI JS 经"包路由基址"（`resource.getAsset(id, base)` 常数）拼接的资源必须在包内可达——
+	// 抓反方向盲点：基址已路由到包、目标文件却留在根（online 的 skillitem_yinyang_1/2.png 曾因此 404）。
+	// 动态段优先按三元字面量枚举候选（候选须逐一存在）；枚举不了再退"前缀+后缀存在任一文件"。
+	for (const file of packUiFiles) {
+		const text = readText(file);
+		const bases = [...text.matchAll(/const\s+(\w+)\s*=\s*window\.decadeUI\.resource\.getAsset\(\s*"([a-z-]+)"\s*,\s*"([^"]*)"\s*\)/g)];
+		if (!bases.length) continue;
+		for (const [, name, id, base] of bases) {
+			const files = listPackFiles(id);
+			const prefix = base.endsWith("/") ? base : `${base}/`;
+			const exists = rel => files.includes(`${prefix}${rel}`);
+			const re = new RegExp("\\$\\{" + name + "\\}([^`]*)", "g");
+			for (const m of text.matchAll(re)) {
+				const rest = m[1];
+				if (!rest.startsWith("/")) continue;
+				const target = rest.slice(1);
+				const head = target.split("${")[0];
+				const tail = (target.match(/\$\{[^}]*\}(.*)$/) ?? [])[1] ?? "";
+				const alts = [...target.matchAll(/"([^"]+)"\s*:\s*"([^"]+)"/g)].flatMap(x => [x[1], x[2]]);
+				const line = text.slice(0, m.index).split("\n").length;
+				if (alts.length) {
+					for (const candidate of alts.map(a => `${head}${a}${tail}`)) {
+						assert.ok(exists(candidate), `${file}:${line} 包路由基址引用在包内不存在：${prefix}${candidate}`);
+					}
+				} else if (target.includes("${")) {
+					assert.ok(files.some(r => r.startsWith(prefix + head) && r.endsWith(tail)), `${file}:${line} 包路由基址引用的动态资源在包内找不到：${prefix}${head}*${tail}`);
+				} else {
+					assert.ok(exists(target), `${file}:${line} 包路由基址引用在包内不存在：${prefix}${target}`);
+				}
+			}
+		}
+	}
+
 	// 死常量不许被重新消费：SHOUSHA_CONSTANTS.IMAGE_PATH(_PREFIX) 仍指扩展根 shousha 资产（已迁 mobile），
 	// 实测无消费方；重新启用前必须先改成 resourceLoader 寻址（AUDIO_PATH 不在此列——caidan/label.mp3 是共享件留根）。
 	const staleConstFiles = [...SCAN_FILES, ...packUiFiles, "ui/character/skins/base.js"]
 		.filter(f => /SHOUSHA_CONSTANTS\.(IMAGE_PATH|IMAGE_PATH_PREFIX)/.test(readText(f)));
 	assert.deepEqual(staleConstFiles, [], `SHOUSHA_CONSTANTS.IMAGE_PATH(_PREFIX) 是死常量（路径已迁走），不得被重新消费：${staleConstFiles.join("、")}`);
 
-	console.log("C ok：绕根引用清零 + 样式图字面量配对 + 根直拼字面量盘上可达（共享 decade 家族白名单除外）");
+	console.log("C ok：绕根引用清零 + 样式图字面量配对 + 根直拼字面量盘上可达 + 包路由基址引用包内可达（共享 decade 家族白名单除外）");
 }
 
 // ── D. 安装包资源完整性：findMissingResources 语义（verify-pack / 构建门禁 / 安装器共用） ──
@@ -249,6 +283,8 @@ function listPackFiles(id) {
 		"ui/assets/lbtn/uibutton/btn-jilu.png",
 		"ui/assets/lbtn/shousha/xuanzhe.mp3",
 		"audio/game_start_shousha.mp3",
+		"ui/assets/skill/online/skillitem_yinyang_1.png",
+		"ui/assets/skill/online/skillitem_yinyang_2.png",
 		"assets/animation/effect_youxikaishi_shousha.atlas",
 	];
 	const packFileSet = new Set(SIX.flatMap(listPackFiles));
