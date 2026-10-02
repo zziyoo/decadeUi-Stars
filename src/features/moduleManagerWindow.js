@@ -51,7 +51,7 @@ const STAGE_TEXT = {
 	done: "完成",
 };
 
-/** 模块源配置键（与 src/config/definitions/misc.js 的 moduleIndexUrl 同键） */
+/** 模块源配置键（extension_<扩展名>_moduleIndexUrl；设置页入口已移除，只在本窗口里改） */
 const indexKey = () => `extension_${decadeUIName}_moduleIndexUrl`;
 
 function loadStyles() {

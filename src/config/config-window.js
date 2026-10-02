@@ -348,7 +348,6 @@ function getConfigsByTab(tabId) {
 		misc: [
 			{ isTitle: true, name: "模块管理" },
 			{ key: "__moduleManager", name: "模块管理界面", type: "button", buttonText: "打开", onclick: showModuleManager },
-			{ key: "moduleIndexUrl", name: "模块源地址", type: "input" },
 			{ isTitle: true, name: "音效与视觉" },
 			{ key: "bettersound", name: "更多音效", type: "toggle" },
 			{ key: "skillDieAudio", name: "中二模式", type: "toggle" },
