@@ -7,8 +7,9 @@
  *
  * 内置索引的读取边界（不因它是"本体文件"而放宽任何检查）：
  *   - 只读固定路径 `modules/module-index.json`，不接受任何用户传入的路径，不存在 `../`；
- *   - JSON parse 后必须过结构校验：schema===1、modules 对象、core.version、带尾斜杠的 https
- *     releaseBase（构建期必然写入，缺一项即索引已损坏），否则按 STRUCTURE_INVALID 拒绝；
+ *   - JSON parse 后必须过结构校验：schema===1、modules 对象、core.version、带尾斜杠的
+ *     releaseBase（发布源必须 https；开发态内置源允许 127.0.0.1/localhost 回环 http。
+ *     构建期必然写入，缺一项即索引已损坏），否则按 STRUCTURE_INVALID 拒绝；
  *   - 返回的 indexUrl 取索引自带的 `releaseBase`（构建期写入的 Release 资产目录），
  *     裸文件名仍由安装器唯一的 `resolveModuleUrl` 解析、仍过 http(s) 校验——
  *     本模块不碰下载，不碰文件系统，不引入第二套 URL 配置。
@@ -71,8 +72,9 @@ export async function loadBuiltInIndex({ basePath = (typeof window !== "undefine
 	if (!index.modules || typeof index.modules !== "object" || Array.isArray(index.modules)) return invalid("缺少 modules 对象");
 	// 构建期必然写入 core.version 与 releaseBase（build-release 有同名硬校验），缺失即索引已损坏
 	if (!index.core || typeof index.core !== "object" || Array.isArray(index.core) || !index.core.version) return invalid("缺少 core.version");
-	if (typeof index.releaseBase !== "string" || !/^https:\/\/.+\/$/.test(index.releaseBase)) {
-		return invalid(`releaseBase 必须是以 / 结尾的 https 绝对地址（实际 ${JSON.stringify(index.releaseBase ?? null)}）`);
+	// 生产/发布源必须是 https；开发态内置源允许本机回环 http（构建期写入的 DEV_RELEASE_BASE，只有本机可达）
+	if (typeof index.releaseBase !== "string" || !(/^https:\/\/.+\/$/.test(index.releaseBase) || /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?\/$/.test(index.releaseBase))) {
+		return invalid(`releaseBase 必须是以 / 结尾的 https 绝对地址（开发态内置源可为本机回环 http，实际 ${JSON.stringify(index.releaseBase ?? null)}）`);
 	}
 	return { ok: true, index, indexUrl: index.releaseBase };
 }

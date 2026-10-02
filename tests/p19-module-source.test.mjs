@@ -53,6 +53,18 @@ const fetchStub = (table, { capture = [] } = {}) => async url => {
 	assert.equal(capture.length, 1);
 	assert.ok(capture[0].endsWith("modules/module-index.json"), `只许读固定路径，实际请求 ${capture[0]}`);
 
+	// 开发态内置源（2026-10-03）：releaseBase 允许本机回环 http（构建期写死的 DEV_RELEASE_BASE，
+	// 指向 tmp/dev-release-server.mjs）——留空模块源地址即可全本地装卸
+	const loopback = await loadBuiltInIndex({
+		fetchImpl: fetchStub({ "*": JSON.stringify({ schema: 1, core: { version: "1.5.0" }, releaseBase: "http://127.0.0.1:8099/", modules: {} }) }),
+	});
+	assert.equal(loopback.ok, true, `本机回环 http 基址应被接受：${loopback.message}`);
+	assert.equal(loopback.indexUrl, "http://127.0.0.1:8099/");
+	const loopbackLocalhost = await loadBuiltInIndex({
+		fetchImpl: fetchStub({ "*": JSON.stringify({ schema: 1, core: { version: "1.5.0" }, releaseBase: "http://localhost:8099/", modules: {} }) }),
+	});
+	assert.equal(loopbackLocalhost.ok, true, "localhost 回环同样接受");
+
 	// 结构校验（P19 加固）：构建期必然写入 schema/core.version/releaseBase，任何一项缺失或坏形
 	// 都说明这份内置索引已损坏——明确报 STRUCTURE_INVALID，不静默接受（旧行为"缺 releaseBase 也算读成功"已作废）。
 	const badIndexes = [
@@ -62,6 +74,8 @@ const fetchStub = (table, { capture = [] } = {}) => async url => {
 		[{ schema: 1, releaseBase: "https://github.com/x/y/", modules: {} }, /core/, "缺 core 段"],
 		[{ schema: 1, core: {}, releaseBase: "https://github.com/x/y/", modules: {} }, /core\.version/, "core 缺 version"],
 		[{ schema: 1, core: { version: "1.5.0" }, releaseBase: "http://github.com/x/y/", modules: {} }, /releaseBase/, "releaseBase 不是 https"],
+		[{ schema: 1, core: { version: "1.5.0" }, releaseBase: "http://example.com:8099/", modules: {} }, /releaseBase/, "非回环地址不许用 http"],
+		[{ schema: 1, core: { version: "1.5.0" }, releaseBase: "http://127.0.0.1:8099", modules: {} }, /releaseBase/, "回环 http 也必须有尾斜杠"],
 		[{ schema: 1, core: { version: "1.5.0" }, releaseBase: "https://github.com/x/y", modules: {} }, /releaseBase/, "releaseBase 没有尾斜杠（基址会丢最后一段）"],
 		[{ schema: 1, core: { version: "1.5.0" }, releaseBase: "", modules: {} }, /releaseBase/, "releaseBase 为空串"],
 		[{ schema: 1, core: { version: "1.5.0" }, releaseBase: 42, modules: {} }, /releaseBase/, "releaseBase 不是字符串"],

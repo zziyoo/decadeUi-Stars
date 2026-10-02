@@ -232,7 +232,7 @@ const packs = [
 	fs.rmSync(path.join(distDir, "tests"), { recursive: true, force: true });
 }
 
-// ---------------------------------------------------------------- 三份 module-index 一致性（P19 三处输出）
+// ---------------------------------------------------------------- module-index 一致性（发布源两份一致 + 开发态基址分叉）
 
 {
 	const idxDir = fs.mkdtempSync(path.join(os.tmpdir(), "p10-index-"));
@@ -286,10 +286,13 @@ const packs = [
 }
 
 {
-	// 接线不变量：verifyAll 必须真的把 dist/modules 与 modules 两份送进这条判据
+	// 接线不变量：发布源两份逐字节比对 + 开发态那份按 DEV_RELEASE_BASE 重建比对
 	// （抽出来不接上等于白写）；静态扫描源码，与"distFiles 必须用上 isPackagedFile"同法。
 	const scriptSrc = fs.readFileSync(new URL("../scripts/build-release.mjs", import.meta.url), "utf8");
-	assert.match(scriptSrc, /verifyIndexCopies\(indexPath,\s*\[RUNTIME_INDEX_PATH,\s*DEV_INDEX_PATH\]/, "verifyAll 必须把三份 module-index 全部送进一致性检查");
+	assert.match(scriptSrc, /verifyIndexCopies\(indexPath,\s*\[RUNTIME_INDEX_PATH\]/, "verifyAll 必须把发布源两份（release/dist.modules）送进逐字节一致性检查");
+	assert.match(scriptSrc, /buildIndex\(\{ packs: zipped, coreVersion: info\.version, releaseBase: DEV_RELEASE_BASE \}\)/, "开发态索引必须按 DEV_RELEASE_BASE 重建比对");
+	assert.match(scriptSrc, /fs\.writeFileSync\(DEV_INDEX_PATH, devText\)/, "开发态索引写出必须是带本机基址的 devText，不许与发布源共用同一字符串");
+	assert.match(scriptSrc, /http:\/\/127\.0\.0\.1:8099\//, "DEV_RELEASE_BASE 默认值应指向本机发布源 8099");
 }
 
 fs.rmSync(sandbox, { recursive: true, force: true });

@@ -16,7 +16,9 @@
  *
  * P19 追加：同一份索引对象输出三处——`dist/release/`（Release 资产）、
  *   `dist/modules/`（整包内的运行时默认索引）、仓库根 `modules/`（开发态直接加载源码时的
- *   运行时默认索引，已 gitignore）。三处来自同一字符串，verifyAll 对三份逐字节校验（verifyIndexCopies）。
+ *   运行时默认索引，已 gitignore）。前两者 = 发布源（GitHub 基址），逐字节一致（verifyIndexCopies）；
+ * 2026-10-03 起开发态那份**基址分叉**为本机发布源 `DEV_RELEASE_BASE`（见下），
+ *   这样模块源地址留空（内置源）即可全本地装卸，每次构建自动刷新基址与 sha，无需改任何配置。
  *
  * 用法：
  *   node scripts/build-release.mjs            # 生成全部产物并完整校验
@@ -318,6 +320,14 @@ export const releaseTag = version => `v${version}`;
  */
 export const releaseBaseFor = version => `https://github.com/${REPO_SLUG}/releases/download/${releaseTag(version)}/`;
 
+/**
+ * 开发态内置索引的下载基址：仓库根 `modules/module-index.json` 是"游戏直接加载仓库源码"时
+ * 的内置源（模块源地址留空即用它），基址指向**本机发布源**（`tmp/dev-release-server.mjs` 伺服
+ * `dist/release/`）而不是 GitHub——本地装卸的索引与 zip 天然同源，构建后无需改任何配置。
+ * 端口被占可用环境变量覆盖；它只影响这份 gitignore 的开发文件，不随任何发布物出厂。
+ */
+export const DEV_RELEASE_BASE = process.env.DECADEUI_DEV_RELEASE_BASE || "http://127.0.0.1:8099/";
+
 /** 扩展名与版本只认 info.json（不设第二版本源） */
 const readExtInfo = () => {
 	const info = JSON.parse(fs.readFileSync(path.join(ROOT, "info.json"), "utf8"));
@@ -418,11 +428,12 @@ export async function verifyArtifacts({ packs, index, coreVersion, outDir = OUT_
 }
 
 /**
- * 三份 module-index 必须逐字节一致（P19 三处输出：Release 资产 / 整包内运行时索引 / 开发态内置默认源）：
+ * module-index 基准与其副本必须逐字节一致（发布源两份：Release 资产 / 整包内运行时索引）：
  * 同一构建里只许有一份生成逻辑，pretty-print/换行/BOM 的任何差异都算不一致（Buffer.equals 语义）。
+ * 开发态那份基址分叉（DEV_RELEASE_BASE），由 verifyAll 单独重建比对。
  * 导出供单测；构建与 --verify 共用同一条判据。
  * @param {string} indexPath - 基准：dist/release/module-index.json
- * @param {string[]} copyPaths - 其余副本的绝对路径（dist/modules/… 与 modules/…）
+ * @param {string[]} copyPaths - 副本的绝对路径（dist/modules/…）
  * @returns {string} 通过时的说明行
  */
 export function verifyIndexCopies(indexPath, copyPaths) {
@@ -432,10 +443,10 @@ export function verifyIndexCopies(indexPath, copyPaths) {
 		const rel = posix(path.relative(ROOT, copyPath));
 		if (!fs.existsSync(copyPath)) die(`需要产物存在：${rel}（重新跑一次构建）`);
 		if (!fs.readFileSync(copyPath).equals(reference)) {
-			die(`${rel} 与 dist/release/${INDEX_FILE} 不一致（三份必须来自同一次 buildIndex 的同一字符串）`);
+			die(`${rel} 与 dist/release/${INDEX_FILE} 不一致（发布源各份必须来自同一次 buildIndex 的同一字符串）`);
 		}
 	}
-	return `${INDEX_FILE} 三份逐字节一致（dist/release、dist/modules、modules）`;
+	return `${INDEX_FILE} 逐字节一致（${[indexPath, ...copyPaths].map(p => posix(path.relative(ROOT, p))).join("、")}）`;
 }
 
 // ------------------------------------------------------------------ 命令行入口
@@ -460,9 +471,14 @@ async function verifyAll({ info, packs }) {
 	const rebuilt = buildIndex({ packs: zipped, coreVersion: info.version, releaseBase: releaseBaseFor(info.version) });
 	if (indexText(rebuilt) !== fs.readFileSync(indexPath, "utf8")) die(`${INDEX_FILE} 与盘上产物重算结果不一致（重新跑一次构建）`);
 
-	// P19：三份 module-index 必须逐字节一致（同一构建里只许有一份生成逻辑）：
-	// Release 资产 / 整包内的运行时索引 / 开发态内置默认源（仓库根 modules/）。
-	const indexNote = verifyIndexCopies(indexPath, [RUNTIME_INDEX_PATH, DEV_INDEX_PATH]);
+	// P19：发布源两份（Release 资产 / 整包内运行时索引）逐字节一致；开发态那份按
+	// "同一生成逻辑、基址为本机发布源"重建比对（2026-10-03 起基址分叉，见 DEV_RELEASE_BASE）。
+	const indexNote = verifyIndexCopies(indexPath, [RUNTIME_INDEX_PATH]);
+	const devExpected = indexText(buildIndex({ packs: zipped, coreVersion: info.version, releaseBase: DEV_RELEASE_BASE }));
+	if (!fs.existsSync(DEV_INDEX_PATH)) die(`需要产物存在：${posix(path.relative(ROOT, DEV_INDEX_PATH))}（重新跑一次构建）`);
+	if (fs.readFileSync(DEV_INDEX_PATH, "utf8") !== devExpected) {
+		die(`modules/${INDEX_FILE} 与"本机源基址 ${DEV_RELEASE_BASE}"的重算结果不一致（重新跑一次构建）`);
+	}
 
 	const fullPath = path.join(OUT_DIR, `${info.name}-${info.version}-full.zip`);
 	const fullNote = await verifyFullPackage({ zipPath: fullPath, rootName: info.name, packs: zipped });
@@ -483,7 +499,7 @@ async function verifyAll({ info, packs }) {
 	if (!fs.existsSync(notesPath) || fs.readFileSync(notesPath, "utf8") !== expectNotes) {
 		die(`${NOTES_FILE} 与盘上产物重算结果不一致（重新跑一次构建，别手改它）`);
 	}
-	return [...notes, indexNote, fullNote, `${NOTES_FILE} 与产物一致（含 ${zipped.length + 2} 项资产的字节数与 sha256）`];
+	return [...notes, indexNote, `${INDEX_FILE}（开发态）：本机源基址 ${DEV_RELEASE_BASE} 与重算一致`, fullNote, `${NOTES_FILE} 与产物一致（含 ${zipped.length + 2} 项资产的字节数与 sha256）`];
 }
 
 async function main() {
@@ -513,15 +529,16 @@ async function main() {
 		console.log(`  ${pack.id}@${pack.version} → ${zipInfo.file}（${zipInfo.files} 文件 / ${zipInfo.bytes} 字节）`);
 	}
 	const index = buildIndex({ packs: zipped, coreVersion, releaseBase: releaseBaseFor(info.version) });
-	// 三处输出出自同一个索引对象的同一份字符串（P19：单一生成源）：Release 资产、
-	// 整包内运行时默认索引、开发态运行时默认索引。整包此刻还没打，dist/modules/ 这份会被自然打进去。
+	// 发布源两份（Release 资产 / 整包内运行时索引）同一字符串；开发态那份基址为本机发布源（P19 + 2026-10-03）。
+	// 整包此刻还没打，dist/modules/ 这份会被自然打进去。
 	const text = indexText(index);
 	fs.writeFileSync(path.join(OUT_DIR, INDEX_FILE), text);
-	for (const target of [RUNTIME_INDEX_PATH, DEV_INDEX_PATH]) {
-		fs.mkdirSync(path.dirname(target), { recursive: true });
-		fs.writeFileSync(target, text);
-	}
-	console.log(`  ${INDEX_FILE}：${Object.keys(index.modules).length} 个可安装模块（core 除外）；已同步到 dist/modules/ 与 modules/（内置默认源）`);
+	fs.mkdirSync(path.dirname(RUNTIME_INDEX_PATH), { recursive: true });
+	fs.writeFileSync(RUNTIME_INDEX_PATH, text);
+	const devText = indexText(buildIndex({ packs: zipped, coreVersion, releaseBase: DEV_RELEASE_BASE }));
+	fs.mkdirSync(path.dirname(DEV_INDEX_PATH), { recursive: true });
+	fs.writeFileSync(DEV_INDEX_PATH, devText);
+	console.log(`  ${INDEX_FILE}：${Object.keys(index.modules).length} 个可安装模块（core 除外）；发布源 → dist/release 与 dist/modules，本地源（${DEV_RELEASE_BASE}）→ modules/`);
 
 	// 整包与说明：整包只吃 dist/（除 release/），说明紧随其后写（它也落在 release/ 里，不进整包）
 	const full = await zipFullPackage({ outZip: path.join(OUT_DIR, `${info.name}-${info.version}-full.zip`), rootName: info.name });
