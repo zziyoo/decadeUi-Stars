@@ -4,32 +4,42 @@
 		"decade": {
 			"version": "1.5.0"
 		},
-		"mobile": {
-			"version": "1.5.0"
-		},
-		"yjcm": {
-			"version": "1.5.0"
-		},
 		"online": {
 			"version": "1.5.0"
 		},
-		"card-skin": {
+		"baby": {
 			"version": "1.5.0"
 		},
 		"codename": {
 			"version": "1.5.0",
-			"installedAt": 1790847926880,
+			"installedAt": 1790960282740,
 			"source": "local",
-			"size": 961848,
-			"sha256": "169c0a032250d8db2cc50068a8e144e26628cc08eb42d3396b9bf66ed57f00d1",
+			"size": 1421567,
+			"sha256": "6e448d5754eb5da2831a3509cca612aab7daeb37e5b9c1903962be298a749bce",
 			"hashVerified": true
 		},
-		"baby": {
+		"mobile": {
 			"version": "1.5.0",
-			"installedAt": 1790853113905,
+			"installedAt": 1790960291411,
 			"source": "local",
-			"size": 111949,
-			"sha256": "ebe5609881e59817621fb0135101cb07f260b4fd720016ab6198de332c2d623e",
+			"size": 14480865,
+			"sha256": "b849572a3334883a93c64ba80b1ff6db8dd151d7db613e926e58b74e8bfd1164",
+			"hashVerified": true
+		},
+		"yjcm": {
+			"version": "1.5.0",
+			"installedAt": 1790961700186,
+			"source": "local",
+			"size": 4119453,
+			"sha256": "e42b68c31abe766bbd01a1af5e2766839f118dfa4a4a12458c6ffdd6d3bde090",
+			"hashVerified": true
+		},
+		"card-skin": {
+			"version": "1.5.0",
+			"installedAt": 1790961703122,
+			"source": "local",
+			"size": 21627754,
+			"sha256": "f4cdceb6d3681eab97ec52de5d144388d68ba04d1843224a184ea86e3030d17e",
 			"hashVerified": true
 		}
 	}
