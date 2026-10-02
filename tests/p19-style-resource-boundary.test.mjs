@@ -103,7 +103,8 @@ function listPackFiles(id) {
 // ── C. 不偷偷读根：生产代码不得硬拼指向已迁走资源的扩展根路径 ──
 // 四段：①同行直拼扫描（白名单=共享 decade 家族）；②样式专属 image/styles 字面量必须与模块 ID 配对；
 // ③直拼扩展根的字面量必须命中留在根的真实资源（扫描面含包内 UI JS——补两处实际漏网盲点后加）；
-// ④包内 UI JS 经"包路由基址"拼的资源必须在包内可达（online 的 skillitem_yinyang_1/2 曾 404 后加）。
+// ④包内 UI JS 经"包路由基址"拼的资源必须在包内可达（online 的 skillitem_yinyang_1/2 曾 404 后加）；
+// ⑤字面量 getAsset(id, 静态路径) 必须在包内可达（手杀取消按钮的 QX.png 曾走包路由 404 后加）。
 {
 	// 共享 decade 家族：on/othersOff(+codename) 经 Core JS 交叉消费，允许留根直拼
 	const SHARED_DECADE_PREFIXES = ["image/styles/decade/identity_", "image/styles/decade/name_", "image/styles/decade/dead_"];
@@ -230,13 +231,27 @@ function listPackFiles(id) {
 		}
 	}
 
+	// C-5：字面量 getAsset("<id>", "<静态路径>") 必须在对应包内可达——包皮肤只在包存在时才运行，
+	// 路由必然落在包内；共享文件不得走 getAsset 而应走扩展根路径（手杀取消按钮的 QX.png 曾因此破图）。
+	for (const file of [...SCAN_FILES, ...packUiFiles]) {
+		const text = readText(file);
+		for (const m of text.matchAll(/resource\.getAsset\(\s*["']([a-z-]+)["']\s*,\s*["']([^"']+)["']\s*\)/g)) {
+			const [, id, literal] = m;
+			if (literal.includes("${")) continue;
+			if (!exists(packFile(id, ""))) continue;
+			const files = listPackFiles(id);
+			const covered = files.includes(literal) || files.some(f => f.startsWith(literal.endsWith("/") ? literal : `${literal}/`));
+			assert.ok(covered, `${file} 字面量 getAsset("${id}", "${literal}") 在包内不可达（共享文件应走扩展根路径，样式专属文件必须随包）`);
+		}
+	}
+
 	// 死常量不许被重新消费：SHOUSHA_CONSTANTS.IMAGE_PATH(_PREFIX) 仍指扩展根 shousha 资产（已迁 mobile），
 	// 实测无消费方；重新启用前必须先改成 resourceLoader 寻址（AUDIO_PATH 不在此列——caidan/label.mp3 是共享件留根）。
 	const staleConstFiles = [...SCAN_FILES, ...packUiFiles, "ui/character/skins/base.js"]
 		.filter(f => /SHOUSHA_CONSTANTS\.(IMAGE_PATH|IMAGE_PATH_PREFIX)/.test(readText(f)));
 	assert.deepEqual(staleConstFiles, [], `SHOUSHA_CONSTANTS.IMAGE_PATH(_PREFIX) 是死常量（路径已迁走），不得被重新消费：${staleConstFiles.join("、")}`);
 
-	console.log("C ok：绕根引用清零 + 样式图字面量配对 + 根直拼字面量盘上可达 + 包路由基址引用包内可达（共享 decade 家族白名单除外）");
+	console.log("C ok：绕根引用清零 + 样式图字面量配对 + 根直拼字面量盘上可达 + 包路由基址/字面量 getAsset 引用包内可达（共享 decade 家族白名单除外）");
 }
 
 // ── D. 安装包资源完整性：findMissingResources 语义（verify-pack / 构建门禁 / 安装器共用） ──

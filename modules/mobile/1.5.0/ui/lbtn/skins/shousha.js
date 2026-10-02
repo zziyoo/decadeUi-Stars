@@ -731,7 +731,8 @@ export function createShoushaLbtnPlugin(lib, game, ui, get, ai, _status, app) {
 				confirm.node.ok.link = "ok";
 				confirm.node.ok.classList.add("primary");
 				confirm.node.cancel.classList.add("primary2");
-				confirm.node.cancel.innerHTML = `<img draggable='false' src='${window.decadeUI.resource.getAsset('mobile', 'ui/assets/lbtn/uibutton/QX.png')}'>`;
+				// QX 是共享资源（uibutton 基建，留扩展根），走 assetPath；样式专属文件才走 packAsset
+				confirm.node.cancel.innerHTML = `<img draggable='false' src='${assetPath}uibutton/QX.png'>`;
 				confirm.custom = (link, target) => {
 					if (link === "ok") ui.click.ok(target);
 					else if (link === "cancel") ui.click.cancel(target);
