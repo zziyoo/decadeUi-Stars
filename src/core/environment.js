@@ -26,14 +26,12 @@ export function patchGlobalMethods(ctx) {
 	if (!window.get) return;
 
 	if (typeof window.get.cardsetion === "function") {
-		// Core的cardsetion()有两类已知边界失败，命中时降级为「本次不显示卡牌使用信息」，其余异常一律继续抛出，不静默吞掉：
-		const tolerated = ["indexOf", "sourceSkill"];
 		const original = window.get.cardsetion;
 		window.get.cardsetion = (...args) => {
 			try {
 				return original.apply(ctx, args);
 			} catch (e) {
-				if (tolerated.some(feature => e?.message?.includes(feature))) return "";
+				if (e?.message?.includes("indexOf")) return "";
 				throw e;
 			}
 		};

@@ -1084,7 +1084,7 @@
 	left: 0;
 	right: auto;
 	top: auto;
-	bottom: calc(-1% - 8px);
+	bottom: -1%;
 	width: auto;
 	height: 0;
 	padding-bottom: 0;

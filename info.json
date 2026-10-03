@@ -5,7 +5,7 @@
 	"diskURL": "https://github.com/zziyoo/decadeUi-Stars",
 	"forumURL": "",
 	"version": "1.5.0",
-	"minNonameVersion": "1.11.6",
+	"minNonameVersion": "1.11.5.2",
 	"importConfig": [
 		{
 			"name": "骨骼包",
