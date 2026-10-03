@@ -1,0 +1,61 @@
+{
+	"schema": 1,
+	"id": "yjcm",
+	"name": "一将成名样式",
+	"version": "1.5.0",
+	"type": "style",
+	"core": ">=1.5.0",
+	"dependencies": [
+		"core"
+	],
+	"entry": {
+		"js": [
+			"ui/character/skins/xinsha.js",
+			"ui/skill/skins/xinsha.js",
+			"ui/lbtn/skins/xinsha.js"
+		],
+		"css": [
+			"player.css",
+			"styles/character.css",
+			"styles/lbtn.css",
+			"styles/skill.css",
+			"styles/lbtn-window.css",
+			"styles/skill-window.css"
+		]
+	},
+	"deadRefs": [
+		"image/styles/xinsha/new_border_camp1.png",
+		"ui/assets/character/xinsha/zasui.png",
+		"ui/assets/character/xinsha/haoyou.png",
+		"ui/assets/character/xinsha/haoyou2.png"
+	],
+	"capabilities": [
+		"player-frame",
+		"lbtn",
+		"border-style"
+	],
+	"platform": [
+		"desktop",
+		"mobile"
+	],
+	"author": "子右",
+	"resources": [
+		"image/styles/xinsha/",
+		"ui/assets/character/xinsha/",
+		"ui/assets/lbtn/CD/new_button3.png",
+		"ui/assets/lbtn/CD/new_wenhao.png",
+		"ui/assets/lbtn/SFTS/",
+		"ui/assets/lbtn/uibutton/button_bj.png",
+		"ui/assets/lbtn/uibutton/button_sz.png",
+		"ui/assets/lbtn/uibutton/button_tc.png",
+		"ui/assets/lbtn/uibutton/button_tg.png",
+		"ui/assets/lbtn/uibutton/fanxuan.png",
+		"ui/assets/lbtn/uibutton/new_btnn.png",
+		"ui/assets/lbtn/uibutton/new_cardback3.png",
+		"ui/assets/lbtn/uibutton/new_count5.png",
+		"ui/assets/lbtn/uibutton/new_huanfu_new.png",
+		"ui/assets/lbtn/uibutton/new_jilu_new.png",
+		"ui/assets/lbtn/uibutton/new_zhengli.png",
+		"ui/assets/lbtn/uibutton/quanxuan.png"
+	]
+}

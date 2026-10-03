@@ -1,0 +1,62 @@
+{
+	"schema": 1,
+	"id": "card-skin",
+	"name": "卡牌皮肤",
+	"version": "1.5.0",
+	"type": "feature",
+	"core": ">=1.5.0",
+	"dependencies": [
+		"core"
+	],
+	"entry": {
+		"js": [],
+		"css": []
+	},
+	"capabilities": [
+		"card-skin"
+	],
+	"platform": [
+		"desktop",
+		"mobile"
+	],
+	"size": 21500762,
+	"author": "子右",
+	"cardSkins": [
+		{
+			"key": "online",
+			"dir": "online",
+			"extension": "jpg",
+			"files": 85,
+			"bytes": 704436
+		},
+		{
+			"key": "caise",
+			"dir": "caise",
+			"extension": "webp",
+			"files": 380,
+			"bytes": 10881981
+		},
+		{
+			"key": "decade",
+			"dir": "decade",
+			"extension": "png",
+			"files": 241,
+			"bytes": 2670652
+		},
+		{
+			"key": "bingkele",
+			"dir": "bingkele",
+			"extension": "png",
+			"files": 44,
+			"bytes": 1887009
+		},
+		{
+			"key": "gold",
+			"dir": "gold",
+			"extension": "webp",
+			"files": 266,
+			"bytes": 5356684
+		}
+	],
+	"note": "built-in sets live here; user-dropped folders stay in <extension>/image/card-skins/"
+}

@@ -1,0 +1,1 @@
+import{lib,game}from"noname";let n=null;function e(e){n=e}function o(){return n}function t(){lib.config["extension_十周年UI-Stars_bettersound"]&&game.playAudio("..","extension",decadeUIName,"audio/GameShowCard.mp3")}let i=null;function u(){return i||(i=window.decadeUI),i}export{o as getBasePlayerMethods,u as getDui,t as playShowCardAudio,e as setBasePlayerMethods};

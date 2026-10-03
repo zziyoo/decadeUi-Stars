@@ -1,0 +1,124 @@
+{
+	"schema": 1,
+	"core": {
+		"version": "1.5.0",
+		"latest": "1.5.0"
+	},
+	"releaseBase": "https://github.com/zziyoo/decadeUi-Stars/releases/download/v1.5.0/",
+	"modules": {
+		"baby": {
+			"name": "欢乐三国杀样式",
+			"type": "style",
+			"latest": "1.5.0",
+			"url": "baby-1.5.0.zip",
+			"sha256": "9ff1b8677eaaa33123ccbadb6655d5e9e0df75dd412666292f1f29087e82acba",
+			"size": 2250088,
+			"dependencies": [
+				"core"
+			],
+			"core": ">=1.5.0",
+			"capabilities": [
+				"player-frame",
+				"lbtn"
+			]
+		},
+		"card-skin": {
+			"name": "卡牌皮肤",
+			"type": "feature",
+			"latest": "1.5.0",
+			"url": "card-skin-1.5.0.zip",
+			"sha256": "f4cdceb6d3681eab97ec52de5d144388d68ba04d1843224a184ea86e3030d17e",
+			"size": 21627754,
+			"dependencies": [
+				"core"
+			],
+			"core": ">=1.5.0",
+			"capabilities": [
+				"card-skin"
+			]
+		},
+		"codename": {
+			"name": "名将杀样式",
+			"type": "style",
+			"latest": "1.5.0",
+			"url": "codename-1.5.0.zip",
+			"sha256": "6e448d5754eb5da2831a3509cca612aab7daeb37e5b9c1903962be298a749bce",
+			"size": 1421567,
+			"dependencies": [
+				"core"
+			],
+			"core": ">=1.5.0",
+			"capabilities": [
+				"player-frame",
+				"lbtn"
+			]
+		},
+		"decade": {
+			"name": "十周年样式",
+			"type": "style",
+			"latest": "1.5.0",
+			"url": "decade-1.5.0.zip",
+			"sha256": "aa749625035757f031b87e99c73acc894a188aae94cb2462f4afd8dcabdf157e",
+			"size": 1305883,
+			"dependencies": [
+				"core"
+			],
+			"core": ">=1.5.0",
+			"capabilities": [
+				"player-frame",
+				"lbtn"
+			]
+		},
+		"mobile": {
+			"name": "移动版样式",
+			"type": "style",
+			"latest": "1.5.0",
+			"url": "mobile-1.5.0.zip",
+			"sha256": "8140f1e7ee742bfae47836954ea8c7a809de70d5d3330c5f6cd11003761d6a41",
+			"size": 14480924,
+			"dependencies": [
+				"core"
+			],
+			"core": ">=1.5.0",
+			"capabilities": [
+				"player-frame",
+				"lbtn"
+			]
+		},
+		"online": {
+			"name": "Online样式",
+			"type": "style",
+			"latest": "1.5.0",
+			"url": "online-1.5.0.zip",
+			"sha256": "54d60aff78c34b3f432442ff1814803e51371cba475f74cf4b938e4b77b31fa0",
+			"size": 2911958,
+			"dependencies": [
+				"core"
+			],
+			"core": ">=1.5.0",
+			"capabilities": [
+				"player-frame",
+				"lbtn",
+				"online-chat",
+				"online-gift"
+			]
+		},
+		"yjcm": {
+			"name": "一将成名样式",
+			"type": "style",
+			"latest": "1.5.0",
+			"url": "yjcm-1.5.0.zip",
+			"sha256": "e42b68c31abe766bbd01a1af5e2766839f118dfa4a4a12458c6ffdd6d3bde090",
+			"size": 4119453,
+			"dependencies": [
+				"core"
+			],
+			"core": ">=1.5.0",
+			"capabilities": [
+				"player-frame",
+				"lbtn",
+				"border-style"
+			]
+		}
+	}
+}
