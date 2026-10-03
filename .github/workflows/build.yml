@@ -2,8 +2,9 @@ name: build
 
 # 与上游十周年UI 的 build.yml 同形：push 到 main 时构建，并把部署形态的 dist/ 推到
 # build-output 孤儿分支（玩家可从那个分支拿现成的扩展目录）。
-# Stars 的差别只有两处：①部署前必须过完五道静态门禁（原版没有）；
-# ②dist/release/（分包 zip + 整包 + 索引）**不进分支** —— 那是发布资产，只走工作流产物。
+# Stars 的差别只有三处：①部署前必须过完五道静态门禁（原版没有）；
+# ②dist/release/（分包 zip + 整包 + 索引）**不进分支** —— 那是发布资产，只走工作流产物；
+# ③部署形态按整包同一判据剪枝（scripts/prune-deploy.mjs）：内部文档同样不进分支。
 
 on:
     push:
@@ -75,11 +76,12 @@ jobs:
                     exit 1
                   fi
 
-                  # 暂存部署形态，剥掉发布资产目录
+                  # 暂存部署形态：与整包共用同一排除判据（scripts/prune-deploy.mjs → isPackagedFile），
+                  # 内部文档（总任务书/台账/审计/计划）与 release/ 一并剥掉 —— 分支形态 == 整包形态
                   rm -rf /tmp/deploy
                   mkdir -p /tmp/deploy
                   cp -r dist/. /tmp/deploy/
-                  rm -rf /tmp/deploy/release
+                  node scripts/prune-deploy.mjs /tmp/deploy
 
                   git fetch origin
                   git checkout --orphan build-output
