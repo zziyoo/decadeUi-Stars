@@ -274,7 +274,7 @@
 /* 暗弱特殊显示 */
 .handcards.nsanruo > .card.decade-card[data-card-type="trick"]:not(*[data-card-multitarget="1"]),
 .handcards.nsanruo > .card.decade-card[data-card-name="sha"] {
-	background-image: url("../../../../image/character/ns_liuzhang.jpg") !important;
+	background-image: url("../../image/character/ns_liuzhang.jpg") !important;
 	background-position: center;
 	background-size: cover !important;
 }
