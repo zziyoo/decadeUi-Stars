@@ -2756,6 +2756,17 @@ P0 审计
 - **行尾那条被现实咬到了一次**：本轮重构建后 `baby-1.4.2.zip` 从 112085 → 112150 字节、`module-index.json` 与整包 sha 随之变化，而**内容一字未动** —— 起因是昨天为还原测试态跑过一次 `git checkout`，autocrlf 把包内 27 个文件 smudge 成 CRLF。连续两次构建仍然完全一致（确定性没问题），漂的是 checkout 之间。按用户决定仍不加 `.gitattributes`，所以上传以当次 `RELEASE-NOTES.md` 的 9 项 sha 为准（已重新生成并自验一致）
 - **仍待真机**（§八「P15 复测步骤」给了准确操作与判据）：六套逐套目测（每套必须重载）、online 与 card-skin 卸载、手机布局与横屏、Android/SAF、联网分支（要等 P10 的 Release 建好）。这些一律标"代码检查通过 / 真机待验"，不许算成已验
 
+## v1.33（2026-10-03）整包 ZIP 去掉人为中文根目录：条目名直接对齐原版手动打包
+
+用户实测：Manual Package 下载的整包导入无名杀/拖拽读取时显示 `<乱码>/assets/...`（解压到文件管理器里正常）。根因是 `zipFullPackage` 给每条 entry 人为拼了一层 `<扩展名>/`（`rootName`）中文根目录，而原版十周年UI 的 manual-package 是 `cd dist && zip -r "../十周年UI-${VERSION}.zip" .` —— 包内从来没有这一层；条目名里的中文段正是按原始字节解析的导入链路唯一会显示乱码的地方。
+
+- **改**：`zipFullPackage` 条目名直接等于 `dist/` 相对路径；`rootName` 参数保留（调用/日志/兼容）但不再参与条目名；`verifyFullPackage` 全部改按根级路径，并新增两道硬校验：①「全部条目同套一层 dist/ 里不存在的根目录」点名失败，②条目集合与 `distFiles(distDir)` 逐条相等（防改名、防重新加根）。`RELEASE-NOTES.md` 安装说明同步（解压到一个目录后整体放进 `extension/`）
+- **测试（先 RED 后 GREEN）**：P20 加「无前缀 + 条目集合逐条等于 distFiles + 不得出现 十周年UI-Stars/」与源码级反回归锁（打包脚本里 `${rootName}` 模板串必须 0 处）；P10 期望表根级化、负例路径同步，新增「重加根目录」「条目改名」两例。**31 套全绿**
+- **GBK 与分包不动**：`encodeZipFileName`、两个 `generateAsync` 原样保留；分包 zip 字节未动（索引 sha `475b1b6733a4…` 与上一版逐字节一致 ⇒ 7 包 sha 未变、模块安装链路无影响）
+- **真实产物独立取证**（原始字节解析中央目录，不经 JSZip verify）：新整包 3416 文件 / 107,577,136 字节 / sha256 `1e7cfb6dec42…`；前 40 条即 `LICENSE`、`assets/animation/…`；顶层＝`LICENSE/assets/audio/docs/extension.js/image/info.json/modules/src/ui`；无 十周年UI-Stars/、无额外顶层包装、与 dist/ 逐条一致、0x0800 全 0、本地头＝中央目录
+- **发布影响**：整包 sha 已变（结构变更的预期结果）→ Release 上的整包需按当次 `RELEASE-NOTES.md` 重传；索引与七个分包无需重传
+- **门禁**：31 套测试 ✓、`node --check` 241 ✓、verify-pack 875-6-17-0-0 ✓、verify:skins 37-0 ✓、`pnpm build` + `verify:release` exit=0 ✓
+
 ## v1.32（2026-10-02）Android 偶发"首字节变 0"：写-验重试把它救回来，校验强度不变
 
 D7 修完后手机上的卸载/安装改成"随机失败"：卡牌皮肤卸载死在 `huxinjing.png`、yjcm 安装死在 `lbtn-window.css`。加了一行差异摘要后，一次点击就把形状钉死了。

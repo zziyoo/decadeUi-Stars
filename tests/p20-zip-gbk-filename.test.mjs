@@ -12,8 +12,12 @@
  *      靠 0x7075 Unicode Path 附加字段必须照样还原原名与内容（两头兼容的验收线）。
  *
  * zipDir()（分包）与 zipFullPackage()（整包）两条打包路径都覆盖；中文路径刻意取自
- * 真实产物的形状（十周年UI-Stars/ 根、image/卡牌/、audio/背景/），避免"纯 ASCII 路径
+ * 真实产物的形状（image/卡牌/、audio/背景/），避免"纯 ASCII 路径
  * 假通过"。源码级接线断言锁死两个 generateAsync 都传 encodeFileName，防回归。
+ *
+ * 2026-10-03 修订：整包条目名直接等于 dist/ 相对路径（与原版手动打包 `cd dist && zip -r … .`
+ * 同构），不得再套 `<扩展名>/` 根目录——那层中文根目录在按原始字节解析条目名的导入链路里
+ * 显示为乱码。本条与 GBK 编码是两件独立的事：真实中文路径照旧按 GBK 写名字节。
  */
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
@@ -147,14 +151,24 @@ async function assertGbkZip(zipPath, expectNames) {
 	assert.equal(sha(fs.readFileSync(out2)), sha(fs.readFileSync(outZip)), "两次打包摘要必须一致（GBK 编码不许引入时间性因素）");
 }
 
-// ---------------------------------------------------------------- zipFullPackage：整包路径（根目录 <扩展名>/）
+// --------------------------------------------- zipFullPackage：整包路径（与原版手动打包同构，无外层根目录）
 
 {
-	const fullNames = Object.keys(fileDefs).map(rel => `十周年UI-Stars/${rel}`).sort();
+	// 原版十周年UI 手动打包是 `cd dist && zip -r -q "../十周年UI-${VERSION}.zip" .`：
+	// 条目名直接是 dist/ 的相对路径。整包必须与它同构——人为套一层中文根目录会让按原始
+	// 字节解析条目名的导入链路显示乱码（2026-10-03 实际反馈）。rootName 仍然接受（调用方
+	// 传着），但绝不许出现在任何条目名里。
+	const expectNames = Object.keys(fileDefs).sort();
 	const outZip = path.join(tmp, "十周年UI-Stars-1.0.0-full.zip");
 	const info = await mod.zipFullPackage({ distDir: src, outZip, rootName: "十周年UI-Stars" });
-	assert.equal(info.files, fullNames.length, "整包上报的文件数应与源目录一致");
-	await assertGbkZip(outZip, fullNames);
+	assert.equal(info.files, expectNames.length, "整包上报的文件数应与源目录一致");
+	await assertGbkZip(outZip, expectNames);
+
+	// 原版结构对照不变量：条目集合逐条等于 distFiles(distDir)；将来谁再给整包套根目录直接红
+	const zip = await JSZip.loadAsync(fs.readFileSync(outZip));
+	const names = Object.keys(zip.files).filter(name => !zip.files[name].dir).sort();
+	assert.deepEqual(names, mod.distFiles(src), "整包条目集合必须逐条等于 distFiles(distDir)（即原版 `cd dist && zip … .` 的结构，无任何人造根目录）");
+	assert.equal(names.some(name => name.startsWith("十周年UI-Stars/")), false, "整包不得出现 十周年UI-Stars/ 前缀（rootName 只许存在于调用参数里）");
 }
 
 // ---------------------------------------------------------------- 接线不变量：两条打包路径共用同一个 GBK 编码函数
@@ -171,6 +185,10 @@ async function assertGbkZip(zipPath, expectNames) {
 	assert.equal((scriptSrc.match(/encodeFileName: encodeZipFileName/g) ?? []).length, 2, "zipDir 与 zipFullPackage 的 generateAsync 都必须统一传 encodeFileName");
 	assert.match(scriptSrc, /import iconv from "iconv-lite";/, "必须引入 iconv-lite（不许手写 GBK 编码表）");
 	assert.match(scriptSrc, /iconv\.encode\(name, "gbk"\)/, "编码函数必须统一走 GBK");
+
+	// 反回归锁：打包脚本里不得再出现把 rootName 拼进条目名的模板串（2026-10-03：中文根
+	// 目录在导入端显示为乱码；整包条目名必须直接等于 dist/ 相对路径，与原版手动打包同构）
+	assert.equal((scriptSrc.match(/\$\{rootName\}/g) ?? []).length, 0, "build-release.mjs 不得再把 rootName 拼进条目名");
 
 	// 依赖声明：构建期依赖（devDependencies），绝不进扩展运行时
 	const pkg = JSON.parse(fs.readFileSync(new URL("../package.json", import.meta.url), "utf8"));

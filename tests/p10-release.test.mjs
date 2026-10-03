@@ -56,22 +56,25 @@ const packs = [
 	assert.deepEqual(
 		names,
 		[
-			"十周年UI-Stars/docs/extension-readme.md",
-			"十周年UI-Stars/extension.js",
-			"十周年UI-Stars/info.json",
-			"十周年UI-Stars/modules/baby/1.4.2/manifest.json",
-			"十周年UI-Stars/modules/module-index.json",
-			"十周年UI-Stars/src/main.js",
-			"十周年UI-Stars/ui/styles/base.css",
+			"docs/extension-readme.md",
+			"extension.js",
+			"info.json",
+			"modules/baby/1.4.2/manifest.json",
+			"modules/module-index.json",
+			"src/main.js",
+			"ui/styles/base.css",
 		],
-		"整包必须把全部内容装进唯一根目录（解压到 extension/ 后不散落）"
+		"整包条目名必须逐条等于 dist/ 的相对路径（同原版 `cd dist && zip … .`，不套外层根目录）"
 	);
-	assert.equal(names.some(name => name.includes("/release/")), false, "release/ 是分包产物，不进整包");
-	assert.equal(names.includes("十周年UI-Stars/README.md"), false, "总任务书是内部件，不进整包");
-	assert.equal(names.includes("十周年UI-Stars/docs/PROGRESS.md"), false, "交接台账不进整包（否则改台账就变摘要）");
-	assert.equal(names.includes("十周年UI-Stars/docs/modularization-audit.md"), false, "P0 审计报告是内部件，不进整包");
-	assert.equal(names.includes("十周年UI-Stars/docs/extension-readme.md"), true, "原版对外文档要保留");
-	assert.equal(names.includes("十周年UI-Stars/modules/module-index.json"), true, "内置默认模块索引必须随整包发布（P19）");
+	// 原版结构对照不变量：条目集合逐条等于 distFiles(distDir)，且不得再出现人为根目录前缀
+	assert.deepEqual(names, mod.distFiles(distDir), "整包条目集合必须等于 distFiles(distDir)");
+	assert.equal(names.some(name => name.startsWith("十周年UI-Stars/")), false, "整包不得套扩展名根目录（导入端显示乱码）");
+	assert.equal(names.some(name => name.startsWith("release/")), false, "release/ 是分包产物，不进整包");
+	assert.equal(names.includes("README.md"), false, "总任务书是内部件，不进整包");
+	assert.equal(names.includes("docs/PROGRESS.md"), false, "交接台账不进整包（否则改台账就变摘要）");
+	assert.equal(names.includes("docs/modularization-audit.md"), false, "P0 审计报告是内部件，不进整包");
+	assert.equal(names.includes("docs/extension-readme.md"), true, "原版对外文档要保留");
+	assert.equal(names.includes("modules/module-index.json"), true, "内置默认模块索引必须随整包发布（P19）");
 	assert.equal(names.some(name => name.endsWith("/")), false, "不写目录条目（否则摘要会随构建时间变）");
 	assert.equal(info.files, 7);
 	assert.equal(info.bytes, fs.readFileSync(outZip).length);
@@ -121,37 +124,57 @@ const packs = [
 	// ① 少了根位文件
 	await expectDie("缺少 info", async target => {
 		const zip = await JSZip.loadAsync(fs.readFileSync(target));
-		delete zip.files["十周年UI-Stars/info.json"];
+		delete zip.files["info.json"];
 		fs.writeFileSync(target, await zip.generateAsync({ type: "nodebuffer" }));
 	}, /缺少根位文件/);
 
 	// ② 少了分包清单
 	await expectDie("缺少分包", async target => {
 		const zip = await JSZip.loadAsync(fs.readFileSync(target));
-		delete zip.files["十周年UI-Stars/modules/baby/1.4.2/manifest.json"];
+		delete zip.files["modules/baby/1.4.2/manifest.json"];
 		fs.writeFileSync(target, await zip.generateAsync({ type: "nodebuffer" }));
 	}, /缺少分包清单/);
 
 	// ②b 少了内置默认模块索引（P19 硬校验：整包必须能开箱即用默认模块源）
 	await expectDie("缺少内置索引", async target => {
 		const zip = await JSZip.loadAsync(fs.readFileSync(target));
-		delete zip.files["十周年UI-Stars/modules/module-index.json"];
+		delete zip.files["modules/module-index.json"];
 		fs.writeFileSync(target, await zip.generateAsync({ type: "nodebuffer" }));
-	}, /缺少根位文件 十周年UI-Stars\/modules\/module-index\.json/);
+	}, /缺少根位文件 modules\/module-index\.json/);
 
 	// ③ 把 release/ 打进去
 	await expectDie("混入 release", async target => {
 		const zip = await JSZip.loadAsync(fs.readFileSync(target));
-		zip.file("十周年UI-Stars/release/module-index.json", "{}", { date: new Date(Date.UTC(1980, 0, 1)), createFolders: false });
+		zip.file("release/module-index.json", "{}", { date: new Date(Date.UTC(1980, 0, 1)), createFolders: false });
 		fs.writeFileSync(target, await zip.generateAsync({ type: "nodebuffer" }));
 	}, /不得把 release\//);
 
 	// ④ 多塞一个 dist 里没有的文件（条目数不符）
 	await expectDie("多余条目", async target => {
 		const zip = await JSZip.loadAsync(fs.readFileSync(target));
-		zip.file("十周年UI-Stars/偷渡.txt", "x", { date: new Date(Date.UTC(1980, 0, 1)), createFolders: false });
+		zip.file("偷渡.txt", "x", { date: new Date(Date.UTC(1980, 0, 1)), createFolders: false });
 		fs.writeFileSync(target, await zip.generateAsync({ type: "nodebuffer" }));
 	}, /条目数/);
+
+	// ⑤ 整包被重新套一层根目录（历史回归：曾用 <扩展名>/ 前缀，导入端中文根目录乱码）
+	await expectDie("重加根目录", async target => {
+		const zip = await JSZip.loadAsync(fs.readFileSync(target));
+		const wrapped = new JSZip();
+		for (const [name, file] of Object.entries(zip.files)) {
+			if (file.dir) continue;
+			wrapped.file(`十周年UI-Stars/${name}`, await file.async("nodebuffer"), { date: new Date(Date.UTC(1980, 0, 1)), createFolders: false });
+		}
+		fs.writeFileSync(target, await wrapped.generateAsync({ type: "nodebuffer" }));
+	}, /包在 十周年UI-Stars\/ 之下/);
+
+	// ⑥ 条目数不变但名字被改（集合与 dist 不再逐条一致）
+	await expectDie("改名条目", async target => {
+		const zip = await JSZip.loadAsync(fs.readFileSync(target));
+		const moved = await zip.file("src/main.js").async("nodebuffer");
+		delete zip.files["src/main.js"];
+		zip.file("src/renamed.js", moved, { date: new Date(Date.UTC(1980, 0, 1)), createFolders: false });
+		fs.writeFileSync(target, await zip.generateAsync({ type: "nodebuffer" }));
+	}, /不一致/);
 }
 
 // ---------------------------------------------------------------- Release 说明（上传清单）

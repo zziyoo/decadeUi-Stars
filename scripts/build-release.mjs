@@ -11,7 +11,10 @@
  *
  * P10 追加：
  *   - Full Package（`<扩展名>-<版本>-full.zip`）：整份部署形态（Core + 全部包）打一个 zip，
- *     包内根目录是 `<扩展名>/`，玩家解压到 `resources/app/extension/` 即用；
+ *     包内条目＝`dist/` 的相对路径（无外层根目录，与原版手动打包 `cd dist && zip -r … .`
+ *     同构），玩家解压到 `resources/app/extension/` 下任一目录即用。
+ *     2026-10-03 修订：曾人为包一层 `<扩展名>/` 中文根目录，导入端按原始字节解析条目名时
+ *     该层显示为乱码 ⇒ 取消前缀；真实中文路径照旧按 GBK 写名字节（见 encodeZipFileName）。
  *   - `RELEASE-NOTES.md`：Release 说明草稿 + 上传清单（每个资产的字节数与 sha256）。
  *
  * P19 追加：同一份索引对象输出三处——`dist/release/`（Release 资产）、
@@ -168,25 +171,29 @@ export async function zipDir(srcDir, outZip, _opts = {}) {
 }
 
 /**
- * Full Package：把 dist/ 打成一个 zip（包内根目录 `<rootName>/`），玩家解压到
- * `resources/app/extension/` 即得一份完整可用的扩展（Core + 全部包都在里面）。
+ * Full Package：把 dist/ 打成一个 zip，**条目名直接是 dist/ 的相对路径**——与原版
+ * 十周年UI 的手动打包（`cd dist && zip -r "../十周年UI-<版本>.zip" .`）同构，不套任何
+ * 外层根目录，玩家解压到 `resources/app/extension/` 下任一目录即得完整扩展。
+ * 历史教训（2026-10-03）：曾人为包一层 `<扩展名>/` 中文根目录，导入端按原始字节
+ * （GBK）解析条目名时该层显示为乱码；真实中文路径（image/卡牌/…）照旧按 GBK 写名。
+ * `rootName` 仅为调用方/日志/兼容保留，不得再参与条目名。
  *
  * 源就是 dist/ 而不是仓库根：vite 已经按部署形态备好了 info.json / extension.js /
  * ui / image / audio / assets / modules，且天然排除 node_modules、scripts、tests 等
  * 开发件——不另立第二份排除表（两份清单迟早会漂移）。`release/` 单独排除：那是分包
  * 产物，不是运行时资源，否则整包会把自己套一层、且每次构建摘要都变。
  *
- * @param {{distDir?: string, outZip: string, rootName: string}} input
+ * @param {{distDir?: string, outZip: string, rootName?: string}} input
  * @returns {Promise<{file: string, bytes: number, sha256: string, files: number}>}
  */
-export async function zipFullPackage({ distDir = DIST_DIR, outZip, rootName }) {
+export async function zipFullPackage({ distDir = DIST_DIR, outZip, rootName: _rootName }) {
 	const outAbs = path.resolve(outZip);
 	const names = distFiles(distDir);
 	if (!names.length) die(`dist 目录为空，无法产出整包：${distDir}（先跑 pnpm build）`);
 
 	const zip = new JSZip();
 	for (const rel of names) {
-		zip.file(`${rootName}/${rel}`, fs.readFileSync(path.join(distDir, rel)), { date: FIXED_DATE, createFolders: false });
+		zip.file(rel, fs.readFileSync(path.join(distDir, rel)), { date: FIXED_DATE, createFolders: false });
 	}
 	const buffer = await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE", compressionOptions: { level: 9 }, encodeFileName: encodeZipFileName });
 	fs.mkdirSync(path.dirname(outAbs), { recursive: true });
@@ -215,7 +222,7 @@ export function distFiles(distDir = DIST_DIR, excludeAbs = null) {
  */
 export function buildReleaseNotes({ tag, name, version, coreVersion, index, packs, full, indexAsset }) {
 	const rows = [
-		`| \`${full.file}\` | ${full.bytes} | \`${full.sha256}\` | 整份扩展（Core + 全部包），解压到 \`resources/app/extension/\` 即用 |`,
+		`| \`${full.file}\` | ${full.bytes} | \`${full.sha256}\` | 整份扩展（Core + 全部包），解压到 \`resources/app/extension/${name}/\` 即用（包内条目＝dist/ 相对路径，同原版手动打包） |`,
 		`| \`${indexAsset.file}\` | ${indexAsset.bytes} | \`${indexAsset.sha256}\` | 模块索引（Release 远程索引）。整包内已内置同一份作默认模块源；这份供自定义模块源与外部客户端使用，**必须**上传 |`,
 		...packs.map(pack => `| \`${pack.zip.file}\` | ${pack.zip.bytes} | \`${pack.zip.sha256}\` | ${pack.id}@${pack.version} 分包（${pack.manifest.type}） |`),
 	];
@@ -233,7 +240,7 @@ export function buildReleaseNotes({ tag, name, version, coreVersion, index, pack
 		"",
 		"## 安装",
 		"",
-		"1. 下载整包 `" + full.file + "`，解压出的 `" + name + "/` 放进 `无名杀/resources/app/extension/`（目录名可改，`info.json` 在里面就行）；",
+		"1. 下载整包 `" + full.file + "`，解压到一个目录（如 `" + name + "/`）后整体放进 `无名杀/resources/app/extension/`（目录名可改，`info.json` 在该目录下即认）；",
 		"2. 或者只装本体源码，再在游戏里用模块管理窗口逐个装分包。",
 		"",
 		"整包不含仓库内部文档（总任务书、交接台账、P0 审计报告），原版的对外文档（extension-readme、各类 API 说明）照旧随包发布。",
@@ -266,27 +273,38 @@ export function buildReleaseNotes({ tag, name, version, coreVersion, index, pack
 }
 
 /**
- * 校验整包：根目录、两个入口文件、每个分包的 manifest 都在里面，且条目数与 dist/ 一致
- * @param {{zipPath: string, rootName: string, packs: Array, distDir?: string}} input
+ * 校验整包：顶层结构直接对应 dist/（不得有外层根目录包装）、两个入口文件与每个分包的
+ * manifest 都在里面，且条目集合与 dist/ 逐条一致
+ * @param {{zipPath: string, rootName?: string, packs: Array, distDir?: string}} input
  * @returns {Promise<string>} 人类可读的条目
  */
-export async function verifyFullPackage({ zipPath, rootName, packs, distDir = DIST_DIR }) {
+export async function verifyFullPackage({ zipPath, rootName: _rootName, packs, distDir = DIST_DIR }) {
 	if (!fs.existsSync(zipPath)) die(`整包缺失 ${posix(path.relative(ROOT, zipPath))}`);
 	const bytes = fs.readFileSync(zipPath);
 	const zip = await JSZip.loadAsync(bytes);
 	const names = Object.keys(zip.files).filter(name => !zip.files[name].dir);
+	const source = distFiles(distDir);
+
+	// 顶层结构必须直接对应 dist/：全部条目同套一层 dist/ 里不存在的根目录＝历史回归
+	// （2026-10-03 前的 `<扩展名>/` 前缀——导入端按原始字节解析条目名时中文根目录即乱码）
+	const tops = [...new Set(names.map(name => name.split("/")[0]))];
+	if (tops.length === 1 && !source.some(rel => rel === tops[0] || rel.startsWith(`${tops[0]}/`))) {
+		die(`整包全部条目都包在 ${tops[0]}/ 之下，而 dist/ 里没有这一层（整包条目必须直接等于 dist/ 的相对路径，与原版手动打包同构）`);
+	}
 
 	for (const rel of ["info.json", "extension.js", `modules/${INDEX_FILE}`]) {
-		if (!names.includes(`${rootName}/${rel}`)) die(`整包缺少根位文件 ${rootName}/${rel}`);
+		if (!names.includes(rel)) die(`整包缺少根位文件 ${rel}`);
 	}
 	for (const pack of packs) {
-		const rel = `${rootName}/modules/${pack.id}/${pack.version}/manifest.json`;
+		const rel = `modules/${pack.id}/${pack.version}/manifest.json`;
 		if (!names.includes(rel)) die(`整包缺少分包清单 ${rel}`);
 	}
-	if (names.some(name => name.startsWith(`${rootName}/${RELEASE_SUBDIR}/`))) die(`整包不得把 ${RELEASE_SUBDIR}/ 打进去（那是分包产物）`);
+	if (names.some(name => name.startsWith(`${RELEASE_SUBDIR}/`))) die(`整包不得把 ${RELEASE_SUBDIR}/ 打进去（那是分包产物）`);
 
-	const source = distFiles(distDir);
 	if (source.length !== names.length) die(`整包条目数 ${names.length} 与 dist 文件数 ${source.length} 不符`);
+	const extra = names.filter(name => !source.includes(name));
+	const missing = source.filter(rel => !names.includes(rel));
+	if (extra.length || missing.length) die(`整包条目与 dist/ 不一致（多出 ${extra.slice(0, 3).join("、")}；缺少 ${missing.slice(0, 3).join("、")}）`);
 
 	return `整包 ${path.basename(zipPath)}：${names.length} 文件 / ${bytes.length} 字节 / sha256 ${crypto.createHash("sha256").update(bytes).digest("hex").slice(0, 12)}…`;
 }
