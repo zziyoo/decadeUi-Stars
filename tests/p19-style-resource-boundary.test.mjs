@@ -14,6 +14,8 @@
  *   F. Core CSS 资源边界：src/styles/*.css 不得引用已迁入样式包的专属资源
  *     （meihua.css 的 .baby_skill_box 曾在拆包后仍引用 ui/assets/skill/baby/btnnhs3.png，
  *      baby 包未装时 404——该样式已随 P21 迁入 baby 包，由本段钉死同类缺口）
+ *   G. 根残留全量扫描：扩展根资源区与六套包内文件全集做同名比对（非抽检），
+ *      钉死"往根上放回/新加样式专属文件"的任何回归；ui/styles 仅存共享 base/fonts
  *
  * 运行：node --import ./tests/helpers/register.mjs tests/p19-style-resource-boundary.test.mjs
  */
@@ -430,4 +432,29 @@ function listPackFiles(id) {
 	console.log("F ok：Core CSS 零包内专属引用 + 专属目录前缀禁入 + baby 技能外显 CSS 随包自洽");
 }
 
-console.log("p19-style-resource-boundary: OK（资源根/完整性/绕根清零/包完整性/根残留/Core CSS 边界六类）");
+// ── G. 根残留全量扫描（非抽检）：扩展根资源区不得存在与六套包镜像路径同名的文件 ──
+// E-1 的 MOVED_PROBES 是代表性抽检；本段对 ui/assets、image、audio、assets 四区与
+// 六套包内文件全集做同名比对，钉死"往根上放回/新加样式专属文件"的任何回归。
+{
+	const ROOT_ZONES = ["ui/assets", "image", "audio", "assets"];
+	const packSet = new Set(SIX.flatMap(listPackFiles));
+	const rootFiles = [];
+	const walk = dir => {
+		for (const name of fs.readdirSync(dir)) {
+			const p = path.join(dir, name);
+			if (fs.statSync(p).isDirectory()) walk(p);
+			else rootFiles.push(p.split(path.sep).join("/"));
+		}
+	};
+	for (const zone of ROOT_ZONES) if (exists(zone)) walk(zone);
+	const residual = rootFiles.filter(rel => packSet.has(rel));
+	assert.deepEqual(residual, [], `扩展根资源区残留样式专属文件（包内有同名镜像）：${residual.join("、")}`);
+
+	// 旧单体样式 CSS 区：拆包后只允许共享 base/fonts（各样式单体 CSS 副本已随包删除，不得回填）
+	const styleDirCss = fs.readdirSync("ui/styles").filter(name => name.endsWith(".css")).sort();
+	assert.deepEqual(styleDirCss, ["base.css", "fonts.css"], `ui/styles/ 只允许共享 base.css/fonts.css，实际：${styleDirCss.join("、")}`);
+
+	console.log("G ok：根资源区与六套包零同名残留 + ui/styles 仅共享两件");
+}
+
+console.log("p19-style-resource-boundary: OK（资源根/完整性/绕根清零/包完整性/根残留/Core CSS 边界/全量残留门禁 七类）");
