@@ -1,0 +1,24 @@
+feat(P21): 搬运上游十周年UI v1.4.2→v1.5.0 全部未同步修改
+
+三方对比（基线 b4a84b7 = 原版 v1.4.2 / 原版当前 v1.5.0 / Stars 当前）逐文件审查：
+原版真实变更 12 改 4 增 4 删，实质内容已全部吸收，复核后「原版改了而 Stars 未动」清零。
+
+搬运内容：
+- src/ui/card-utils.js：修复出牌信息提示在非卡牌使用事件（技能 content 事件）下
+  get.cardsetion() 沿父链上溯抛 TypeError——事件名前置判断 + try/finally 还原当前事件
+  （上游「角色选择牌显示 0/infinity」修复）
+- src/core/environment.js：cardsetion 容错列表扩展为 ["indexOf","sourceSkill"]（键名保留 Stars 前缀）
+- src/features/welcomeDialog.js：欢迎弹窗换国庆文案（保留 Stars 路径/键名改造）
+- src/features/welcomeHistory.js / welcomeUpdateHistory.js / didYouKnow.txt / docs/update.md：
+  原版当前版整文件覆盖（国庆历史条目、v1.5.0 更新日志、小提示文案）
+- modules/online/1.5.0/player.css：上游 player4.css 的判定栏 bottom 微调
+  （-1% → calc(-1% - 8px)），经单体→拆包路径映射搬运
+- info.json：minNonameVersion 跟随上游适配本体 1.11.6（name/diskURL 保留 Stars 身份）
+- .github/workflows/manual-package.yml：对齐上游 action 版本（checkout@v5、
+  pnpm/action-setup@v6、setup-node@v5），保留 Stars 的独立 Artifact 逻辑
+
+判定不搬（记录）：build.yml（Stars 版本为上游超集）；equipCopy.js（Stars 已同步到位，
+仅配置键前缀差异）；README/.gitignore（基线即 Stars 工程文档，非上游内容）；
+原版删除的 4 个 docs（Stars 特有文档）；name2_unknown (1).png（mobile 包已收编同字节文件）。
+
+验证：搬运后三方复核上游变更零遗漏；pnpm test 31/31；pnpm build；pnpm run verify:release。
