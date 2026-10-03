@@ -29,6 +29,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import iconv from "iconv-lite";
 import JSZip from "jszip";
 import { checkCoreRequirement, compareVersions, findMissingResources, validateManifest } from "../src/core/manifest.js";
 import { resolveModuleUrl } from "../src/core/packageInstaller.js";
@@ -47,6 +48,16 @@ const CORE_ID = "core";
 const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/;
 /** zip 条目时间戳固定为 ZIP 纪元：否则同样内容每次构建摘要都变，索引无法做差异比对 */
 const FIXED_DATE = new Date(Date.UTC(1980, 0, 1));
+/**
+ * ZIP 条目文件名统一按 GBK 编码写入（JSZip 默认是 UTF-8 并置位 0x0800 标志）：无名杀
+ * 现有的部分扩展导入/拖拽读取链路按 GBK 解析条目名的原始字节，UTF-8 名导入即乱码。
+ * 自定义 encodeFileName 后 JSZip 不再置位 General Purpose Bit Flag 的 UTF-8 位，头部
+ * 名字字节就是 GBK；同时它仍会写 0x7075 Unicode Path 附加字段（CRC 按头部字节算），
+ * 所以 JSZip 读取端（loadAsync 默认参数）照样按 UTF-8 还原原名——本脚本与测试的校验
+ * 路径无需换解码器，按 GBK 裸读字节端的导入链路则直接读对。两头都兼容。
+ * iconv-lite 只在构建期用（devDependency），不进扩展运行时。
+ */
+export const encodeZipFileName = name => iconv.encode(name, "gbk");
 /** 校验相对 url 时用的样例索引地址（真实索引地址由客户端在 fetchIndex 时给出） */
 const SAMPLE_INDEX_URL = "https://example.invalid/module-index.json";
 /** Release 页面地址（说明草稿里给玩家填模块源用） */
@@ -143,7 +154,7 @@ export async function zipDir(srcDir, outZip, _opts = {}) {
 		// 我们的解压端口（moduleIo.extract）本来就按文件路径自己建目录，不需要目录条目。
 		zip.file(rel, fs.readFileSync(path.join(srcDir, rel)), { date: FIXED_DATE, createFolders: false });
 	}
-	const buffer = await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE", compressionOptions: { level: 9 } });
+	const buffer = await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE", compressionOptions: { level: 9 }, encodeFileName: encodeZipFileName });
 	fs.mkdirSync(path.dirname(outAbs), { recursive: true });
 	fs.writeFileSync(outAbs, buffer);
 
@@ -177,7 +188,7 @@ export async function zipFullPackage({ distDir = DIST_DIR, outZip, rootName }) {
 	for (const rel of names) {
 		zip.file(`${rootName}/${rel}`, fs.readFileSync(path.join(distDir, rel)), { date: FIXED_DATE, createFolders: false });
 	}
-	const buffer = await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE", compressionOptions: { level: 9 } });
+	const buffer = await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE", compressionOptions: { level: 9 }, encodeFileName: encodeZipFileName });
 	fs.mkdirSync(path.dirname(outAbs), { recursive: true });
 	fs.writeFileSync(outAbs, buffer);
 
