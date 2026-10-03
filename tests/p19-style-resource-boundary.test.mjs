@@ -11,6 +11,9 @@
  *   C. 不偷偷读根：src/ 与根 ui/ 的生产代码不得再硬拼指向已迁走资源的扩展根路径
  *   D. 安装包资源完整性：findMissingResources 纯函数语义（构建门禁 / verify-pack / 安装器共用）
  *   E. 根目录残留扫描：样式专属路径不得继续存在于扩展根；共享与自建卡面等合法例外留根
+ *   F. Core CSS 资源边界：src/styles/*.css 不得引用已迁入样式包的专属资源
+ *     （meihua.css 的 .baby_skill_box 曾在拆包后仍引用 ui/assets/skill/baby/btnnhs3.png，
+ *      baby 包未装时 404——该样式已随 P21 迁入 baby 包，由本段钉死同类缺口）
  *
  * 运行：node --import ./tests/helpers/register.mjs tests/p19-style-resource-boundary.test.mjs
  */
@@ -355,4 +358,76 @@ function listPackFiles(id) {
 	console.log("E-2 ok：共享与玩家自建卡面根不受牵连");
 }
 
-console.log("p19-style-resource-boundary: OK（资源根/完整性/绕根清零/包完整性/根残留五类边界）");
+// ── F. Core CSS 资源边界：src/styles/*.css 不得引用已迁入样式包的专属资源 ──
+// C 段只扫 JS（decadeUIPath 直拼/getAsset），CSS 的 url() 引用是另一条泄漏面——
+// meihua.css 的 .baby_skill_box 曾在 btnnhs3.png 随包迁走后仍以根路径引用（拆包盲点）。
+//   F-1 逐 url/@import 解析到扩展根相对路径：根上可达（共享留根）才放行；
+//       根上没有但某样式包内存在 ⇒ Core CSS 偷读已迁移资源；两边都没有 ⇒ 引用本身 404。
+//   F-2 文本级兜底：样式专属目录前缀不得出现在任何 Core CSS——防资源碰巧留根时 F-1 放行
+//       （目录名用 skin 族：shousha/xinsha/online/baby/codename；decade 家族共享留根豁免，
+//        其 skill 专属的 shizhounian 目录仍禁入）。
+//   F-3 baby 技能外显 CSS（skill-display.css）随包自洽：被 entry.css 声明、url() 包内可达。
+{
+	const STYLE_CSS_DIR = "src/styles";
+	const coreCssFiles = fs.readdirSync(STYLE_CSS_DIR).filter(name => name.endsWith(".css"));
+
+	/** 抽取 CSS 路径引用字面量（url(...) 与 @import，跳过 data:/# 片段） */
+	const cssPathRefs = text => {
+		const refs = [];
+		for (const m of text.matchAll(/url\(\s*([^)]*?)\s*\)/g)) {
+			const raw = m[1].replace(/^["']|["']$/g, "").trim();
+			if (raw && !raw.startsWith("data:") && !raw.startsWith("#")) refs.push(raw);
+		}
+		for (const m of text.matchAll(/@import\s+(?:url\(\s*)?["']?([^"')\s;]+)["']?\s*\)?\s*;/g)) refs.push(m[1]);
+		return refs;
+	};
+
+	// F-1：Core CSS 引用逐条解析——根上可达才放行，包内镜像存在 = 偷读已迁移资源
+	const violations = [];
+	for (const name of coreCssFiles) {
+		const file = path.posix.join(STYLE_CSS_DIR, name);
+		for (const raw of cssPathRefs(readText(file))) {
+			const rel = path.posix.normalize(path.posix.join(path.posix.dirname(file), raw));
+			if (exists(rel) || exists(`${rel}.png`)) continue;
+			const owner = SIX.find(id => exists(packFile(id, rel)));
+			if (owner) violations.push(`${file}: "${raw}" 已迁入 ${owner} 包（样式专属样式应随包内 CSS 引用）`);
+			else violations.push(`${file}: "${raw}" 解析为 "${rel}"，扩展根与六套样式包内都不存在（404）`);
+		}
+	}
+	assert.deepEqual(violations, [], `Core CSS 不得引用已迁入样式包的专属资源：\n${violations.join("\n")}`);
+
+	// F-2：文本级兜底——样式专属目录前缀禁入 Core CSS（decade 共享族豁免，shizhounian 除外）
+	const EXCLUSIVE_DIRS = [
+		...["shousha", "xinsha", "online", "baby", "codename"].flatMap(skin => [
+			`image/styles/${skin}/`,
+			`ui/assets/skill/${skin}/`,
+			`ui/assets/character/${skin}/`,
+		]),
+		"ui/assets/skill/shizhounian/",
+		"ui/assets/lbtn/shousha/",
+	];
+	for (const name of coreCssFiles) {
+		const text = readText(path.posix.join(STYLE_CSS_DIR, name));
+		for (const prefix of EXCLUSIVE_DIRS) {
+			assert.ok(!text.includes(prefix), `${name} 引用了样式专属资源目录 ${prefix}（已随样式包迁移，Core CSS 禁止引用）`);
+		}
+	}
+
+	// F-3：本次迁移的产物自洽——baby 包持有技能外显 CSS 且其 url() 在包内可达
+	const DISPLAY_CSS = "styles/skill-display.css";
+	const babyManifest = readPackManifest("baby");
+	assert.ok(babyManifest.entry.css.includes(DISPLAY_CSS), `baby manifest.entry.css 必须声明 ${DISPLAY_CSS}（技能外显样式随包加载）`);
+	assert.ok(exists(packFile("baby", DISPLAY_CSS)), `baby 包内缺少 ${DISPLAY_CSS}`);
+	const displayDir = path.posix.dirname(DISPLAY_CSS);
+	for (const raw of cssPathRefs(readText(packFile("baby", DISPLAY_CSS)))) {
+		const rel = path.posix.normalize(path.posix.join(displayDir, raw));
+		assert.ok(
+			exists(packFile("baby", rel)) || exists(rel) || exists(`${rel}.png`),
+			`baby ${DISPLAY_CSS} 引用 "${raw}" 在包内与扩展根都不可达（404）`
+		);
+	}
+
+	console.log("F ok：Core CSS 零包内专属引用 + 专属目录前缀禁入 + baby 技能外显 CSS 随包自洽");
+}
+
+console.log("p19-style-resource-boundary: OK（资源根/完整性/绕根清零/包完整性/根残留/Core CSS 边界六类）");

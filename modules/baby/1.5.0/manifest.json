@@ -19,6 +19,7 @@
 			"styles/character.css",
 			"styles/lbtn.css",
 			"styles/skill.css",
+			"styles/skill-display.css",
 			"styles/lbtn-window.css",
 			"styles/skill-window.css"
 		]
