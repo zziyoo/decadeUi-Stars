@@ -2,7 +2,7 @@
 
 > 本文档记录工程当前状态，供后续 Agent / 开发者**快速接手**。每次会话结束前必须更新本文档并提交。
 >
-> 阅读顺序：[README.md](../README.md)（总任务书，一切以它为准）→ 本文档 → [modularization-audit.md](modularization-audit.md)（P0审计报告）。
+> 阅读顺序：本文档 → [modularization-audit.md](modularization-audit.md)（P0审计报告）。根 `README.md` 自 2026-10-03（`371fda2`）起是玩家向扩展说明（与 `docs/extension-readme.md`、上游 README 同一 blob）；原「总任务书」正文见 git 历史 `d8150ed:README.md`。
 
 ---
 
@@ -14,7 +14,7 @@
 | Stars 仓库 | https://github.com/zziyoo/decadeUi-Stars （本仓库，**独立开发仓库，已迁入源码**） |
 | 原版扩展（玩家在用，不动） | `zziyoo/decadeUi`，本地路径 `C:\Users\32360\Desktop\无名杀-win32-x64\resources\app\extension\十周年UI` |
 | 总路线 | P0审计 → P1模块基础设施 → P2公共依赖解耦 → P3十周年Pack → P4移动版Pack → P5下载器 → P6模块管理界面 → P7全部Style → P8 Feature Pack → P9模块化构建 → P10 Release → P11自动更新 → P12回滚 → P13旧版本迁移 → P14全量测试 |
-| 当前阶段 | **P14 最终测试（任务书§51 + §52）—— 工具链完成 + 真机批 1、批 2 已跑完并回填**：批 2（P11-2/4/5、P12-1…4、R5 真机取消）全部通过，并**查出并修掉一个自 P3 就存在的硬缺陷**——启动期"已安装的包"注册不过"内置注册"（台账版本 ≠ 本体版本时样式资源根落回扩展根、整套 CSS 一条都不加载），修复 `40f7933` + 新用例 `tests/p14-boot-installed-override.test.mjs`，真机复核已过（`getModuleBase` 指向 `modules/baby/1.4.4/`）。上一阶段 **P13 旧版本迁移** 代码完成、真机 P13-1/P13-2/P13-3 已过，P13-4 本机不可验。**批 3 也已跑完**（卸载前置检查 → 卸载 → 在线重装整链、身份/国战/斗地主、排除模式）；**剩余**：六套逐套目测重点（2026-09-30 boot 读数缺陷修复后，§八 S-1 六条探针真机全符合 ⇒ CSS 加载层已闭环；未取的是边框档位/聊天赠礼位置/死亡特效图）、手机布局与横屏、联网分支（依赖 P10 建好 Release）、Android/SAF 三条本机不可验；产物**已重建并复验**（`pnpm build` + `verify:release` 均 exit=0，连打两次 9 项产物字节与 sha 一字未变 ⇒ `src==dist==release` 同步）。**遗留的复现性风险**：无 `.gitattributes` + `core.autocrlf=true`，一次 checkout 就能改掉分包 zip 的 sha（本次 baby 包 112079 → 112085 字节，内容未变），**P15 代码级收尾也已完成**（2026-09-30：六套切换契约、online/card-skin 卸载判据、传输层与失败分类缺口、浮层 CSS 不变量泛化，套件 18 → 23，`src/` 零改动）。行尾经用户决定**不动**（不影响日常开发）；本轮实测到它的真实代价：一次 `git checkout` 后重构建，`baby-1.4.2.zip` 从 112085 → 112150 字节（内容一字未动，纯 CRLF/LF），所以上传一律以当次 `dist/release/RELEASE-NOTES.md` 的 9 项 sha 为准。**2026-10-01：进入 P10 发布 —— 版本统一 1.5.0（tag 与上游同号、不带 `-stars` 后缀，两个独立发行物靠扩展身份区分），产物已重建且全门禁通过；Stars 自绘的 `Ctrl+Shift+M` 已删（原版已有的 Alt+1~6 / Ctrl+Shift+C / disableBrowserShortcuts 全留）。详见§四「1.5.0 发布」与§六第 14 条。** 2026-10-01 同日续：**Android 真机数据损坏的三刀已落（D2 目录搬运全等校验、D3 损坏判据、D4 应用内「修复」入口），D5 经复核撤销；套件 26 → 28 全绿、`node --check` 236 ✓、`pnpm build`+`verify:release` ✓。**未 push、未发版** —— 手机恢复包要由 CI 单次构建产出（九项资产同源），见§八 S-8 与 README v1.30。** |
+| 当前阶段 | **P14 最终测试（任务书§51 + §52）—— 工具链完成 + 真机批 1、批 2 已跑完并回填**：批 2（P11-2/4/5、P12-1…4、R5 真机取消）全部通过，并**查出并修掉一个自 P3 就存在的硬缺陷**——启动期"已安装的包"注册不过"内置注册"（台账版本 ≠ 本体版本时样式资源根落回扩展根、整套 CSS 一条都不加载），修复 `40f7933` + 新用例 `tests/p14-boot-installed-override.test.mjs`，真机复核已过（`getModuleBase` 指向 `modules/baby/1.4.4/`）。上一阶段 **P13 旧版本迁移** 代码完成、真机 P13-1/P13-2/P13-3 已过，P13-4 本机不可验。**批 3 也已跑完**（卸载前置检查 → 卸载 → 在线重装整链、身份/国战/斗地主、排除模式）；**剩余**：六套逐套目测重点（2026-09-30 boot 读数缺陷修复后，§八 S-1 六条探针真机全符合 ⇒ CSS 加载层已闭环；未取的是边框档位/聊天赠礼位置/死亡特效图）、手机布局与横屏、联网分支（依赖 P10 建好 Release）、Android/SAF 三条本机不可验；产物**已重建并复验**（`pnpm build` + `verify:release` 均 exit=0，连打两次 9 项产物字节与 sha 一字未变 ⇒ `src==dist==release` 同步）。**遗留的复现性风险**：无 `.gitattributes` + `core.autocrlf=true`，一次 checkout 就能改掉分包 zip 的 sha（本次 baby 包 112079 → 112085 字节，内容未变），**P15 代码级收尾也已完成**（2026-09-30：六套切换契约、online/card-skin 卸载判据、传输层与失败分类缺口、浮层 CSS 不变量泛化，套件 18 → 23，`src/` 零改动）。行尾经用户决定**不动**（不影响日常开发）；本轮实测到它的真实代价：一次 `git checkout` 后重构建，`baby-1.4.2.zip` 从 112085 → 112150 字节（内容一字未动，纯 CRLF/LF），所以上传一律以当次 `dist/release/RELEASE-NOTES.md` 的 9 项 sha 为准。**2026-10-01：进入 P10 发布 —— 版本统一 1.5.0（tag 与上游同号、不带 `-stars` 后缀，两个独立发行物靠扩展身份区分），产物已重建且全门禁通过；Stars 自绘的 `Ctrl+Shift+M` 已删（原版已有的 Alt+1~6 / Ctrl+Shift+C / disableBrowserShortcuts 全留）。详见§四「1.5.0 发布」与§六第 14 条。** 2026-10-01 同日续：**Android 真机数据损坏的三刀已落（D2 目录搬运全等校验、D3 损坏判据、D4 应用内「修复」入口），D5 经复核撤销；套件 26 → 28 全绿、`node --check` 236 ✓、`pnpm build`+`verify:release` ✓。**未 push、未发版** —— 手机恢复包要由 CI 单次构建产出（九项资产同源），见§八 S-8 与 README v1.30。2026-10-03：上游 v1.4.2→v1.5.0 同步经独立复核零遗漏、workflow 对齐与产物重建已落，详见文末「上游同步与复核」节。** |
 
 ## 二、环境备忘（本机关键信息）
 
@@ -79,6 +79,7 @@
 | 2026-10-03 | **移除设置页「模块源地址」入口**（`f7b141f`，用户点名）：本地索引免配置后，本体扩展设置页与自绘配置窗口的该行一并删除（`definitions/misc.js` 定义与注册 + `handlers/module-handlers.js` 整文件 + `config-window.js` 同一行）；运行时保留键与"空值＝内置源"语义，模块管理窗口内仍可改/恢复默认 | `f7b141f` |
 | 2026-10-03 | **发布前清理与最终产物**（用户决定：**覆盖 v1.5.0 资产**）：tmp/ 工具目录 57 项全清（探针/审计/放大工具/本地源夹具，本地源进程已停）；最终门禁全过（30 套 / `node --check` 240 / `pnpm build` / `verify:release` / verify-pack 875-6-17-0-0 / verify:skins 37-0）；9 项资产以 `dist/release/RELEASE-NOTES.md` 为准（整包 `5f4a12345137…`、索引 `475b1b6733a4…`、七包 sha 见说明），上传（`gh release upload v1.5.0 … --clobber`）由用户执行 | 本笔 docs |
 | 2026-10-03 | **整包 ZIP 结构对齐原版手动打包**（修用户实测「导入时中文根目录乱码」）：`zipFullPackage` 条目名不再拼 `<rootName>/` 前缀、直接等于 `dist/` 相对路径（同原版 `cd dist && zip -r … .` 的结构）；`verifyFullPackage` 根位文件/分包清单/release 检查改按根级路径，并新增「顶层包装」「条目集合逐条==distFiles」两道硬校验；P20 整包段改断「无前缀 + 集合逐条相等 + 无 十周年UI-Stars/ 」并加源码级反回归锁（打包脚本里 `${rootName}` 模板串必须 0 处）、P10 期望表根级化并新增「重加根目录」「条目改名」负例 —— 两侧都先 RED 后 GREEN。GBK 与分包 `zipDir` 一字未动：索引 sha `475b1b6733a4…` 与上版逐字节一致 ⇒ 7 包字节未变；真实整包（3416 文件 / 107,577,136 字节 / 新 sha `1e7cfb6dec42…`）经独立原始字节解析：无 十周年UI-Stars/、无额外顶层包装、条目集合与 dist/ 逐条一致、全 ASCII、本地头=中央目录。**Release 上的整包需以当次说明为准重传** | 本笔 fix(P20) |
+| 2026-10-03 | **上游 v1.4.2→v1.5.0 同步（`ee3271f`/`d8150ed`，提交信息为占位 "1"，中间夹过一次 Revert→Reapply 往返）+ 本轮独立复核零遗漏**：窗口法（标签 `v1.4.2..v1.5.0` 共 11 个变更文件逐一对照：5 个字节相同 / 4 个仅身份·键名改造 / 2 个模块化映射且修复在位）+ 全树内容哈希法（上游 3412 文件里 2251 个不同路径 → 2197 个字节相同搬迁 + 54 个改写对应物全部在位），「上游改而 Stars 未动」= 0；`.github/workflows/manual-package.yml` action 版本对齐上游（v5/v6/v5）随本笔补提交；门禁 241/241、31/31、verify:pack 876/6/17/0/0、verify:skins 37/0、`pnpm build` + `verify:release` exit=0；9 项资产以 `dist/release/RELEASE-NOTES.md` 为准（整包 `1924d4b6b7d8…`、索引 `c3a83a033df6…`），**Release 需按当次说明重传** | 本笔 docs + ci |
 
 ## 四、进行中（当前任务指针）
 
@@ -566,7 +567,7 @@
 3. P0 完成前禁止任何目录搬移、文件删除、样式重写（任务书 §61）——P0 已验收通过，该约束解除，但 P1 仍执行"零迁移"原则（任务书 §35）。
 4. ~~Stars 与原版仓库关系待确认~~ **已决策（2026-09-27，用户确认）**：Stars 作为独立仓库开发，原版十周年UI不动，玩家暂时继续使用原版扩展。
 5. ~~原版仓库的 .github CI 未迁入~~ **已迁入（2026-10-01，1.5.0）**：照上游 `build.yml` + `manual-package.yml` 两套改造，构建前加五道门禁、`dist/release/` 不进部署分支、**CI 不建 Release**（详见§四「CI 自动打包」行）。首次 Actions 真实运行仍待验。
-6. **上游漂移风险**：原版仓库（zziyoo/decadeUi）仍在活跃更新，Stars 的迁移快照可能落后。今后同步上游改动时：先 `git -C <原版> log/diff` 确认变更文件，再拷贝并重做键改名转换；禁止直接整目录覆盖（会冲掉 Stars 的模块化改造）。
+6. **上游漂移风险**：原版仓库（zziyoo/decadeUi）仍在活跃更新，Stars 的迁移快照可能落后。今后同步上游改动时：先 `git -C <原版> log/diff` 确认变更文件，再拷贝并重做键改名转换；禁止直接整目录覆盖（会冲掉 Stars 的模块化改造）。2026-10-03 已按此法完成一次同步（v1.4.2→v1.5.0）并做两层独立复核（零遗漏），见文末「上游同步与复核」节。
 7. **本机存在两份同仓库克隆**：`extension/decadeUi-Stars`（纯开发克隆，已落后）与 `extension/十周年UI-Stars`（**游戏实际加载目录，当前开发基准**）。游戏只能加载后者的路径名，因此 P3 起在后者直接开发；前者请 `git pull --ff-only` 后再用，避免两边分叉提交。
 8. **P5 剩余边界（审查轮之后）**：
    - 本体 `game.ensureDirectory` 的"失败只 console.log 不回调"缺陷已在**我们自己的 io 适配层绕开**：桌面端全走 `lib.node.fs` 真实 error callback（自建递归 mkdir 取代 ensureDirectory），非桌面端先 `game.createDir`（有真实 errorCallback）再写文件；`settle()` 保证只落定一次，本体彻底不回调时以 `ioCode=IO_STALL` **reject**（绝不当成功）。未改本体。
@@ -1014,3 +1015,27 @@ F. **手机上装的 Core 是哪一笔**（恢复动作是 QQ 的解压做的，
 - 会话中途一个**并行会话**把本任务未提交的 4 个文件改动 `git stash`（message："P19内置索引WIP(上一会话遗留,资源迁移任务期间暂存)"），已发现并 `stash pop` 恢复。
 - 该 stash→pop 往返在 `core.autocrlf=true` 下把这 4 个文件在工作树写成 CRLF，令 p18 的源码扫描正则（按 LF 编写）失败——已 sed 规范化回 LF（仓库 blob 本就是 LF，提交内容不受影响）。**教训：本仓库并行会话共用一棵工作树时，任何 git stash/checkout 往返都会 CRLF 化文件，测试前应抽查行尾。**
 - 该并行会话还在仓库根留下一个路径为字面量 `$WT` 的 worktree 注册（`十周年UI-Stars/$WT/`），本会话未处理，提请下一个会话注意。
+
+---
+
+## 上游十周年UI v1.4.2→v1.5.0 同步与独立复核（2026-10-03）
+
+> 交代：搬运这笔上游变更的是**上一会话**——`ee3271f`（提交信息占位 "1"），中途被 revert 出 `369e0d3 Revert "1"`、再由 `d8150ed Reapply "1"` 复原；该会话没更新本台账，也把它自述里的 workflow 对齐只留在工作区未提交。本轮（本次会话）不采信该自述，独立复核并收尾。
+
+### 复核方法（两层，证据自持）
+
+1. **窗口法（权威口径）**：上游 `v1.4.2(0a86ae21)..v1.5.0(f22689f0)` 的 `git diff --name-status` = **11 个文件、全为 M**（无增删；已 fetch 复核 origin/main 仍是 `f22689f0`，远端无更新提交）。逐文件把上游 v1.5.0 版与 Stars HEAD 版做归一化 diff：
+   - **5 个字节相同**：`docs/update.md`、`src/features/didYouKnow.txt`、`src/features/welcomeHistory.js`、`src/features/welcomeUpdateHistory.js`、`src/ui/card-utils.js`（出牌信息 `0/infinity` 修复＝事件名前置判断 + try/finally 还原当前事件）。
+   - **4 个仅剩 Stars 身份/键名前缀改造**：`info.json`（version/minNonameVersion 与上游同值）、`src/core/environment.js`（cardsetion 容错表终版 `["indexOf","sourceSkill"]`）、`src/features/equipCopy.js`（仅 `extension_十周年UI-Stars_*` 键差异）、`src/features/welcomeDialog.js`（仅 `decadeUIPath`/存储键差异，国庆文案在位）。
+   - **2 个走模块化映射、修复在位**：`src/overrides/player/animations.js`（`$damagepop` 的 HTML 分支在位，其余为 resourceLoader 改造）；`src/styles/player4.css` → `modules/online/1.5.0/player.css`（`bottom: calc(-1% - 8px)` 在位、无 BOM）。
+2. **全树内容哈希法（兜底）**：上游 f22689f0 全 3412 文件 vs Stars HEAD 3507 文件；上游有而 Stars 同路径无的 2251 个 → **2197 个在 Stars 树内存在字节相同的文件**（原样搬进 `modules/`），**54 个为改写搬运**（6 套样式的 `playerN.css→player.css`、`ui/{character,lbtn,skill}/skins/*.js`×18、`ui/styles/**`×30→各模块 `styles/` 五件），逐一确认对应物在位。**结论：「上游改而 Stars 未动」= 0。**
+
+### 本轮落地
+
+- `.github/workflows/manual-package.yml`：action 版本对齐上游（checkout@v5 / pnpm-action-setup@v6 / setup-node@v5），随本笔补提交；`build.yml` 保持 @v4 与上游 build.yml 一致（判定不搬）。
+- 产物重建：`pnpm build` + `pnpm run verify:release` exit=0，9 项资产 sha 见 `dist/release/RELEASE-NOTES.md`（整包 3417 文件 / 107,579,078 字节 / `1924d4b6b7d8…`；索引 `c3a83a033df6…`；online 包 `95e74b749ad7…`）。自上次上传后经历 P20（整包结构）、P21（baby 包）与本次搬运（online 包等）⇒ **9 项资产全部需重传（用户动作）**。
+- 文档：根 README.md 已在 `371fda2` 换成玩家向扩展说明（与 `docs/extension-readme.md`、上游 README 同一 blob）；原「总任务书」正文只存 git 历史（`d8150ed:README.md`），本台账顶部阅读顺序已同步改写。
+
+### 游戏内目测（一条，可选）
+
+点作者头像看历史更新记录：应含「v1.5.0」与「十月一日 · 万家灯火」两条；已看过 1.5.0 欢迎弹窗的环境不会自动再弹（存储键 `welcomeVersion` 判定），属正常。
