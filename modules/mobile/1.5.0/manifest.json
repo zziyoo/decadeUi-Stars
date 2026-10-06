@@ -1,0 +1,93 @@
+{
+	"schema": 1,
+	"id": "mobile",
+	"name": "移动版样式",
+	"version": "1.5.0",
+	"type": "style",
+	"core": ">=1.5.0",
+	"dependencies": [
+		"core"
+	],
+	"entry": {
+		"js": [
+			"ui/character/skins/shousha.js",
+			"ui/skill/skins/shousha.js",
+			"ui/lbtn/skins/shousha.js"
+		],
+		"css": [
+			"player.css",
+			"styles/character.css",
+			"styles/lbtn.css",
+			"styles/skill.css",
+			"styles/lbtn-window.css",
+			"styles/skill-window.css"
+		]
+	},
+	"deadRefs": [
+		"image/ui/effects/sprites_shadow_lvse.png",
+		"ui/assets/character/shousha/bigdialog.png"
+	],
+	"capabilities": [
+		"player-frame",
+		"lbtn"
+	],
+	"platform": [
+		"desktop",
+		"mobile"
+	],
+	"author": "子右",
+	"resources": [
+		"assets/animation/effect_youxikaishi_shousha.atlas",
+		"assets/animation/effect_youxikaishi_shousha.png",
+		"assets/animation/effect_youxikaishi_shousha.skel",
+		"audio/game_start_shousha.mp3",
+		"image/styles/decade/card_count7.png",
+		"image/styles/shousha/",
+		"image/ui/chain/tie_suo1.png",
+		"image/ui/dialog/chat_bubble_ShouSha.png",
+		"image/ui/effects/sprites_shadow_green1.png",
+		"image/ui/effects/sprites_shadow_orange.png",
+		"image/ui/effects/sprites_shadow_red.png",
+		"image/ui/frame/long1_yan.png",
+		"image/ui/frame/long1_yu.png",
+		"image/ui/frame/long_gold1.png",
+		"image/ui/frame/long_gold2.png",
+		"image/ui/frame/long_silver1.png",
+		"image/ui/frame/long_silver2.png",
+		"image/ui/judge-mark/feichu.png",
+		"image/ui/mask/game_player_mask_gray2.png",
+		"image/ui/mask/turn_over_mask_shousha.png",
+		"image/ui/misc/likai.png",
+		"image/ui/misc/update_bg.png",
+		"ui/assets/character/shousha/",
+		"ui/assets/lbtn/JSJM/",
+		"ui/assets/lbtn/shousha/btn-paixu.png",
+		"ui/assets/lbtn/shousha/button.png",
+		"ui/assets/lbtn/shousha/shezhi.png",
+		"ui/assets/lbtn/shousha/taopao.png",
+		"ui/assets/lbtn/shousha/touxiang.png",
+		"ui/assets/lbtn/shousha/tuichu.png",
+		"ui/assets/lbtn/shousha/tuoguan.png",
+		"ui/assets/lbtn/shousha/tuoguan2.png",
+		"ui/assets/lbtn/shousha/xuanzhe.mp3",
+		"ui/assets/lbtn/shousha/yemian.png",
+		"ui/assets/lbtn/shousha/zidongpaixu.png",
+		"ui/assets/lbtn/uibutton/CZ.png",
+		"ui/assets/lbtn/uibutton/btn-jilu.png",
+		"ui/assets/lbtn/uibutton/btn-paixu.png",
+		"ui/assets/lbtn/uibutton/btn.png",
+		"ui/assets/lbtn/uibutton/btn2.png",
+		"ui/assets/lbtn/uibutton/cardback.png",
+		"ui/assets/lbtn/uibutton/cbtn.png",
+		"ui/assets/lbtn/uibutton/game_btn_bg2.png",
+		"ui/assets/lbtn/uibutton/huanpai2.png",
+		"ui/assets/lbtn/uibutton/liaotian.png",
+		"ui/assets/lbtn/uibutton/paiduiming.png",
+		"ui/assets/lbtn/uibutton/paiduixian.png",
+		"ui/assets/lbtn/uibutton/qipai.png",
+		"ui/assets/lbtn/uibutton/shenfen.png",
+		"ui/assets/lbtn/uibutton/shoupai1.png",
+		"ui/assets/lbtn/uibutton/shousha.png",
+		"ui/assets/skill/shousha/"
+	]
+}

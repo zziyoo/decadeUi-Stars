@@ -1,0 +1,96 @@
+{
+	"schema": 1,
+	"id": "online",
+	"name": "Online样式",
+	"version": "1.5.0",
+	"type": "style",
+	"core": ">=1.5.0",
+	"dependencies": [
+		"core"
+	],
+	"entry": {
+		"js": [
+			"ui/character/skins/online.js",
+			"ui/skill/skins/online.js",
+			"ui/lbtn/skins/online.js"
+		],
+		"css": [
+			"player.css",
+			"styles/character.css",
+			"styles/lbtn.css",
+			"styles/skill.css",
+			"styles/lbtn-window.css",
+			"styles/skill-window.css"
+		]
+	},
+	"deadRefs": [
+		"image/ui/effects/XZ.jpg",
+		"image/ui/effects/KXZ.jpg",
+		"image/styles/decade/border_campOL1.png"
+	],
+	"capabilities": [
+		"player-frame",
+		"lbtn",
+		"online-chat",
+		"online-gift"
+	],
+	"platform": [
+		"desktop",
+		"mobile"
+	],
+	"author": "子右",
+	"resources": [
+		"image/styles/decade/border_campOL2.png",
+		"image/styles/decade/border_campOL3.png",
+		"image/styles/decade/border_campOL4.png",
+		"image/styles/decade/border_campOL5.png",
+		"image/styles/decade/border_diwen.png",
+		"image/styles/decade/shieldOL.png",
+		"image/styles/online/",
+		"image/ui/chain/tiesuo.png",
+		"image/ui/mark/markOL.png",
+		"image/ui/player-bg/bjOL1.png",
+		"ui/assets/character/online/",
+		"ui/assets/character/xinsha/xingxiang0.png",
+		"ui/assets/character/xinsha/xingxiang1.png",
+		"ui/assets/character/xinsha/xingxiang2.png",
+		"ui/assets/character/xinsha/xingxiang3.png",
+		"ui/assets/character/xinsha/xingxiang4.png",
+		"ui/assets/character/xinsha/xingxiang5.png",
+		"ui/assets/lbtn/OL_line/gift/hua.png",
+		"ui/assets/lbtn/OL_line/jilu/gou.png",
+		"ui/assets/lbtn/OL_line/jilu/jianfeng.png",
+		"ui/assets/lbtn/OL_line/jilu/kuang.png",
+		"ui/assets/lbtn/OL_line/jilu/lsbigdialog.png",
+		"ui/assets/lbtn/OL_line/jilu/lsbigdialog2.png",
+		"ui/assets/lbtn/OL_line/talk/btnn1.png",
+		"ui/assets/lbtn/OL_line/talk/btnn2.png",
+		"ui/assets/lbtn/OL_line/talk/talkbg.png",
+		"ui/assets/lbtn/OL_line/uibutton/beijing.png",
+		"ui/assets/lbtn/OL_line/uibutton/caidan.png",
+		"ui/assets/lbtn/OL_line/uibutton/gameanniubuttonsbg.png",
+		"ui/assets/lbtn/OL_line/uibutton/gameview_tool_btn_chat.png",
+		"ui/assets/lbtn/OL_line/uibutton/gameview_tool_btn_prop.png",
+		"ui/assets/lbtn/OL_line/uibutton/gameview_tool_btn_sort.png",
+		"ui/assets/lbtn/OL_line/uibutton/jiluShow.png",
+		"ui/assets/lbtn/OL_line/uibutton/likai.png",
+		"ui/assets/lbtn/OL_line/uibutton/round_info_time_bg.png",
+		"ui/assets/lbtn/OL_line/uibutton/seatui_btns_confirm_2.png",
+		"ui/assets/lbtn/OL_line/uibutton/seatui_btns_ingnore.png",
+		"ui/assets/lbtn/OL_line/uibutton/shezhi.png",
+		"ui/assets/lbtn/OL_line/uibutton/tuoguan_on.png",
+		"ui/assets/skill/online/btnnOL1.png",
+		"ui/assets/skill/online/btnnOL3.png",
+		"ui/assets/skill/online/btnnOL4.png",
+		"ui/assets/skill/online/btnnOL5.png",
+		"ui/assets/skill/online/juexingjiOL.png",
+		"ui/assets/skill/online/mark_dutyOL.png",
+		"ui/assets/skill/online/shop_move_down.png",
+		"ui/assets/skill/online/skillitem_extra_active.png",
+		"ui/assets/skill/online/skillitem_yinyang_1.png",
+		"ui/assets/skill/online/skillitem_yinyang_2.png",
+		"ui/assets/skill/online/skillitem_yinyang_bg.png",
+		"ui/assets/skill/online/skillitem_yinyang_bg_1.png",
+		"ui/assets/skill/online/xiandingjiOL.png"
+	]
+}
