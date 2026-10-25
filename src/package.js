@@ -19,7 +19,7 @@ export const mainpackage = otherInfo => {
 
 	const pack = { ...pkg, ...otherInfo };
 
-	const githubUrl = "https://github.com/zziyoo/decadeUI";
+	const githubUrl = "https://github.com/zziyoo/decadeUi-Stars";
 	const copyHandler = `navigator.clipboard.writeText('${githubUrl}').then(() => alert('已成功复制，粘贴到浏览器打开，部分进不去需要翻墙')).catch(() => alert('复制失败，请手动复制'))`;
 
 	pack.intro = `<a href="javascript:void(0)" onclick="${copyHandler}" style="color: #FFFACD;">点击复制仓库地址</a>`;
