@@ -1041,3 +1041,26 @@ F. **手机上装的 Core 是哪一笔**（恢复动作是 QQ 的解压做的，
 ### 游戏内目测（一条，可选）
 
 点作者头像看历史更新记录：应含「v1.5.0」与「十月一日 · 万家灯火」两条；已看过 1.5.0 欢迎弹窗的环境不会自动再弹（存储键 `welcomeVersion` 判定），属正常。
+
+---
+
+## v1.5.1 CI 红修复：测试面分包版本解耦（2026-10-26）
+
+> 起因：`cea0f22 v1.5.1`（Core 单独 bump，欢迎弹窗/历史记录等 src 改动）触发 CI 六连红——一批测试用 `info.json.version` 拼 `modules/<id>/<版本>/` 磁盘路径，Core 一升就去找不存在的 1.5.1 分包（七个分包仍是 1.5.0）。**设计本意就是 Core 与分包独立版本管理**（运行时按 `modules/installed.json` 台账寻址、builtIn 登记会被已装清单覆盖，`checkCoreRequirement` 的 `>=` 约束下 1.5.0 包配 1.5.1 Core 完全合法），错的只是测试面，不动任何分包。
+
+### 交付
+
+1. **新增 `tests/helpers/packVersion.mjs`**（唯一解析入口）：`packVersion(id)` 依次取 ① `modules/installed.json` 台账版本（与运行时寻址同源）→ ② 盘上 `modules/<id>/<semver>/manifest.json` 最高版（台账未写的过渡态）→ ③ null（门控型 Feature 无磁盘分包，调用方跳过）；**绝不回落 info.json.version**（那正是要修掉的耦合）。另导出 `coreVersion()` 供"模拟启动期 builtIn 登记"场景（运行时 `getModuleSystem` 传的本体版本）。
+2. **六项测试改用上述入口读盘**（builtIn 登记语义保持 Core 版本不动）：p14-capability-drift（磁盘清单核对按模块解析，`checkedOnDisk>=7` 恢复生效）、p15-card-skin-uninstall-roots、p15-online-uninstall-observability（镜像路径）、p15-style-switch-contract（§5 包内容指纹/image 目录）、p16-pack-skin-import-url（stub+真实 import 均指盘上包）、p19-style-resource-boundary（packFile 全部路径）。
+3. **`scripts/build-card-skin-pack.mjs` 同类修复**：VERSION 改为先读 installed.json 的 card-skin 台账版本（--verify 校验盘上现状），首次搬迁的过渡态才回落 info.json 版本新建包。修前 `--verify` 在 Core 1.5.1 下双重红（找不到 `modules/card-skin/1.5.1/` + 台账登记不匹配）。
+4. **同类排查结论（不改）**：`verify-pack.mjs`、`check-skin-imports.mjs`、`build-release.mjs`（按盘上目录发现、逐包取版本）、`build-decade-pack.mjs`（整目录复制）本就版本无关；`migrate-style-assets/packs.mjs`、`rewrite-skin-asset-refs.mjs`、`build-mobile-pack.mjs` 是一次性迁移工具、不在任何门禁中，保留原语义。p10/p13/p2 里读 info.json 的都是合成 fixture 或运行时行为断言，与磁盘分包路径无关。
+
+### 验证（本机工作树，会话期间无并行改动，git status 仅本清单 8 文件）
+
+- `pnpm test` **32/32**；`node scripts/build-card-skin-pack.mjs --verify` ✓（1016 文件/20.50MB 五套齐）。
+- `pnpm run verify:pack`（可达 876/未知缺失 0）、`pnpm run verify:skins`（37/0）、`pnpm build`、`pnpm run verify:release` 全部 exit=0。
+- 产物一致性独立核查（jszip 直读）：整包 `十周年UI-Stars-1.5.1-full.zip`（平铺结构）info=1.5.1、内部台账七包全 1.5.0、`modules/<id>/` 版本目录全 [1.5.0]、内嵌索引 core=1.5.1/latest 全 1.5.0/releaseBase 指 v1.5.1；七个分包 zip manifest=1.5.0/core>=1.5.0；整包与分包内 **0 条 1.5.1 模块路径残留**；索引 7 条 url 逐条命中 dist/release 真实资产。9 项资产 sha 见当次 `dist/release/RELEASE-NOTES.md`（v1.5.1 首次构建，全部需上传）。
+
+### 提交
+
+- 独立 commit：`tests/helpers/packVersion.mjs`（新）+ 六项测试 + `scripts/build-card-skin-pack.mjs` + 本文档；不含任何 src/ 或分包内容改动。

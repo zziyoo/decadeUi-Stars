@@ -29,8 +29,16 @@ const EXPECTED = [
 ];
 
 const MONO_REL = path.join("image", "card-skins");
+const installedPath = path.join(ROOT, "modules", "installed.json");
 const infoVersion = JSON.parse(fs.readFileSync(path.join(ROOT, "info.json"), "utf8")).version;
-const VERSION = infoVersion || "0.0.0";
+/**
+ * 包版本解析次序（Core 与分包独立版本管理后不得再默认同版）：
+ *   1. modules/installed.json 已登记的 card-skin 台账版本（--verify 校验的就是这份盘上现状）；
+ *   2. 没登记（首次搬迁的过渡态）才用 info.json 版本新建包。
+ * 否则 Core 单独 bump 后 --verify 会去找不存在的 modules/card-skin/<新版本>/。
+ */
+const registeredVersion = JSON.parse(fs.readFileSync(installedPath, "utf8"))?.modules?.["card-skin"]?.version;
+const VERSION = registeredVersion || infoVersion || "0.0.0";
 const PACK_REL = path.join("modules", "card-skin", VERSION);
 const PACK_SKINS_REL = path.join(PACK_REL, MONO_REL);
 
@@ -59,7 +67,6 @@ const statSet = abs => {
 };
 
 const manifestPath = path.join(ROOT, PACK_REL, "manifest.json");
-const installedPath = path.join(ROOT, "modules", "installed.json");
 
 // ------------------------------------------------------------------ 幂等判定：已搬过就直接进校验
 

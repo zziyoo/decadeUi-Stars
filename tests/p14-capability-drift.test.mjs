@@ -12,16 +12,18 @@
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import { packVersion, coreVersion } from "./helpers/packVersion.mjs";
 
 globalThis.decadeUIName = "十周年UI-Stars";
 
 const { createModuleRegistry } = await import("../src/core/registry.js");
 const { registerBuiltInModules } = await import("../src/core/builtInModules.js");
 
-/** 分包版本取自 info.json（单一真相）——bump 版本时不必再改这份用例 */
-const PACK_VERSION = JSON.parse(fs.readFileSync("info.json", "utf8")).version;
+// builtIn 登记与运行时同源：启动期 getModuleSystem 传的就是扩展本体版本（info.json）；
+// 随后 registerInstalledModules 会用 installed.json 的台账版本覆盖它。分包的磁盘
+// 版本与 Core 独立（v1.5.1 起不再同步 bump），读盘必须按模块各自解析。
 const registry = createModuleRegistry();
-registerBuiltInModules(registry, { version: PACK_VERSION });
+registerBuiltInModules(registry, { version: coreVersion() });
 
 const declared = registry.list().filter(item => item?.manifest?.type === "style" || item?.manifest?.type === "feature");
 assert.ok(declared.length >= 8, `注册表里只拿到 ${declared.length} 个模块，判据无从对比`);
@@ -29,8 +31,9 @@ assert.ok(declared.length >= 8, `注册表里只拿到 ${declared.length} 个模
 let checkedOnDisk = 0;
 for (const entry of declared) {
 	const { manifest } = entry;
-	const file = `modules/${manifest.id}/${PACK_VERSION}/manifest.json`;
-	if (!fs.existsSync(file)) continue;   // 门控型（pack:false）没有磁盘清单，跳过
+	const installed = packVersion(manifest.id);
+	if (!installed) continue;   // 门控型（pack:false）没有磁盘分包，跳过
+	const file = `modules/${manifest.id}/${installed}/manifest.json`;
 	checkedOnDisk++;
 	const packed = JSON.parse(fs.readFileSync(file, "utf8"));
 	const want = [...(manifest.capabilities ?? [])].sort();

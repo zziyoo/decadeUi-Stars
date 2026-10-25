@@ -14,6 +14,7 @@
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import { packVersion } from "./helpers/packVersion.mjs";
 
 globalThis.decadeUIName = "十周年UI-Stars";
 const ROOT = "file:///ext/extension/十周年UI-Stars/";
@@ -35,7 +36,11 @@ const {
 } = await import("../src/config/utils.js");
 
 const { registry, moduleManager, resourceLoader } = getModuleSystem();
-const packManifest = JSON.parse(fs.readFileSync(`modules/card-skin/${JSON.parse(fs.readFileSync("info.json", "utf8")).version}/manifest.json`, "utf8"));
+// 卡面包版本与 Core 独立（installed.json 台账为准，运行时寻址同源）——
+// 读盘清单不得再用 info.json.version 拼路径
+const INSTALLED_CARD_SKIN = packVersion("card-skin");
+assert.ok(INSTALLED_CARD_SKIN, "card-skin 在盘上没有分包：modules/card-skin/<version>/manifest.json 不存在");
+const packManifest = JSON.parse(fs.readFileSync(`modules/card-skin/${INSTALLED_CARD_SKIN}/manifest.json`, "utf8"));
 const BUILTIN_KEYS = cardSkinPresets.map(skin => skin.key);
 
 // ── 1. 内置五套的名单与"内置判定"必须同源（判错就会拿错根） ───────────────────

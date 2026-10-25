@@ -18,6 +18,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import { packVersion } from "./helpers/packVersion.mjs";
 
 globalThis.decadeUIName = "十周年UI-Stars";
 globalThis.window = { decadeUIName: "十周年UI-Stars", decadeUIPath: "file:///ext/extension/十周年UI-Stars/" };
@@ -36,8 +37,13 @@ const { createResourceLoader } = await import("../src/core/resourceLoader.js");
 const { registerBuiltInModules } = await import("../src/core/builtInModules.js");
 const { normalizeManifest } = await import("../src/core/manifest.js");
 
-/** 分包版本取自 info.json（单一真相）——bump 版本时不必再改这份用例 */
+/** builtIn 登记与运行时同源用 Core 版本（info.json）；分包磁盘路径另走 installed.json 台账解析 */
 const CORE_VERSION = JSON.parse(fs.readFileSync("info.json", "utf8")).version;
+/** 各分包盘上真实版本（与 Core 独立管理：Core bump 后分包可以仍在旧版） */
+const INSTALLED = Object.fromEntries(["decade", "mobile", "yjcm", "online", "baby", "codename"].map(id => [id, packVersion(id)]));
+for (const [id, installed] of Object.entries(INSTALLED)) {
+	assert.ok(installed, `${id} 在盘上没有分包：modules/${id}/<version>/ 不存在`);
+}
 const SIX = ["decade", "mobile", "yjcm", "online", "baby", "codename"];
 
 // ── 1. 切换的生命周期：只写配置，别的什么都不做 ────────────────────────────
@@ -160,7 +166,7 @@ function packManifest(id, version) {
 	for (const rel of cssFiles) {
 		const seen = new Map();
 		for (const id of SIX) {
-			const file = path.join("modules", id, CORE_VERSION, rel);
+			const file = path.join("modules", id, INSTALLED[id], rel);
 			assert.ok(fs.existsSync(file), `${file} 不存在：六套都应自带 ${rel}（包内 entry.css 声明了它）`);
 			const hex = digest(file);
 			assert.ok(!seen.has(hex), `${rel} 在 ${seen.get(hex)} 与 ${id} 两包里内容完全相同 —— 搬迁被覆盖了？`);
@@ -170,7 +176,7 @@ function packManifest(id, version) {
 	// image 目录：六套都必须有自有图片（资源热插拔后 mobile 也持有 shousha 系专属图，
 	// 旧判据"mobile 是纯 CSS 变体、image 应为空"已随资源迁移作废），且目录指纹互不相同
 	const fingerprints = SIX.map(id => {
-		const dir = path.join("modules", id, CORE_VERSION, "image");
+		const dir = path.join("modules", id, INSTALLED[id], "image");
 		const files = fs.existsSync(dir) ? [...fs.readdirSync(dir, { recursive: true })].map(String).filter(rel => fs.statSync(path.join(dir, rel)).isFile()) : [];
 		return [id, files.length, crypto.createHash("sha256").update(files.map(rel => rel + digest(path.join(dir, rel))).sort().join("|")).digest("hex")];
 	});

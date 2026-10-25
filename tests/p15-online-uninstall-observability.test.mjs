@@ -15,6 +15,7 @@
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import { packVersion } from "./helpers/packVersion.mjs";
 
 globalThis.decadeUIName = "十周年UI-Stars";
 globalThis.window = { decadeUIName: "十周年UI-Stars", decadeUIPath: "file:///ext/extension/十周年UI-Stars/" };
@@ -167,13 +168,15 @@ assert.notEqual(
 	assert.match(fn, /decadeUIPath \+ `image\/styles\/decade\/dead_\$\{identity\}\.png`/, "共享 decade dead_ 族必须继续走扩展根");
 
 	// 盘面：样式专属死亡图已迁入包（根目录不再提供），共享 decade 族仍在根
-	const PACK_VERSION = JSON.parse(fs.readFileSync("info.json", "utf8")).version;
+	// （分包版本按模块从 installed.json 台账解析——与 Core 版本独立，不再读 info.json）
 	for (const [id, moved] of [
 		["online", "image/styles/online/dead4_dizhu.png"],
 		["baby", "image/styles/baby/dead3_dizhu.png"],
 	]) {
+		const installed = packVersion(id);
+		assert.ok(installed, `${id} 在盘上没有分包，镜像路径无从核对`);
 		assert.ok(!fs.existsSync(moved), `${moved} 已迁入样式包，不得再从扩展根提供（否则卸包后仍能偷读）`);
-		assert.ok(fs.existsSync(`modules/${id}/${PACK_VERSION}/${moved}`), `${moved} 必须随样式包可达（镜像路径）`);
+		assert.ok(fs.existsSync(`modules/${id}/${installed}/${moved}`), `${moved} 必须随样式包可达（镜像路径）`);
 	}
 	assert.ok(fs.existsSync("image/styles/decade/dead_bZhu.png"), "共享 decade dead_ 族必须留根（卸载任何样式都不得牵连）");
 }

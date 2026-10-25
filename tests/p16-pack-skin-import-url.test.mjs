@@ -21,9 +21,13 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import { pathToFileURL } from "node:url";
 import { createResourceLoader } from "../src/core/resourceLoader.js";
+import { packVersion } from "./helpers/packVersion.mjs";
 
-/** 真机形状：lib.assetURL 为空串 ⇒ decadeUIPath 是相对串 */
-const PACK_VERSION = JSON.parse(fs.readFileSync("info.json", "utf8")).version;
+/** 真机形状：lib.assetURL 为空串 ⇒ decadeUIPath 是相对串。
+ * 版本取盘上真实安装的 yjcm 分包（installed.json 台账）——与 Core 版本独立管理，
+ * 不能再用 info.json.version 拼包路径（否则 Core 一 bump 就 import 不存在的目录） */
+const PACK_VERSION = packVersion("yjcm");
+assert.ok(PACK_VERSION, "yjcm 在盘上没有分包：modules/yjcm/<version>/ 不存在");
 
 /**
  * 布局无关地复刻真机形状。`decadeUIPath` = 「从文档根到扩展目录」的相对串，

@@ -23,10 +23,16 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { findMissingResources, validateManifest } from "../src/core/manifest.js";
+import { packVersion } from "./helpers/packVersion.mjs";
 
-const VERSION = JSON.parse(fs.readFileSync("info.json", "utf8")).version;
 const SIX = ["decade", "mobile", "yjcm", "online", "baby", "codename"];
-const packFile = (id, rel) => path.join("modules", id, VERSION, rel);
+// 分包版本按模块从 installed.json 台账解析（与 Core 版本独立管理）——
+// 用 info.json.version 拼包路径会在 Core 单独 bump 后指到不存在的目录
+const INSTALLED = Object.fromEntries(SIX.map(id => [id, packVersion(id)]));
+for (const [id, installed] of Object.entries(INSTALLED)) {
+	assert.ok(installed, `${id} 在盘上没有分包：modules/${id}/<version>/ 不存在`);
+}
+const packFile = (id, rel) => path.join("modules", id, INSTALLED[id], rel);
 const readPackManifest = id => JSON.parse(fs.readFileSync(packFile(id, "manifest.json"), "utf8"));
 const exists = rel => fs.existsSync(rel);
 const readText = rel => fs.readFileSync(rel, "utf8");
