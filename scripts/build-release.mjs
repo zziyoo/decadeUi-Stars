@@ -16,7 +16,7 @@
  *     2026-10-03 修订：曾人为包一层 `<扩展名>/` 中文根目录，导入端按原始字节解析条目名时
  *     该层显示为乱码 ⇒ 取消前缀；真实中文路径照旧按 GBK 写名字节（见 encodeZipFileName）。
  *   - Lite Package（`<扩展名>-<版本>-lite.zip`）：次完整包，保留本体与共享资源，
- *     modules/ 仅携带默认下载索引与空安装记录，七个可选分包由玩家按需安装。
+ *     modules/ 仅携带默认下载索引，七个可选分包由玩家按需安装；不覆盖已有安装记录。
  *   - `RELEASE-NOTES.md`：Release 说明草稿 + 上传清单（每个资产的字节数与 sha256）。
  *
  * P19 追加：同一份索引对象输出三处——`dist/release/`（Release 资产）、
@@ -49,8 +49,6 @@ const RUNTIME_INDEX_PATH = path.join(DIST_DIR, "modules", INDEX_FILE);
 /** 开发态运行时内置索引：游戏直接加载仓库根源码，扩展根就是仓库根（P19，已 gitignore） */
 const DEV_INDEX_PATH = path.join(MODULES_DIR, INDEX_FILE);
 const NOTES_FILE = "RELEASE-NOTES.md";
-const INSTALLED_FILE = "modules/installed.json";
-const EMPTY_INSTALLED = JSON.stringify({ schema: 1, modules: {} }, null, "\t") + "\n";
 const CORE_ID = "core";
 const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/;
 /** zip 条目时间戳固定为 ZIP 纪元：否则同样内容每次构建摘要都变，索引无法做差异比对 */
@@ -194,7 +192,7 @@ export async function zipFullPackage(input) {
 	return zipExtensionPackage(input);
 }
 
-/** 次完整包：只在 ZIP 内替换安装记录，不改动供整包与分支部署使用的 dist/。 */
+/** 次完整包不附带模块与安装记录，覆盖更新时保留玩家自选模块；不改动 dist/。 */
 export async function zipLitePackage(input) {
 	return zipExtensionPackage({ ...input, lite: true });
 }
@@ -202,7 +200,7 @@ export async function zipLitePackage(input) {
 function packageFiles(distDir, lite) {
 	const names = distFiles(distDir);
 	if (!lite) return names;
-	return [...names.filter(rel => !rel.startsWith("modules/") || rel === `modules/${INDEX_FILE}`), INSTALLED_FILE].sort();
+	return names.filter(rel => !rel.startsWith("modules/") || rel === `modules/${INDEX_FILE}`);
 }
 
 async function zipExtensionPackage({ distDir = DIST_DIR, outZip, lite = false }) {
@@ -212,8 +210,7 @@ async function zipExtensionPackage({ distDir = DIST_DIR, outZip, lite = false })
 
 	const zip = new JSZip();
 	for (const rel of names) {
-		const content = lite && rel === INSTALLED_FILE ? EMPTY_INSTALLED : fs.readFileSync(path.join(distDir, rel));
-		zip.file(rel, content, { date: FIXED_DATE, createFolders: false });
+		zip.file(rel, fs.readFileSync(path.join(distDir, rel)), { date: FIXED_DATE, createFolders: false });
 	}
 	const buffer = await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE", compressionOptions: { level: 9 }, encodeFileName: encodeZipFileName });
 	fs.mkdirSync(path.dirname(outAbs), { recursive: true });
@@ -243,7 +240,7 @@ export function distFiles(distDir = DIST_DIR, excludeAbs = null) {
 export function buildReleaseNotes({ tag, name, version, coreVersion, index, packs, full, lite, indexAsset }) {
 	const rows = [
 		`| \`${full.file}\` | ${full.bytes} | \`${full.sha256}\` | 整份扩展（Core + 全部包），解压到 \`resources/app/extension/${name}/\` 即用（包内条目＝dist/ 相对路径，同原版手动打包） |`,
-		`| \`${lite.file}\` | ${lite.bytes} | \`${lite.sha256}\` | 次完整包（本体 + 共享资源 + 模块索引，不含七个可选分包），安装记录为空，分包可在游戏内按需安装 |`,
+		`| \`${lite.file}\` | ${lite.bytes} | \`${lite.sha256}\` | 次完整包（本体 + 共享资源 + 模块索引，不含七个可选分包），覆盖更新保留自选模块及安装记录，分包可在游戏内按需安装 |`,
 		`| \`${indexAsset.file}\` | ${indexAsset.bytes} | \`${indexAsset.sha256}\` | 模块索引（Release 远程索引）。整包内已内置同一份作默认模块源；这份供自定义模块源与外部客户端使用，**必须**上传 |`,
 		...packs.map(pack => `| \`${pack.zip.file}\` | ${pack.zip.bytes} | \`${pack.zip.sha256}\` | ${pack.id}@${pack.version} 分包（${pack.manifest.type}） |`),
 	];
@@ -266,6 +263,7 @@ export function buildReleaseNotes({ tag, name, version, coreVersion, index, pack
 		"3. 次完整包中的七个可选分包均未安装，进入游戏后可在模块管理窗口按需下载安装。",
 		"",
 		"从整包切换到次完整包时，请解压到干净的扩展目录；覆盖旧目录不会自动删除已有分包。",
+		"以后用次完整包覆盖更新本体时，会保留你已自行安装的模块与安装记录，无需重新安装或删除分包。",
 		"",
 		"整包不含仓库内部文档（总任务书、交接台账、P0 审计报告），原版的对外文档（extension-readme、各类 API 说明）照旧随包发布。",
 		"",
@@ -325,7 +323,7 @@ async function verifyExtensionPackage({ zipPath, packs = [], distDir = DIST_DIR,
 		die(`整包全部条目都包在 ${tops[0]}/ 之下，而 dist/ 里没有这一层（整包条目必须直接等于 dist/ 的相对路径，与原版手动打包同构）`);
 	}
 
-	for (const rel of ["info.json", "extension.js", `modules/${INDEX_FILE}`, ...(lite ? [INSTALLED_FILE] : [])]) {
+	for (const rel of ["info.json", "extension.js", `modules/${INDEX_FILE}`]) {
 		if (!names.includes(rel)) die(`${label}缺少根位文件 ${rel}`);
 	}
 	for (const pack of lite ? [] : packs) {
@@ -334,10 +332,9 @@ async function verifyExtensionPackage({ zipPath, packs = [], distDir = DIST_DIR,
 	}
 	if (names.some(name => name.startsWith(`${RELEASE_SUBDIR}/`))) die(`整包不得把 ${RELEASE_SUBDIR}/ 打进去（那是分包产物）`);
 	if (lite) {
-		if (names.some(name => name.startsWith("modules/") && name !== `modules/${INDEX_FILE}` && name !== INSTALLED_FILE)) {
-			die("次完整包不得携带分包目录或模块安装残留");
+		if (names.some(name => name.startsWith("modules/") && name !== `modules/${INDEX_FILE}`)) {
+			die("次完整包不得携带分包目录、安装记录或模块安装残留");
 		}
-		if (await zip.file(INSTALLED_FILE).async("string") !== EMPTY_INSTALLED) die("次完整包的安装记录必须为空（schema: 1，modules: {}）");
 		const indexBytes = await zip.file(`modules/${INDEX_FILE}`).async("nodebuffer");
 		if (!indexBytes.equals(fs.readFileSync(path.join(distDir, "modules", INDEX_FILE)))) die("次完整包的模块索引与 dist/modules 不一致");
 	}

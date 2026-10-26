@@ -1,10 +1,11 @@
-/** 次完整包必须保留本体与下载索引，且不能携带可选模块或虚假的安装记录。 */
+/** 次完整包必须保留本体与下载索引，且不能携带可选模块或覆盖玩家的安装记录。 */
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import JSZip from "jszip";
 import * as release from "../scripts/build-release.mjs";
+import { createPackageInstaller } from "../src/core/packageInstaller.js";
 
 const sandbox = fs.mkdtempSync(path.join(os.tmpdir(), "stars-lite-"));
 const distDir = path.join(sandbox, "dist");
@@ -36,12 +37,29 @@ try {
 	const names = Object.keys(zip.files).filter(name => !zip.files[name].dir).sort();
 	assert.deepEqual(names, [
 		"docs/extension-readme.md", "extension.js", "image/卡牌/共享.png", "info.json",
-		"modules/installed.json", "modules/module-index.json", "src/styles/base.css",
+		"modules/module-index.json", "src/styles/base.css",
 	], "次完整包只保留本体、共享资源及模块管理元数据，不携带任何版本的七个模块");
-	for (const rel of names.filter(name => name !== "modules/installed.json")) {
+	for (const rel of names) {
 		assert.deepEqual(await zip.file(rel).async("nodebuffer"), fs.readFileSync(path.join(distDir, rel)), `本体文件不得改写：${rel}`);
 	}
-	assert.deepEqual(JSON.parse(await zip.file("modules/installed.json").async("string")), { schema: 1, modules: {} });
+	assert.equal(zip.file("modules/installed.json"), null, "次完整包不得覆盖玩家的安装记录");
+	const installer = createPackageInstaller({ io: { readText: async rel => zip.file(rel)?.async("string") ?? null } });
+	const state = await installer.readInstalled();
+	assert.equal(state.ok, true);
+	assert.deepEqual(state.data, { schema: 1, modules: {} }, "全新安装时文件缺失应被安装器视为空记录");
+	// 把真实 ZIP 覆盖解压到已装有一个自选模块的目录，安装记录与自选资源必须保留。
+	const upgradeDir = path.join(sandbox, "upgrade");
+	fs.mkdirSync(path.join(upgradeDir, "modules", "mobile", "1.5.0"), { recursive: true });
+	const selected = JSON.stringify({ schema: 1, modules: { mobile: { version: "1.5.0" } } });
+	fs.writeFileSync(path.join(upgradeDir, "modules", "installed.json"), selected);
+	fs.writeFileSync(path.join(upgradeDir, "modules", "mobile", "1.5.0", "player.css"), "selected style\n");
+	for (const rel of names) {
+		const target = path.join(upgradeDir, rel);
+		fs.mkdirSync(path.dirname(target), { recursive: true });
+		fs.writeFileSync(target, await zip.file(rel).async("nodebuffer"));
+	}
+	assert.equal(fs.readFileSync(path.join(upgradeDir, "modules", "installed.json"), "utf8"), selected);
+	assert.equal(fs.readFileSync(path.join(upgradeDir, "modules", "mobile", "1.5.0", "player.css"), "utf8"), "selected style\n");
 	assert.equal(fs.readFileSync(path.join(distDir, "modules/installed.json"), "utf8"), installed, "不能改动 dist 的整包安装记录");
 	assert.ok(fs.existsSync(path.join(distDir, "modules/decade/1.5.0/manifest.json")), "不能删除 dist 的整包模块");
 	const again = await release.zipLitePackage({ distDir, outZip: path.join(distDir, "release", "again.zip") });
