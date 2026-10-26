@@ -3,7 +3,7 @@ name: Manual Package
 # 与上游十周年UI 的 manual-package.yml 同形：手动触发或在 issue 里发 `/package` 评论，
 # 构建后把产物作为**工作流 artifact** 上传（不是 GitHub Release —— 建 Release 与传资产
 # 仍然是人的动作，这样 CI 不会碰到已发布的版本）。
-# Stars 的差别：dist/release/ 的 10 项发布资产（整包 + 七个分包 + 索引 + 说明）
+# Stars 的差别：dist/release/ 的 11 项发布文件（整包 + 次完整包 + 七个分包 + 索引 + 说明）
 # **每项一个独立 Artifact**（upload-artifact v7 + archive:false，单文件上传时 artifact
 # 名就是文件名，下载直接得到原始文件，不再有"总 Artifact 再套一层 ZIP"的二次包装），
 # 并把 sha256 清单与各 Artifact 的下载链接写进运行摘要，照着核对即可。
@@ -71,8 +71,13 @@ jobs:
       - name: Read version
         id: version
         run: |
-          VERSION=$(node -e "process.stdout.write(JSON.parse(require('fs').readFileSync('dist/info.json','utf8')).version)")
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const info = JSON.parse(fs.readFileSync('dist/info.json', 'utf8'));
+          const index = JSON.parse(fs.readFileSync('dist/release/module-index.json', 'utf8'));
+          const outputs = { version: info.version, ...Object.fromEntries(Object.entries(index.modules).map(([id, entry]) => [id, entry.url])) };
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, Object.entries(outputs).map(([key, value]) => `${key}=${value}`).join('\n') + '\n');
+          NODE
 
       - name: Check build output
         env:
@@ -83,19 +88,26 @@ jobs:
           test -d dist/src
           test -d dist/ui
           node -e "const i=JSON.parse(require('fs').readFileSync('dist/info.json','utf8')); if(i.version!==process.env.VERSION) process.exit(1)"
-          # 9 项发布资产齐不齐：整包 + 索引 + 七个分包
+          # 本体版本与分包版本独立：七个分包的实际文件名以已校验的索引为准。
           test -f "dist/release/十周年UI-Stars-${VERSION}-full.zip"
+          test -f "dist/release/十周年UI-Stars-${VERSION}-lite.zip"
           test -f dist/release/module-index.json
-          for id in baby card-skin codename decade mobile online yjcm; do
-            test -f "dist/release/${id}-${VERSION}.zip" || { echo "缺 ${id}-${VERSION}.zip"; exit 1; }
-          done
-          # 目录里是 9 项发布资产 + 1 份 RELEASE-NOTES.md（说明文件也上传，方便对照 sha）
-          node -e "const fs=require('fs');const n=fs.readdirSync('dist/release').length; if(n!==10){console.error('dist/release 应为 10 项（9 资产 + 说明），实际 '+n); process.exit(1)}"
+          test -f dist/release/RELEASE-NOTES.md
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const index = JSON.parse(fs.readFileSync('dist/release/module-index.json', 'utf8'));
+          for (const entry of Object.values(index.modules)) {
+            if (!fs.existsSync('dist/release/' + entry.url)) throw new Error('缺少分包 ' + entry.url);
+          }
+          const expected = Object.keys(index.modules).length + 4;
+          const actual = fs.readdirSync('dist/release').length;
+          if (actual !== expected) throw new Error(`dist/release 应为 ${expected} 项，实际 ${actual}`);
+          NODE
           # 内置默认模块索引（P19）：运行时文件必须随 dist 发布，整包才会带上它
           test -f dist/modules/module-index.json
           cmp -s dist/release/module-index.json dist/modules/module-index.json || { echo "dist/modules 与 dist/release 的 module-index.json 不一致"; exit 1; }
 
-      # 以下 10 个上传步骤：一个最终文件 = 一个独立 Artifact。
+      # 以下 11 个上传步骤：一个最终文件 = 一个独立 Artifact。
       # upload-artifact v7 的 archive:false 只收单文件，且 artifact 名直接取文件名
       # （name 参数会被忽略），所以下载得到的就是 build-release.mjs 的原始产物本身。
       - name: Upload full package
@@ -106,11 +118,20 @@ jobs:
           if-no-files-found: error
           archive: false
 
+      - name: Upload lite package (without optional modules)
+        id: up-lite
+        uses: actions/upload-artifact@v7
+        with:
+          path: dist/release/十周年UI-Stars-${{ steps.version.outputs.version }}-lite.zip
+          if-no-files-found: error
+          retention-days: 30
+          archive: false
+
       - name: Upload module baby
         id: up-baby
         uses: actions/upload-artifact@v7
         with:
-          path: dist/release/baby-${{ steps.version.outputs.version }}.zip
+          path: dist/release/${{ steps.version.outputs.baby }}
           if-no-files-found: error
           archive: false
 
@@ -118,7 +139,7 @@ jobs:
         id: up-card-skin
         uses: actions/upload-artifact@v7
         with:
-          path: dist/release/card-skin-${{ steps.version.outputs.version }}.zip
+          path: dist/release/${{ steps.version.outputs.card-skin }}
           if-no-files-found: error
           archive: false
 
@@ -126,7 +147,7 @@ jobs:
         id: up-codename
         uses: actions/upload-artifact@v7
         with:
-          path: dist/release/codename-${{ steps.version.outputs.version }}.zip
+          path: dist/release/${{ steps.version.outputs.codename }}
           if-no-files-found: error
           archive: false
 
@@ -134,7 +155,7 @@ jobs:
         id: up-decade
         uses: actions/upload-artifact@v7
         with:
-          path: dist/release/decade-${{ steps.version.outputs.version }}.zip
+          path: dist/release/${{ steps.version.outputs.decade }}
           if-no-files-found: error
           archive: false
 
@@ -142,7 +163,7 @@ jobs:
         id: up-mobile
         uses: actions/upload-artifact@v7
         with:
-          path: dist/release/mobile-${{ steps.version.outputs.version }}.zip
+          path: dist/release/${{ steps.version.outputs.mobile }}
           if-no-files-found: error
           archive: false
 
@@ -150,7 +171,7 @@ jobs:
         id: up-online
         uses: actions/upload-artifact@v7
         with:
-          path: dist/release/online-${{ steps.version.outputs.version }}.zip
+          path: dist/release/${{ steps.version.outputs.online }}
           if-no-files-found: error
           archive: false
 
@@ -158,7 +179,7 @@ jobs:
         id: up-yjcm
         uses: actions/upload-artifact@v7
         with:
-          path: dist/release/yjcm-${{ steps.version.outputs.version }}.zip
+          path: dist/release/${{ steps.version.outputs.yjcm }}
           if-no-files-found: error
           archive: false
 
@@ -182,6 +203,14 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.version }}
           URL_FULL: ${{ steps.up-full.outputs.artifact-url }}
+          URL_LITE: ${{ steps.up-lite.outputs.artifact-url }}
+          FILE_BABY: ${{ steps.version.outputs.baby }}
+          FILE_CARD_SKIN: ${{ steps.version.outputs.card-skin }}
+          FILE_CODENAME: ${{ steps.version.outputs.codename }}
+          FILE_DECADE: ${{ steps.version.outputs.decade }}
+          FILE_MOBILE: ${{ steps.version.outputs.mobile }}
+          FILE_ONLINE: ${{ steps.version.outputs.online }}
+          FILE_YJCM: ${{ steps.version.outputs.yjcm }}
           URL_BABY: ${{ steps.up-baby.outputs.artifact-url }}
           URL_CARD_SKIN: ${{ steps.up-card-skin.outputs.artifact-url }}
           URL_CODENAME: ${{ steps.up-codename.outputs.artifact-url }}
@@ -195,13 +224,14 @@ jobs:
           url_for() {
             case "$1" in
               "十周年UI-Stars-${VERSION}-full.zip") printf '%s' "$URL_FULL" ;;
-              "baby-${VERSION}.zip") printf '%s' "$URL_BABY" ;;
-              "card-skin-${VERSION}.zip") printf '%s' "$URL_CARD_SKIN" ;;
-              "codename-${VERSION}.zip") printf '%s' "$URL_CODENAME" ;;
-              "decade-${VERSION}.zip") printf '%s' "$URL_DECADE" ;;
-              "mobile-${VERSION}.zip") printf '%s' "$URL_MOBILE" ;;
-              "online-${VERSION}.zip") printf '%s' "$URL_ONLINE" ;;
-              "yjcm-${VERSION}.zip") printf '%s' "$URL_YJCM" ;;
+              "十周年UI-Stars-${VERSION}-lite.zip") printf '%s' "$URL_LITE" ;;
+              "$FILE_BABY") printf '%s' "$URL_BABY" ;;
+              "$FILE_CARD_SKIN") printf '%s' "$URL_CARD_SKIN" ;;
+              "$FILE_CODENAME") printf '%s' "$URL_CODENAME" ;;
+              "$FILE_DECADE") printf '%s' "$URL_DECADE" ;;
+              "$FILE_MOBILE") printf '%s' "$URL_MOBILE" ;;
+              "$FILE_ONLINE") printf '%s' "$URL_ONLINE" ;;
+              "$FILE_YJCM") printf '%s' "$URL_YJCM" ;;
               "module-index.json") printf '%s' "$URL_INDEX" ;;
               "RELEASE-NOTES.md") printf '%s' "$URL_NOTES" ;;
               *) printf '' ;;
@@ -210,7 +240,8 @@ jobs:
           {
             echo "## 十周年UI-Stars ${{ steps.version.outputs.version }} 打包完成"
             echo
-            echo "共 **10 个独立 Artifact**：每个最终文件一个，不再有总 Artifact 的 ZIP 二次包装。"
+            echo "共 **11 个独立 Artifact**：每个最终文件一个，不再有总 Artifact 的 ZIP 二次包装。"
+            echo "按需安装模块请下载 [次完整包（lite）](${URL_LITE})：本体与共享资源齐全，七个可选分包均未预装。"
             echo "每个 ZIP Artifact 都是 \`build-release.mjs\` 生成的最终发布 ZIP，artifact 名即文件名，下载直接得到原始文件（upload-artifact v7 \`archive: false\`），无需解包。"
             echo
             echo "产物为**工作流 artifact**（未创建 Release）。下载后逐项核对 sha256 再上传到 Release。"

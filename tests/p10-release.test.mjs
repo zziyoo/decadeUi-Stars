@@ -181,6 +181,7 @@ const packs = [
 
 {
 	const full = { file: "十周年UI-Stars-1.4.2-full.zip", bytes: 12345678, sha256: "a".repeat(64) };
+	const lite = { file: "十周年UI-Stars-1.4.2-lite.zip", bytes: 123456, sha256: "d".repeat(64) };
 	const indexAsset = { file: "module-index.json", bytes: 2452, sha256: "b".repeat(64) };
 	const zipped = [{ ...packs[0], zip: { file: "baby-1.4.2.zip", bytes: 112079, sha256: "c".repeat(64) } }];
 	const notes = mod.buildReleaseNotes({
@@ -191,6 +192,7 @@ const packs = [
 		index: { schema: 1, core: { version: "1.4.2", latest: "1.4.2" }, modules: { baby: {} } },
 		packs: zipped,
 		full,
+		lite,
 		indexAsset,
 	});
 
@@ -198,7 +200,7 @@ const packs = [
 	assert.match(notes, /^# 十周年UI-Stars v1\.4\.2\b/, "标题行用的就是不带后缀的 tag");
 	assert.match(notes, /Core 随扩展本体发布/);
 	assert.match(notes, /https:\/\/github\.com\/zziyoo\/decadeUi-Stars\/releases\/download\/v1\.4\.2\/module-index\.json/);
-	for (const asset of [full, indexAsset, zipped[0].zip]) {
+	for (const asset of [full, lite, indexAsset, zipped[0].zip]) {
 		assert.ok(notes.includes(asset.file), `清单必须列出 ${asset.file}`);
 		assert.ok(notes.includes(asset.sha256), `清单必须给出 ${asset.file} 的 sha256`);
 		assert.ok(notes.includes(String(asset.bytes)), `清单必须给出 ${asset.file} 的字节数`);

@@ -66,6 +66,7 @@ jobs:
             # 手动打包时将完整发布目录保存为可下载的 Actions Artifact。
             # push 部署仍只更新 build-output 分支，不额外上传重复产物。
             - name: Upload release artifacts
+              id: release-artifact
               if: github.event_name == 'workflow_dispatch'
               uses: actions/upload-artifact@v4
               with:
@@ -73,6 +74,30 @@ jobs:
                   path: dist/release/
                   if-no-files-found: error
                   retention-days: 30
+
+            - name: Upload lite package (without optional modules)
+              id: lite-artifact
+              if: github.event_name == 'workflow_dispatch'
+              uses: actions/upload-artifact@v4
+              with:
+                  name: Stars-Lite-${{ github.run_number }}
+                  path: dist/release/*-lite.zip
+                  if-no-files-found: error
+                  compression-level: 0
+                  retention-days: 30
+
+            - name: Show release download links
+              if: github.event_name == 'workflow_dispatch'
+              env:
+                  LITE_URL: ${{ steps.lite-artifact.outputs.artifact-url }}
+                  RELEASE_URL: ${{ steps.release-artifact.outputs.artifact-url }}
+              run: |
+                  {
+                    echo "## 十周年UI-Stars 打包完成"
+                    echo
+                    echo "- [下载次完整包（lite）](${LITE_URL})：本体与共享资源齐全，七个可选分包均未预装，可在游戏内按需安装。"
+                    echo "- [下载全部发布文件](${RELEASE_URL})：完整包、次完整包、七个分包、模块索引和发布说明。"
+                  } >> "$GITHUB_STEP_SUMMARY"
 
             - name: Deploy dist to branch
               if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository_owner == 'zziyoo'
